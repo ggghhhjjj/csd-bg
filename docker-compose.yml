@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  csd-bg-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_UID: 1031
+        APP_GID: 65538
+    image: csd-bg-scraper:latest
+    container_name: csd-bg-scraper
+    
+    # Run as appuser:apps (UID:GID)
+    user: "${DOCKER_USER:-1031:65538}"
+    
+    # Volume mapping for data persistence
+    volumes:
+      - ${DATA_HOST_PATH:-/volume2/docker/test}:/data
+    
+    # Command line arguments (customize as needed)
+    command: ["--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
+    
+    # Environment variables (if needed)
+    environment:
+      - TZ=Europe/Sofia
+    
+    # No restart policy for one-shot batch application
+    restart: "no"
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Network mode (optional)
+    network_mode: bridge
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,128 @@
+.PHONY: help install install-dev test test-coverage lint format typecheck security clean run docker-build docker-run docker-compose-up docker-compose-down
+
+# Default target
+.DEFAULT_GOAL := help
+
+# Variables
+PYTHON := python3
+PIP := pip
+PYTEST := pytest
+BLACK := black
+FLAKE8 := flake8
+MYPY := mypy
+BANDIT := bandit
+DOCKER := docker
+DOCKER_COMPOSE := docker-compose
+
+# Paths
+SRC_DIR := src
+TEST_DIR := tests
+APP_FILE := app.py
+DOCKER_IMAGE := csd-bg-scraper
+DATA_DIR := ./data
+
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+install: ## Install production dependencies
+	$(PIP) install -r requirements.txt
+
+install-dev: ## Install all dependencies including development tools
+	$(PIP) install -r requirements.txt
+
+test: ## Run tests
+	$(PYTEST) $(TEST_DIR) -v
+
+test-coverage: ## Run tests with coverage report
+	$(PYTEST) $(TEST_DIR) --cov=$(SRC_DIR) --cov=$(APP_FILE) --cov-report=html --cov-report=term-missing -v
+
+test-watch: ## Run tests in watch mode
+	$(PYTEST) $(TEST_DIR) -v --looponfail
+
+lint: ## Lint code with flake8
+	$(FLAKE8) $(SRC_DIR) $(TEST_DIR) $(APP_FILE) --max-line-length=100 --exclude=venv,__pycache__
+
+format: ## Format code with black
+	$(BLACK) $(SRC_DIR) $(TEST_DIR) $(APP_FILE)
+
+format-check: ## Check code formatting without making changes
+	$(BLACK) $(SRC_DIR) $(TEST_DIR) $(APP_FILE) --check
+
+typecheck: ## Type check with mypy
+	$(MYPY) $(SRC_DIR) $(APP_FILE) --ignore-missing-imports
+
+security: ## Run security checks with bandit
+	$(BANDIT) -r $(SRC_DIR) $(APP_FILE) -ll
+
+quality: lint typecheck security ## Run all quality checks
+
+clean: ## Clean up generated files
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name "*.log" -delete
+	rm -rf htmlcov .coverage build dist *.egg-info
+
+clean-data: ## Clean up data files (CSV and DB)
+	rm -rf $(DATA_DIR)/*.csv $(DATA_DIR)/*.db
+
+run: ## Run the application locally
+	@mkdir -p $(DATA_DIR)
+	$(PYTHON) $(APP_FILE) --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db
+
+run-timeout: ## Run with custom timeout
+	@mkdir -p $(DATA_DIR)
+	$(PYTHON) $(APP_FILE) --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --timeout 60
+
+docker-build: ## Build Docker image
+	$(DOCKER) build -t $(DOCKER_IMAGE):latest .
+
+docker-run: ## Run Docker container
+	@mkdir -p $(DATA_DIR)
+	$(DOCKER) run -v $(PWD)/$(DATA_DIR):/data $(DOCKER_IMAGE):latest
+
+docker-run-interactive: ## Run Docker container interactively
+	@mkdir -p $(DATA_DIR)
+	$(DOCKER) run -it -v $(PWD)/$(DATA_DIR):/data $(DOCKER_IMAGE):latest /bin/bash
+
+docker-compose-up: ## Start services with docker-compose
+	@mkdir -p $(DATA_DIR)
+	$(DOCKER_COMPOSE) up
+
+docker-compose-up-detached: ## Start services in detached mode
+	@mkdir -p $(DATA_DIR)
+	$(DOCKER_COMPOSE) up -d
+
+docker-compose-down: ## Stop services
+	$(DOCKER_COMPOSE) down
+
+docker-compose-logs: ## View docker-compose logs
+	$(DOCKER_COMPOSE) logs -f
+
+docker-clean: ## Remove Docker image
+	$(DOCKER) rmi $(DOCKER_IMAGE):latest || true
+
+all-checks: format-check lint typecheck security test ## Run all checks (format, lint, type, security, test)
+
+setup: install ## Initial setup
+	@mkdir -p $(DATA_DIR)
+	@echo "Setup complete! Run 'make run' to start the application."
+
+dev-setup: install-dev ## Setup development environment
+	@mkdir -p $(DATA_DIR)
+	@echo "Development environment ready!"
+
+ci: format-check lint typecheck security test-coverage ## Run CI pipeline checks
+
+deploy-build: clean docker-build ## Build for deployment
+	@echo "Docker image built successfully!"
+
+init-data-dir: ## Initialize data directory
+	@mkdir -p $(DATA_DIR)
+	@echo "Data directory created at $(DATA_DIR)"
