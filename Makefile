@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-coverage lint format typecheck security clean run docker-build docker-run docker-compose-up docker-compose-down
+.PHONY: help install install-dev test test-coverage lint format typecheck security clean run docker-build docker-run docker-compose-up docker-compose-down assembly
 
 # Default target
 .DEFAULT_GOAL := help
@@ -126,3 +126,21 @@ deploy-build: clean docker-build ## Build for deployment
 init-data-dir: ## Initialize data directory
 	@mkdir -p $(DATA_DIR)
 	@echo "Data directory created at $(DATA_DIR)"
+
+assembly: ## Create zip file for Synology deployment
+	@echo "Creating deployment package for Synology..."
+	@mkdir -p build
+	@zip -r build/csd-bg-synology.zip \
+		.env.example \
+		app.py \
+		requirements.txt \
+		src/ \
+		docker-compose.yml \
+		Dockerfile
+	@echo "✓ Deployment package created: build/csd-bg-synology.zip"
+	@echo "Next steps:"
+	@echo "  1. Transfer the zip file to your Synology NAS"
+	@echo "  2. Unzip it in your desired directory"
+	@echo "  3. Configure .env file based on .env.example"
+	@echo "  4. Deploy using Synology Container Manager"
+

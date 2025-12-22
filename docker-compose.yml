@@ -16,7 +16,7 @@ services:
     
     # Volume mapping for data persistence
     volumes:
-      - ${DATA_HOST_PATH:-/volume2/docker/test}:/data
+      - ${DATA_HOST_PATH:-/volume2/docker/csd-bg/data}:/data
     
     # Command line arguments (customize as needed)
     command: ["--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
@@ -29,13 +29,14 @@ services:
     restart: "no"
     
     # Resource limits (adjust based on your needs)
+    # NOTE: CPU limits with cpus parameter are not supported on Synology
+    # due to kernel limitations (no CU CFS scheduler support)
+    # Memory limits should work fine
     deploy:
       resources:
         limits:
-          cpus: '1.0'
           memory: 512M
         reservations:
-          cpus: '0.5'
           memory: 256M
     
     # Network mode (optional)
