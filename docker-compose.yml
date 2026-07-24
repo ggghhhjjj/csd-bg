@@ -16,10 +16,11 @@ services:
     
     # Volume mapping for data persistence
     volumes:
-      - ${DATA_HOST_PATH:-/volume2/docker/csd-bg/data}:/data
+      - ${DATA_HOST_PATH:-/volume1/homes/dandelion/docker/csd-bg}:/data
     
-    # Command line arguments (customize as needed)
-    command: ["--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
+    # Pipeline steps + args (customize as needed)
+    # Synology: docker compose run --rm csd-bg-scraper scrape,download,extract
+    command: ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
     
     # Environment variables (if needed)
     environment:

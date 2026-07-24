@@ -5,6 +5,9 @@
 requests==2.31.0
 beautifulsoup4==4.12.3
 
+# PDF extraction
+pdfplumber==0.11.4
+
 # HTML parser
 lxml==5.1.0
 

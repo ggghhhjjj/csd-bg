@@ -397,7 +397,13 @@ Edit `docker-compose.yml` to customize:
 
 ## Workflow
 
-The application performs the following steps:
+The application runs a **step pipeline**. Default / Synology:
+
+```bash
+docker compose run --rm csd-bg-scraper scrape,download,extract
+```
+
+### Step: `scrape`
 
 1. **Fetch Web Page**: Load `https://csd-bg.bg/members/memberStatistics.xhtml`
 2. **Extract Links**: Parse HTML and extract all Free Float PDF links
@@ -407,15 +413,82 @@ The application performs the following steps:
 6. **Export to CSV**: Append record to CSV file
 7. **Log Summary**: Display processing statistics
 
+### Step: `download`
+
+1. Optionally **clear failed marks** (`--clear-failed-downloads`)
+2. Select `free_float` rows with no `pdf_content` row (failed rows are skipped)
+3. **Download PDF** with up to N retries (default 3) and random 10–30s backoff
+4. On success: store bytes in `pdf_content` (`status=downloaded`)
+5. On exhausted retries: mark `status=failed` and skip on later runs until cleared
+
+### Step: `extract`
+
+1. Optionally **clear failed extract marks** (`--clear-failed-extracts`)
+2. Select downloaded PDFs with `extract_status` unset
+3. Parse table rows (issuer name, ISIN, total shares, free float, shareholders)
+4. Upsert `stock_issue` (by ISIN), `issuer` (name on that date), `stock_issue_daily` (metrics)
+5. Mark `extract_status=extracted` or `failed`
+
 ## Database Schema
 
 ### Table: `free_float`
 
 | Column     | Type      | Description                      |
 |------------|-----------|----------------------------------|
-| date       | TEXT      | Date in YYYY-MM-DD format (PK)  |
+| id         | INTEGER   | Primary key                      |
+| date       | TEXT      | Date in YYYY-MM-DD format (unique)|
 | url        | TEXT      | Full URL to PDF file            |
 | created_at | TIMESTAMP | Record creation timestamp        |
+
+### Table: `pdf_content`
+
+| Column         | Type      | Description                                |
+|----------------|-----------|--------------------------------------------|
+| free_float_id  | INTEGER   | PK / FK → `free_float.id`                  |
+| content        | BLOB      | PDF bytes (set when downloaded)            |
+| size_bytes     | INTEGER   | Content length                             |
+| status         | TEXT      | `downloaded` or `failed`                   |
+| attempts       | INTEGER   | Download attempts used                     |
+| last_error     | TEXT      | Last download error message when failed    |
+| downloaded_at  | TIMESTAMP | Set on download success                    |
+| failed_at      | TIMESTAMP | Set on permanent download failure          |
+| extract_status | TEXT      | `extracted`, `failed`, or NULL (pending)   |
+| extract_attempts | INTEGER | Extract attempts used                    |
+| extract_last_error | TEXT   | Last extract error                         |
+| extracted_at   | TIMESTAMP | Set on extract success                     |
+| extract_failed_at | TIMESTAMP | Set on extract failure                  |
+| created_at     | TIMESTAMP | Row creation timestamp                     |
+| updated_at     | TIMESTAMP | Last update timestamp                      |
+
+### Table: `stock_issue`
+
+| Column     | Type      | Description                         |
+|------------|-----------|-------------------------------------|
+| id         | INTEGER   | Surrogate primary key               |
+| isin       | TEXT      | Unique business key (Емисия / ISIN) |
+| created_at | TIMESTAMP | Row creation timestamp              |
+
+### Table: `issuer`
+
+| Column          | Type      | Description                                      |
+|-----------------|-----------|--------------------------------------------------|
+| id              | INTEGER   | Surrogate primary key                            |
+| stock_issue_id  | INTEGER   | FK → `stock_issue.id`                            |
+| free_float_id   | INTEGER   | FK → `free_float.id` (PDF date of this name)     |
+| name            | TEXT      | Issuer name (Емитент) as of that date            |
+| created_at      | TIMESTAMP | Row creation timestamp                           |
+
+### Table: `stock_issue_daily`
+
+| Column          | Type      | Description                         |
+|-----------------|-----------|-------------------------------------|
+| id              | INTEGER   | Surrogate primary key               |
+| stock_issue_id  | INTEGER   | FK → `stock_issue.id`               |
+| free_float_id   | INTEGER   | FK → `free_float.id`                |
+| total_shares    | INTEGER   | Общ Брой Фи                         |
+| free_float      | INTEGER   | Фрий Флоат                          |
+| shareholders    | INTEGER   | Брой Акционери                      |
+| created_at      | TIMESTAMP | Row creation timestamp              |
 
 ## CSV Format
 

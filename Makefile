@@ -72,13 +72,13 @@ clean: ## Clean up generated files
 clean-data: ## Clean up data files (CSV and DB)
 	rm -rf $(DATA_DIR)/*.csv $(DATA_DIR)/*.db
 
-run: ## Run the application locally
+run: ## Run scrape+download+extract pipeline locally
 	@mkdir -p $(DATA_DIR)
-	$(PYTHON) $(APP_FILE) --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db
+	$(PYTHON) $(APP_FILE) scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db
 
-run-timeout: ## Run with custom timeout
+run-timeout: ## Run scrape+download+extract with custom timeout
 	@mkdir -p $(DATA_DIR)
-	$(PYTHON) $(APP_FILE) --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --timeout 60
+	$(PYTHON) $(APP_FILE) scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --timeout 60
 
 docker-build: ## Build Docker image
 	$(DOCKER) build -t $(DOCKER_IMAGE):latest .

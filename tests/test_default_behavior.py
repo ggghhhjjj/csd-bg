@@ -31,25 +31,27 @@ class TestDefaultIncrementalBehavior:
         """Test that default behavior enables pagination and early stopping."""
         # Default app should have pagination and early stopping enabled
         assert app_default.use_post_pagination is True, "Pagination should be enabled by default"
-        assert app_default.enable_early_stopping is True, "Early stopping should be enabled by default"
+        assert (
+            app_default.enable_early_stopping is True
+        ), "Early stopping should be enabled by default"
         assert app_default.early_stopping_threshold == 10, "Default threshold should be 10"
 
-    @patch.object(FreeFloatScraperApp, 'process_links')
-    @patch.object(FreeFloatScraperApp, 'setup')
+    @patch.object(FreeFloatScraperApp, "process_links")
+    @patch.object(FreeFloatScraperApp, "setup")
     def test_default_run_uses_pagination(self, mock_setup, mock_process, app_default):
         """Test that default run uses pagination."""
         mock_links = [
-            {'date': '2025-12-04', 'url': 'https://example.com/test1.pdf'},
-            {'date': '2025-12-03', 'url': 'https://example.com/test2.pdf'}
+            {"date": "2025-12-04", "url": "https://example.com/test1.pdf"},
+            {"date": "2025-12-03", "url": "https://example.com/test2.pdf"},
         ]
-        
+
         # Mock the pagination method
         app_default.scraper.scrape_with_post_pagination = Mock(return_value=mock_links)
         app_default.new_records_count = 2
         app_default.skipped_records_count = 0
-        
-        exit_code = app_default.run()
-        
+
+        exit_code = app_default.run(steps=["scrape"])
+
         assert exit_code == 0
         mock_setup.assert_called_once()
         # Should call scrape_with_post_pagination, not scrape
@@ -61,23 +63,25 @@ class TestDefaultIncrementalBehavior:
         csv_path = str(Path(temp_dir) / "test.csv")
         db_path = str(Path(temp_dir) / "test.db")
         app = FreeFloatScraperApp(csv_path, db_path)
-        
+
         # Simulate: 2 new records, then 10 duplicates
         links = [
-            {'date': '2025-12-07', 'url': 'https://example.com/new1.pdf'},
-            {'date': '2025-12-06', 'url': 'https://example.com/new2.pdf'},
-            *[{'date': f'2025-12-{i:02d}', 'url': f'https://example.com/old{i}.pdf'} 
-              for i in range(5, 0, -1)]
+            {"date": "2025-12-07", "url": "https://example.com/new1.pdf"},
+            {"date": "2025-12-06", "url": "https://example.com/new2.pdf"},
+            *[
+                {"date": f"2025-12-{i:02d}", "url": f"https://example.com/old{i}.pdf"}
+                for i in range(5, 0, -1)
+            ],
         ]
-        
+
         app.db_manager.record_exists = Mock(side_effect=[False, False] + [True] * 10)
         app.db_manager.insert_record = Mock(return_value=True)
         app.csv_manager.append_record = Mock()
         app.db_manager.connect = Mock()
         app.db_manager.disconnect = Mock()
-        
+
         app.process_links(links)
-        
+
         # Should process 2 new + 5 existing, but stop at threshold (total depends on data)
         # With default threshold of 10, and only 5 duplicates, all should be processed
         assert app.new_records_count == 2
@@ -88,11 +92,9 @@ class TestDefaultIncrementalBehavior:
         csv_path = str(Path(temp_dir) / "test.csv")
         db_path = str(Path(temp_dir) / "test.db")
         app = FreeFloatScraperApp(
-            csv_path, 
-            db_path, 
-            use_post_pagination=False  # Explicitly disable
+            csv_path, db_path, use_post_pagination=False  # Explicitly disable
         )
-        
+
         assert app.use_post_pagination is False
 
     def test_explicit_disable_early_stopping(self, temp_dir):
@@ -100,11 +102,9 @@ class TestDefaultIncrementalBehavior:
         csv_path = str(Path(temp_dir) / "test.csv")
         db_path = str(Path(temp_dir) / "test.db")
         app = FreeFloatScraperApp(
-            csv_path, 
-            db_path, 
-            enable_early_stopping=False  # Explicitly disable
+            csv_path, db_path, enable_early_stopping=False  # Explicitly disable
         )
-        
+
         assert app.enable_early_stopping is False
 
     def test_incremental_update_scenario(self, temp_dir):
@@ -112,25 +112,29 @@ class TestDefaultIncrementalBehavior:
         csv_path = str(Path(temp_dir) / "test.csv")
         db_path = str(Path(temp_dir) / "test.db")
         app = FreeFloatScraperApp(csv_path, db_path)  # Default settings
-        
+
         # Simulate pagination returning 30 links (3 pages)
         # First 5 are new (today's data), rest exist
         links = [
-            *[{'date': f'2025-12-{7-i:02d}', 'url': f'https://example.com/new{i}.pdf'} 
-              for i in range(5)],
-            *[{'date': f'2025-11-{30-i:02d}', 'url': f'https://example.com/old{i}.pdf'} 
-              for i in range(25)]
+            *[
+                {"date": f"2025-12-{7-i:02d}", "url": f"https://example.com/new{i}.pdf"}
+                for i in range(5)
+            ],
+            *[
+                {"date": f"2025-11-{30-i:02d}", "url": f"https://example.com/old{i}.pdf"}
+                for i in range(25)
+            ],
         ]
-        
+
         # First 5 are new, rest exist
-        app.db_manager.record_exists = Mock(side_effect=[False]*5 + [True]*25)
+        app.db_manager.record_exists = Mock(side_effect=[False] * 5 + [True] * 25)
         app.db_manager.insert_record = Mock(return_value=True)
         app.csv_manager.append_record = Mock()
         app.db_manager.connect = Mock()
         app.db_manager.disconnect = Mock()
-        
+
         app.process_links(links)
-        
+
         # Should add 5 new records
         assert app.new_records_count == 5
         # Should stop after 10 consecutive duplicates (5 new + 10 duplicates = 15 checked)
@@ -138,30 +142,37 @@ class TestDefaultIncrementalBehavior:
         # Should NOT check all 30 (early stopping saves 15 checks)
         assert app.db_manager.record_exists.call_count == 15
 
-    @patch('app.parse_arguments')
+    @patch("app.parse_arguments")
     def test_command_line_default_behavior(self, mock_parse_args, temp_dir):
         """Test that command line without flags uses smart defaults."""
         from app import main
-        
+
         mock_parse_args.return_value = MagicMock(
             csv=str(Path(temp_dir) / "test.csv"),
             db=str(Path(temp_dir) / "test.db"),
             timeout=30,
-            no_pagination=False,  # New negated argument
+            no_pagination=False,
             max_pages=None,
-            no_early_stopping=False,  # New negated argument
-            early_stopping_threshold=10
+            no_early_stopping=False,
+            early_stopping_threshold=10,
+            download_retries=3,
+            download_retry_min=10,
+            download_retry_max=30,
+            clear_failed_downloads=False,
+            clear_failed_extracts=False,
+            parsed_steps=["scrape", "download", "extract"],
         )
-        
-        with patch('app.FreeFloatScraperApp') as mock_app_class:
+
+        with patch("app.FreeFloatScraperApp") as mock_app_class:
             mock_app_instance = Mock()
             mock_app_instance.run.return_value = 0
             mock_app_class.return_value = mock_app_instance
-            
+
             main()
-            
+
             # Should be called with smart defaults enabled
             call_kwargs = mock_app_class.call_args[1]
             # Default behavior should enable both (not no_pagination = False -> pagination = True)
-            assert call_kwargs.get('use_post_pagination') is True
-            assert call_kwargs.get('enable_early_stopping') is True
+            assert call_kwargs.get("use_post_pagination") is True
+            assert call_kwargs.get("enable_early_stopping") is True
+            mock_app_instance.run.assert_called_once_with(steps=["scrape", "download", "extract"])
