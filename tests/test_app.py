@@ -6,7 +6,9 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from app import FreeFloatScraperApp, parse_arguments, main
+import logging
+
+from app import FreeFloatScraperApp, parse_arguments, main, configure_file_logging
 from src.pdf_downloader import PdfDownloaderError
 from src.pdf_extractor import PdfExtractorError
 
@@ -247,6 +249,25 @@ class TestFreeFloatScraperApp:
         mock_db.clear_failed_pdf_extractions.assert_called_once_with()
 
 
+class TestConfigureFileLogging:
+    """Test suite for file logging setup."""
+
+    def test_configure_file_logging_attaches_handler(self, tmp_path):
+        """File handler is attached for the configured path."""
+        log_path = tmp_path / "nested" / "app.log"
+        configure_file_logging(str(log_path))
+
+        abs_path = str(log_path.resolve())
+        file_handlers = [
+            h
+            for h in logging.getLogger().handlers
+            if isinstance(h, logging.FileHandler) and h.baseFilename == abs_path
+        ]
+
+        assert log_path.exists()
+        assert len(file_handlers) == 1
+
+
 class TestParseArguments:
     """Test suite for argument parsing."""
 
@@ -261,8 +282,27 @@ class TestParseArguments:
 
         assert args.csv == "/data/test.csv"
         assert args.db == "/data/test.db"
+        assert args.log == "/data/app.log"
         assert args.timeout == 30
         assert args.parsed_steps == ["scrape", "download", "extract"]
+
+    def test_parse_arguments_custom_log(self, monkeypatch):
+        """Test parsing with custom --log path."""
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "app.py",
+                "download",
+                "--db",
+                "/data/test.db",
+                "--log",
+                "/data/custom.log",
+            ],
+        )
+
+        args = parse_arguments()
+
+        assert args.log == "/data/custom.log"
 
     def test_parse_arguments_with_timeout(self, monkeypatch):
         """Test parsing with custom timeout."""
@@ -388,8 +428,9 @@ class TestParseArguments:
 class TestMain:
     """Test suite for main function."""
 
+    @patch("app.configure_file_logging")
     @patch("app.FreeFloatScraperApp")
-    def test_main_success(self, mock_app_class, monkeypatch):
+    def test_main_success(self, mock_app_class, mock_configure_logging, monkeypatch):
         """Test main function success."""
         monkeypatch.setattr(
             "sys.argv",
@@ -410,6 +451,7 @@ class TestMain:
         exit_code = main()
 
         assert exit_code == 0
+        mock_configure_logging.assert_called_once_with("/data/app.log")
         mock_app_class.assert_called_once_with(
             csv_path="/data/test.csv",
             db_path="/data/test.db",
@@ -426,8 +468,9 @@ class TestMain:
         )
         mock_app_instance.run.assert_called_once_with(steps=["scrape", "download", "extract"])
 
+    @patch("app.configure_file_logging")
     @patch("app.FreeFloatScraperApp")
-    def test_main_failure(self, mock_app_class, monkeypatch):
+    def test_main_failure(self, mock_app_class, mock_configure_logging, monkeypatch):
         """Test main function failure."""
         monkeypatch.setattr(
             "sys.argv",
@@ -441,3 +484,4 @@ class TestMain:
         exit_code = main()
 
         assert exit_code == 1
+        mock_configure_logging.assert_called_once_with("/data/app.log")

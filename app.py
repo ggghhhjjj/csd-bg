@@ -10,6 +10,7 @@ download PDF contents into the database via a step-based pipeline.
 import argparse
 import logging
 import sys
+from pathlib import Path
 from typing import List, Dict, Optional
 
 from src.web_scraper import WebScraper, WebScraperError
@@ -20,14 +21,41 @@ from src.pdf_extractor import PdfExtractor, PdfExtractorError
 from src.pipeline import parse_steps, run_pipeline, PipelineError, KNOWN_STEPS
 
 
-# Configure logging
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+DEFAULT_LOG_PATH = "/data/app.log"
+
+# Stdout logging at import time; file handler is attached in main() from --log
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("app.log")],
+    format=LOG_FORMAT,
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 logger = logging.getLogger(__name__)
+
+
+def configure_file_logging(log_path: str) -> None:
+    """
+    Attach a file handler for the given log path.
+
+    Creates the parent directory when needed. On failure, keeps stdout logging only.
+    """
+    path = Path(log_path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path = str(path.resolve())
+        root = logging.getLogger()
+        for handler in root.handlers:
+            if (
+                isinstance(handler, logging.FileHandler)
+                and getattr(handler, "baseFilename", None) == abs_path
+            ):
+                return
+        file_handler = logging.FileHandler(path)
+        file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+        root.addHandler(file_handler)
+    except OSError as e:
+        logger.warning("Could not open log file %s: %s", log_path, e)
 
 
 class FreeFloatScraperApp:
@@ -481,6 +509,13 @@ Known steps: {', '.join(KNOWN_STEPS)}
     )
 
     parser.add_argument(
+        "--log",
+        type=str,
+        default=DEFAULT_LOG_PATH,
+        help=f"Path to the application log file (default: {DEFAULT_LOG_PATH})",
+    )
+
+    parser.add_argument(
         "--timeout",
         type=int,
         default=30,
@@ -582,6 +617,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         Exit code
     """
     args = parse_arguments(argv)
+    configure_file_logging(args.log)
 
     app = FreeFloatScraperApp(
         csv_path=args.csv,

@@ -46,4 +46,4 @@ VOLUME ["/data"]
 ENTRYPOINT ["python", "app.py"]
 
 # Default pipeline steps + arguments (can be overridden)
-CMD ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db"]
+CMD ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--log", "/data/app.log"]
