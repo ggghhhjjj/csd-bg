@@ -5,7 +5,7 @@ This directory contains test fixture files used by the test suite.
 ## Files
 
 ### `csd_home.html`
-Real HTML snapshot from `https://csd-bg.bg/members/memberStatistics.xhtml` (captured on 2025-12-04).
+HTML snapshot of the member statistics page (captured 2025-12-04). Configure the live URL via `CSD_BG_STATISTICS_URL` in `.env` when refreshing this file.
 
 **Purpose**: Used to test the web scraper with authentic HTML structure from the target website.
 
@@ -35,7 +35,7 @@ Real HTML snapshot from `https://csd-bg.bg/members/memberStatistics.xhtml` (capt
 
 When the website structure changes:
 
-1. Visit `https://csd-bg.bg/members/memberStatistics.xhtml`
+1. Open the statistics page URL from your local `.env` (`CSD_BG_STATISTICS_URL`)
 2. Save the page as HTML (View Source → Save As)
 3. Replace `csd_home.html` with the new version
 4. Run tests to verify scraper still works: `pytest tests/test_web_scraper.py -v`

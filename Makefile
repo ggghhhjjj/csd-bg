@@ -33,8 +33,17 @@ install: ## Install production dependencies
 install-dev: ## Install all dependencies including development tools
 	$(PIP) install -r requirements.txt
 
-test: ## Run tests
+test: ## Run Node tests (Vitest)
+	npm test
+
+test-python: ## Run Python tests
 	$(PYTEST) $(TEST_DIR) -v
+
+node-build: ## Build Node monorepo packages
+	npm run build
+
+node-install: ## Install Node workspace dependencies
+	npm install
 
 test-coverage: ## Run tests with coverage report
 	$(PYTEST) $(TEST_DIR) --cov=$(SRC_DIR) --cov=$(APP_FILE) --cov-report=html --cov-report=term-missing -v
@@ -72,13 +81,18 @@ clean: ## Clean up generated files
 clean-data: ## Clean up data files (CSV and DB)
 	rm -rf $(DATA_DIR)/*.csv $(DATA_DIR)/*.db
 
-run: ## Run scrape+download+extract pipeline locally
+run: ## Run scrape+download+extract pipeline locally (Node CLI)
+	@mkdir -p $(DATA_DIR)
+	npm run build -w @csd-bg/cli --if-present
+	node packages/cli/dist/index.js scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
+
+run-python: ## Run pipeline using legacy Python app.py
 	@mkdir -p $(DATA_DIR)
 	$(PYTHON) $(APP_FILE) scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
 
 run-timeout: ## Run scrape+download+extract with custom timeout
 	@mkdir -p $(DATA_DIR)
-	$(PYTHON) $(APP_FILE) scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
+	node packages/cli/dist/index.js scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
 
 docker-build: ## Build Docker image
 	$(DOCKER) build -t $(DOCKER_IMAGE):latest .
@@ -110,13 +124,13 @@ docker-clean: ## Remove Docker image
 
 all-checks: format-check lint typecheck security test ## Run all checks (format, lint, type, security, test)
 
-setup: install ## Initial setup
+setup: node-install node-build ## Initial setup (Node.js)
 	@mkdir -p $(DATA_DIR)
-	@echo "Setup complete! Run 'make run' to start the application."
+	@echo "Setup complete! Run 'make run' to start the Node CLI."
 
-dev-setup: install-dev ## Setup development environment
+dev-setup: node-install node-build ## Setup Node development environment
 	@mkdir -p $(DATA_DIR)
-	@echo "Development environment ready!"
+	@echo "Node development environment ready!"
 
 ci: format-check lint typecheck security test-coverage ## Run CI pipeline checks
 
@@ -127,16 +141,21 @@ init-data-dir: ## Initialize data directory
 	@mkdir -p $(DATA_DIR)
 	@echo "Data directory created at $(DATA_DIR)"
 
-assembly: ## Create zip file for Synology deployment
+assembly: ## Create zip file for Synology deployment (Node.js)
 	@echo "Creating deployment package for Synology..."
 	@mkdir -p build
 	@zip -r build/csd-bg-synology.zip \
 		.env.example \
-		app.py \
-		requirements.txt \
-		src/ \
+		package.json \
+		package-lock.json \
+		tsconfig.base.json \
+		packages/core/package.json \
+		packages/core/src \
+		packages/cli/package.json \
+		packages/cli/src \
 		docker-compose.yml \
-		Dockerfile
+		Dockerfile \
+		.dockerignore
 	@echo "✓ Deployment package created: build/csd-bg-synology.zip"
 	@echo "Next steps:"
 	@echo "  1. Transfer the zip file to your Synology NAS"

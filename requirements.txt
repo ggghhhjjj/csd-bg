@@ -1,6 +1,8 @@
 # Python dependencies for CSD-BG Free Float Scraper
 # Pin versions for reproducibility
 
+python-dotenv==1.0.1
+
 # Web scraping
 requests==2.31.0
 beautifulsoup4==4.12.3

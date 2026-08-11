@@ -7,6 +7,10 @@ stores them in an SQLite database, exports them to a CSV file, and can
 download PDF contents into the database via a step-based pipeline.
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import argparse
 import logging
 import sys
@@ -14,6 +18,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 from src.web_scraper import WebScraper, WebScraperError
+from src.settings import ScraperConfigError
 from src.database_manager import DatabaseManager, DatabaseManagerError
 from src.csv_manager import CSVManager, CSVManagerError
 from src.pdf_downloader import PdfDownloader, PdfDownloaderError
@@ -113,8 +118,8 @@ class FreeFloatScraperApp:
         self.download_retry_max = download_retry_max
         self.clear_failed_downloads = clear_failed_downloads
         self.clear_failed_extracts = clear_failed_extracts
+        self._scraper: Optional[WebScraper] = None
 
-        self.scraper = WebScraper(timeout=timeout)
         self.db_manager = DatabaseManager(db_path)
         self.csv_manager = CSVManager(csv_path) if csv_path else None
         self.pdf_downloader = PdfDownloader(
@@ -132,6 +137,13 @@ class FreeFloatScraperApp:
         self.extracted_count = 0
         self.extract_failed_count = 0
         self.extract_rows_count = 0
+
+    @property
+    def scraper(self) -> WebScraper:
+        """Lazy-init scraper so download/extract steps do not require CSD_BG_STATISTICS_URL."""
+        if self._scraper is None:
+            self._scraper = WebScraper(timeout=self.timeout)
+        return self._scraper
 
     def setup(self, include_csv: bool = True) -> None:
         """
@@ -268,6 +280,9 @@ class FreeFloatScraperApp:
             logger.info("Scrape step completed successfully")
             return 0
 
+        except ScraperConfigError as e:
+            logger.error(str(e))
+            return 1
         except WebScraperError as e:
             logger.error(f"Web scraping error: {str(e)}")
             return 1

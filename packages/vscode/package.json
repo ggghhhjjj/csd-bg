@@ -1,0 +1,163 @@
+{
+  "name": "csd-bg-vscode",
+  "displayName": "CSD-BG Free Float",
+  "description": "Scrape, download, and explore CSD-BG free float data",
+  "version": "2.0.0",
+  "publisher": "csd-bg",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onView:csd-bg.pipeline",
+    "onCommand:csd-bg.runPipeline",
+    "onCommand:csd-bg.openDataFolder"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "csd-bg.runPipeline",
+        "title": "CSD-BG: Run Pipeline",
+        "icon": "$(play)"
+      },
+      {
+        "command": "csd-bg.runScrape",
+        "title": "CSD-BG: Run Scrape"
+      },
+      {
+        "command": "csd-bg.runDownload",
+        "title": "CSD-BG: Run Download"
+      },
+      {
+        "command": "csd-bg.runExtract",
+        "title": "CSD-BG: Run Extract"
+      },
+      {
+        "command": "csd-bg.openDataExplorer",
+        "title": "CSD-BG: Open Data Explorer"
+      },
+      {
+        "command": "csd-bg.openCharts",
+        "title": "CSD-BG: Open Charts"
+      },
+      {
+        "command": "csd-bg.openConfigEditor",
+        "title": "CSD-BG: Open Config Editor"
+      },
+      {
+        "command": "csd-bg.generateCronSnippet",
+        "title": "CSD-BG: Generate Cron Snippet"
+      },
+      {
+        "command": "csd-bg.openDataFolder",
+        "title": "CSD-BG: Open Data Folder"
+      },
+      {
+        "command": "csd-bg.refreshDates",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "csd-bg.showIssuerTrend",
+        "title": "Show Issuer Trend"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "csd-bg",
+          "title": "CSD-BG",
+          "icon": "$(graph)"
+        }
+      ]
+    },
+    "views": {
+      "csd-bg": [
+        {
+          "id": "csd-bg.pipeline",
+          "name": "Pipeline"
+        },
+        {
+          "id": "csd-bg.dates",
+          "name": "Dates"
+        },
+        {
+          "id": "csd-bg.issuers",
+          "name": "Issuers"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "csd-bg.runPipeline",
+          "when": "view == csd-bg.pipeline",
+          "group": "navigation"
+        },
+        {
+          "command": "csd-bg.refreshDates",
+          "when": "view == csd-bg.dates",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CSD-BG",
+      "properties": {
+        "csd-bg.statisticsUrl": {
+          "type": "string",
+          "default": "",
+          "description": "CSD-BG member statistics page URL (CSD_BG_STATISTICS_URL)"
+        },
+        "csd-bg.dataDirectory": {
+          "type": "string",
+          "default": "./data",
+          "description": "Directory for CSV, SQLite DB, and logs"
+        },
+        "csd-bg.csvFileName": {
+          "type": "string",
+          "default": "free_float.csv"
+        },
+        "csd-bg.dbFileName": {
+          "type": "string",
+          "default": "free_float.db"
+        },
+        "csd-bg.timeout": {
+          "type": "number",
+          "default": 30
+        },
+        "csd-bg.maxPages": {
+          "type": "number",
+          "default": 0,
+          "description": "0 means all pages"
+        },
+        "csd-bg.earlyStoppingThreshold": {
+          "type": "number",
+          "default": 10
+        },
+        "csd-bg.usePostPagination": {
+          "type": "boolean",
+          "default": true
+        },
+        "csd-bg.enableEarlyStopping": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -watch -p tsconfig.json"
+  },
+  "dependencies": {
+    "@csd-bg/core": "2.0.0",
+    "sql.js": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/sql.js": "^1.4.9"
+  }
+}

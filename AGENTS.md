@@ -32,7 +32,7 @@ Reference docs (read before changing pagination/early-stop behavior): `POST_PAGI
 
 ## Environment variables (names only)
 
-Used mainly for **Docker / Synology** deployment (see `.env.example`). The app CLI uses `--csv`, `--db`, `--timeout`; it does not load `.env` itself.
+Used mainly for **Docker / Synology** deployment (see `.env.example`). The app loads `.env` via `python-dotenv` at startup; scrape requires `CSD_BG_STATISTICS_URL`.
 
 | Variable | Role |
 |----------|------|
@@ -45,6 +45,7 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The app C
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 | `LOG_LEVEL` | Logging level hint for ops |
+| `CSD_BG_STATISTICS_URL` | Full member statistics page URL for scrape (GET/POST); set in `.env`, not committed |
 
 Never commit `.env`. Copy from `.env.example` locally.
 

@@ -1,49 +1,39 @@
-# Use official Python runtime as base image
-FROM python:3.11-slim
+# Node.js Dockerfile for CSD-BG Free Float Scraper
+FROM node:22-slim
 
-# Build arguments for user and group (Synology DSC 7.2.2 compatibility)
 ARG APP_UID=1031
 ARG APP_GID=65538
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+ENV NODE_ENV=production \
     APP_UID=${APP_UID} \
     APP_GID=${APP_GID}
 
-# Set working directory
 WORKDIR /app
 
-# Create non-root user and group (skip if they already exist)
-RUN mkdir -p /data && \
-    if ! getent group "$APP_GID" > /dev/null 2>&1; then \
-        groupadd -r -g "$APP_GID" appuser; \
-    fi && \
-    if ! getent passwd "$APP_UID" > /dev/null 2>&1; then \
-        useradd -r -u "$APP_UID" -g "$APP_GID" appuser; \
-    fi && \
-    chown -R "$APP_UID":"$APP_GID" /app /data
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /data \
+    && groupadd -r -g "$APP_GID" appuser 2>/dev/null || true \
+    && useradd -r -u "$APP_UID" -g "$APP_GID" appuser 2>/dev/null || true \
+    && chown -R "$APP_UID":"$APP_GID" /app /data
 
-# Copy requirements first for better caching
-COPY --chown=appuser:appuser requirements.txt .
+COPY package.json package-lock.json ./
+COPY packages/core/package.json ./packages/core/
+COPY packages/cli/package.json ./packages/cli/
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN npm ci --omit=dev \
+    && npm cache clean --force
 
-# Copy application code
-COPY --chown=appuser:appuser src/ ./src/
-COPY --chown=appuser:appuser app.py .
+COPY --chown=appuser:appuser tsconfig.base.json ./
+COPY --chown=appuser:appuser packages/core ./packages/core
+COPY --chown=appuser:appuser packages/cli ./packages/cli
 
-# Switch to non-root user
+RUN npm run build -w @csd-bg/core && npm run build -w @csd-bg/cli
+
 USER appuser
 
-# Create volume mount point
 VOLUME ["/data"]
 
-# Set default command
-ENTRYPOINT ["python", "app.py"]
-
-# Default pipeline steps + arguments (can be overridden)
+ENTRYPOINT ["node", "packages/cli/dist/index.js"]
 CMD ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--log", "/data/app.log"]

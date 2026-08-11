@@ -7,6 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 
+from src.settings import base_url_from_statistics_url, resolve_statistics_url
+
 
 class WebScraperError(Exception):
     """Custom exception for web scraping errors."""
@@ -21,21 +23,23 @@ class WebScraper:
     containing Free Float PDF links.
     """
 
-    BASE_URL = "https://csd-bg.bg"
-    TARGET_URL = f"{BASE_URL}/members/memberStatistics.xhtml"
     HREF_PATTERN = "/ffloat/FREE_FLOAT"
     DATE_PATTERN = r"FREE_FLOAT_(\d{8})\.pdf"
     HTML_PARSER = "html.parser"
     FORM_ID = "formFF:j_idt46"
     FORM_NAME = "formFF"
 
-    def __init__(self, timeout: int = 30):
+    def __init__(self, timeout: int = 30, statistics_url: Optional[str] = None):
         """
         Initialize the WebScraper.
-        
+
         Args:
             timeout: Request timeout in seconds (default: 30)
+            statistics_url: Full member statistics page URL; defaults to
+                CSD_BG_STATISTICS_URL from the environment.
         """
+        self.statistics_url = resolve_statistics_url(statistics_url)
+        self.base_url = base_url_from_statistics_url(self.statistics_url)
         self.timeout = timeout
         self.session = requests.Session()
         # Set basic headers for the session (cookies will be preserved)
@@ -50,7 +54,7 @@ class WebScraper:
         Fetch the HTML content of a web page.
         
         Args:
-            url: URL to fetch (defaults to TARGET_URL)
+            url: URL to fetch (defaults to statistics_url)
             
         Returns:
             HTML content as string
@@ -58,7 +62,7 @@ class WebScraper:
         Raises:
             WebScraperError: If fetching fails
         """
-        target = url or self.TARGET_URL
+        target = url or self.statistics_url
         
         try:
             response = self.session.get(target, timeout=self.timeout)
@@ -81,7 +85,7 @@ class WebScraper:
             [
                 {
                     'date': '2025-12-04',
-                    'url': 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251204.pdf',
+                    'url': 'https://example.test/ffloat/FREE_FLOAT_20251204.pdf',
                     'href': '/ffloat/FREE_FLOAT_20251204.pdf'
                 }
             ]
@@ -105,7 +109,7 @@ class WebScraper:
                     formatted_date = date_obj.strftime('%Y-%m-%d')
                     
                     # Generate full URL
-                    full_url = f"{self.BASE_URL}{href}"
+                    full_url = f"{self.base_url}{href}"
                     
                     links.append({
                         'date': formatted_date,
@@ -185,7 +189,7 @@ class WebScraper:
                 try:
                     date_obj = datetime.strptime(date_str, '%Y%m%d')
                     formatted_date = date_obj.strftime('%Y-%m-%d')
-                    full_url = f"{self.BASE_URL}{href}"
+                    full_url = f"{self.base_url}{href}"
                     
                     links.append({
                         'date': formatted_date,
@@ -277,7 +281,7 @@ class WebScraper:
         
         try:
             response = self.session.post(
-                self.TARGET_URL,
+                self.statistics_url,
                 data=post_data,
                 headers=ajax_headers,
                 timeout=self.timeout

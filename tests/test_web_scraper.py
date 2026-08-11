@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import Mock, patch
 from pathlib import Path
 from src.web_scraper import WebScraper, WebScraperError
+from tests.conftest import TEST_BASE_URL, TEST_STATISTICS_URL
 
 
 class TestWebScraper:
@@ -42,8 +43,8 @@ class TestWebScraper:
     def test_initialization(self, scraper):
         """Test WebScraper initialization."""
         assert scraper.timeout == 10
-        assert scraper.BASE_URL == "https://csd-bg.bg"
-        assert scraper.TARGET_URL == "https://csd-bg.bg/members/memberStatistics.xhtml"
+        assert scraper.base_url == TEST_BASE_URL
+        assert scraper.statistics_url == TEST_STATISTICS_URL
 
     def test_initialization_default_timeout(self):
         """Test WebScraper initialization with default timeout."""
@@ -60,7 +61,7 @@ class TestWebScraper:
         result = scraper.fetch_page()
 
         assert result == "<html>Test</html>"
-        scraper.session.get.assert_called_once_with(scraper.TARGET_URL, timeout=10)
+        scraper.session.get.assert_called_once_with(scraper.statistics_url, timeout=10)
 
     def test_fetch_page_with_custom_url(self, scraper):
         """Test fetching with custom URL."""
@@ -94,12 +95,12 @@ class TestWebScraper:
         
         # Check first link
         assert links[0]['date'] == '2025-12-04'
-        assert links[0]['url'] == 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251204.pdf'
+        assert links[0]['url'] == f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251204.pdf'
         assert links[0]['href'] == '/ffloat/FREE_FLOAT_20251204.pdf'
         
         # Check second link
         assert links[1]['date'] == '2025-12-03'
-        assert links[1]['url'] == 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251203.pdf'
+        assert links[1]['url'] == f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251203.pdf'
         assert links[1]['href'] == '/ffloat/FREE_FLOAT_20251203.pdf'
     
     def test_extract_free_float_links_real_html(self, scraper, sample_html):
@@ -111,7 +112,7 @@ class TestWebScraper:
         
         # Verify first link (most recent)
         assert links[0]['date'] == '2025-12-04'
-        assert links[0]['url'] == 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251204.pdf'
+        assert links[0]['url'] == f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251204.pdf'
         
         # Verify dates are in descending order
         dates = [link['date'] for link in links]
@@ -122,7 +123,7 @@ class TestWebScraper:
             assert 'date' in link
             assert 'url' in link
             assert 'href' in link
-            assert link['url'].startswith('https://csd-bg.bg/ffloat/')
+            assert link['url'].startswith(f'{TEST_BASE_URL}/ffloat/')
             assert link['href'].startswith('/ffloat/FREE_FLOAT_')
 
     def test_extract_free_float_links_empty_html(self, scraper):
@@ -172,7 +173,7 @@ class TestWebScraper:
         mock_extract.return_value = [
             {
                 'date': '2025-12-04',
-                'url': 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251204.pdf',
+                'url': f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251204.pdf',
                 'href': '/ffloat/FREE_FLOAT_20251204.pdf'
             }
         ]
@@ -276,7 +277,7 @@ class TestWebScraper:
         
         assert len(links) == 2
         assert links[0]['date'] == '2025-12-05'
-        assert links[0]['url'] == 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251205.pdf'
+        assert links[0]['url'] == f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251205.pdf'
         assert links[1]['date'] == '2025-12-04'
         assert view_state.strip() == "-2187822647981327038:9999999999999999999"
 
@@ -352,12 +353,12 @@ class TestWebScraper:
         mock_fetch.return_value = "<html>initial</html>"
         mock_extract_params.return_value = ("view_state", "nonce")
         mock_extract.return_value = [
-            {'date': '2025-12-05', 'url': 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251205.pdf', 'href': '/ffloat/FREE_FLOAT_20251205.pdf'}
+            {'date': '2025-12-05', 'url': f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251205.pdf', 'href': '/ffloat/FREE_FLOAT_20251205.pdf'}
         ]
         
         # Mock paginated responses - page 2 has data, page 3 is empty
         mock_fetch_paginated.side_effect = [
-            ([{'date': '2025-12-04', 'url': 'https://csd-bg.bg/ffloat/FREE_FLOAT_20251204.pdf', 'href': '/ffloat/FREE_FLOAT_20251204.pdf'}], "new_view_state"),
+            ([{'date': '2025-12-04', 'url': f'{TEST_BASE_URL}/ffloat/FREE_FLOAT_20251204.pdf', 'href': '/ffloat/FREE_FLOAT_20251204.pdf'}], "new_view_state"),
             ([], None),  # Empty page triggers stop
             ([], None),
             ([], None),
