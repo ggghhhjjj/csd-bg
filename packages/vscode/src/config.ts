@@ -15,6 +15,7 @@ export interface ExtensionSettings {
   earlyStoppingThreshold: number;
   usePostPagination: boolean;
   enableEarlyStopping: boolean;
+  logLevel: string;
 }
 
 export function getExtensionSettings(): ExtensionSettings {
@@ -28,6 +29,7 @@ export function getExtensionSettings(): ExtensionSettings {
     earlyStoppingThreshold: config.get<number>("earlyStoppingThreshold", 10),
     usePostPagination: config.get<boolean>("usePostPagination", true),
     enableEarlyStopping: config.get<boolean>("enableEarlyStopping", true),
+    logLevel: config.get<string>("logLevel", "INFO"),
   };
 }
 

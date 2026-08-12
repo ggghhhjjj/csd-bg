@@ -1,4 +1,4 @@
-import { FreeFloatScraperApp, type PipelineStep } from "@csd-bg/core";
+import { createLogger, FreeFloatScraperApp, parseLogLevel, type PipelineStep } from "@csd-bg/core";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
@@ -18,15 +18,13 @@ export class PipelineRunner {
 
     mkdirSync(dirname(paths.dbPath), { recursive: true });
     mkdirSync(dirname(paths.csvPath), { recursive: true });
+    mkdirSync(dirname(paths.logPath), { recursive: true });
 
-    const logger = {
-      info: (message: string, ...args: unknown[]) =>
-        this.output(`INFO  ${message} ${args.join(" ")}`.trim()),
-      warn: (message: string, ...args: unknown[]) =>
-        this.output(`WARN  ${message} ${args.join(" ")}`.trim()),
-      error: (message: string, ...args: unknown[]) =>
-        this.output(`ERROR ${message} ${args.join(" ")}`.trim()),
-    };
+    const logger = createLogger({
+      logPath: paths.logPath,
+      level: parseLogLevel(settings.logLevel),
+      onLine: (line) => this.output(line),
+    });
 
     const app = new FreeFloatScraperApp(
       {
@@ -42,22 +40,23 @@ export class PipelineRunner {
       logger,
     );
 
-    this.output(`Running pipeline: ${steps.join(",")}`);
+    logger.info(`Starting pipeline: ${steps.join(",")}`);
     const result = await app.run(steps);
 
+    logger.info(`Pipeline finished: steps=${steps.join(",")} exit=${result.exitCode}`);
     if (result.scrape) {
-      this.output(
-        `Scrape: new=${result.scrape.newRecords}, skipped=${result.scrape.skippedRecords}`,
+      logger.info(
+        `Scrape: new=${result.scrape.newRecords} skipped=${result.scrape.skippedRecords}`,
       );
     }
     if (result.download) {
-      this.output(
-        `Download: ok=${result.download.downloaded}, failed=${result.download.failed}`,
+      logger.info(
+        `Download: ok=${result.download.downloaded} failed=${result.download.failed}`,
       );
     }
     if (result.extract) {
-      this.output(
-        `Extract: ok=${result.extract.extracted}, failed=${result.extract.failed}, rows=${result.extract.rowsWritten}`,
+      logger.info(
+        `Extract: ok=${result.extract.extracted} failed=${result.extract.failed} rows=${result.extract.rowsWritten}`,
       );
     }
 
@@ -68,7 +67,7 @@ export class PipelineRunner {
 export function buildCronSnippet(): string {
   const paths = getResolvedPaths();
   return `# Run daily at 06:30 (Synology / Linux cron)
-30 6 * * * cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract >> ${paths.logPath} 2>&1
+30 6 * * * cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract --log ${paths.logPath}
 
 # Local Node CLI equivalent
 # node packages/cli/dist/index.js scrape,download,extract --csv ${paths.csvPath} --db ${paths.dbPath} --log ${paths.logPath}`;

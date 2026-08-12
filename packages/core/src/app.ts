@@ -59,6 +59,7 @@ export class FreeFloatScraperApp {
       this.scraper = new WebScraper({
         timeout: this.options.timeout ?? 30,
         statisticsUrl: this.options.statisticsUrl,
+        logger: this.logger,
       });
     }
     return this.scraper;
@@ -102,6 +103,9 @@ export class FreeFloatScraperApp {
             !databaseWasEmpty &&
             consecutiveDuplicates >= (this.options.earlyStoppingThreshold ?? 10)
           ) {
+            this.logger.warn(
+              `Early stopping after ${consecutiveDuplicates} consecutive duplicate records (threshold=${this.options.earlyStoppingThreshold ?? 10})`,
+            );
             break;
           }
           continue;
@@ -123,6 +127,7 @@ export class FreeFloatScraperApp {
 
   async runScrape(): Promise<number> {
     try {
+      this.logger.info("Starting scrape");
       this.setup(true);
 
       const scraper = this.getWebScraper();
@@ -154,6 +159,7 @@ export class FreeFloatScraperApp {
 
   async runDownload(): Promise<number> {
     try {
+      this.logger.info("Starting download");
       this.setup(false);
 
       this.dbManager.connect();
@@ -200,6 +206,7 @@ export class FreeFloatScraperApp {
 
   async runExtract(): Promise<number> {
     try {
+      this.logger.info("Starting extract");
       this.setup(false);
 
       this.dbManager.connect();

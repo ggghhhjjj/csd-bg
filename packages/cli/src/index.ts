@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync, mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import { config as loadEnv } from "dotenv";
 import { Command } from "commander";
@@ -9,48 +8,14 @@ import {
   FreeFloatScraperApp,
   KNOWN_STEPS,
   PipelineError,
+  createLogger,
   parseSteps,
-  type Logger,
+  resolveLogLevel,
 } from "@csd-bg/core";
 
 loadEnv();
 
-const LOG_FORMAT = (level: string, message: string) =>
-  `${new Date().toISOString()} - csd-bg - ${level} - ${message}`;
-
 const DEFAULT_LOG_PATH = "/data/app.log";
-
-function createLogger(logPath?: string): Logger {
-  const writeToFile = (line: string) => {
-    if (!logPath) {
-      return;
-    }
-    try {
-      mkdirSync(dirname(logPath), { recursive: true });
-      appendFileSync(logPath, `${line}\n`, "utf-8");
-    } catch {
-      // Keep stdout-only logging when file logging fails.
-    }
-  };
-
-  return {
-    info: (message, ...args) => {
-      const line = LOG_FORMAT("INFO", `${message} ${args.join(" ")}`.trim());
-      console.log(line);
-      writeToFile(line);
-    },
-    warn: (message, ...args) => {
-      const line = LOG_FORMAT("WARN", `${message} ${args.join(" ")}`.trim());
-      console.warn(line);
-      writeToFile(line);
-    },
-    error: (message, ...args) => {
-      const line = LOG_FORMAT("ERROR", `${message} ${args.join(" ")}`.trim());
-      console.error(line);
-      writeToFile(line);
-    },
-  };
-}
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -67,6 +32,7 @@ export function buildProgram(): Command {
     .option("--csv <path>", "Path to CSV file (required for scrape)")
     .requiredOption("--db <path>", "Path to SQLite database file")
     .option("--log <path>", "Application log file path", DEFAULT_LOG_PATH)
+    .option("--log-level <level>", "Minimum log level (ERROR, WARN, INFO, DEBUG)")
     .option("--timeout <seconds>", "HTTP timeout in seconds", "30")
     .option("--no-pagination", "Scrape first page only")
     .option("--max-pages <n>", "Maximum pages when paginating")
@@ -103,7 +69,20 @@ export function buildProgram(): Command {
         program.error("--download-retry-min cannot exceed --download-retry-max");
       }
 
-      const logger = createLogger(resolve(options.log));
+      let logLevel;
+      try {
+        logLevel = resolveLogLevel(options.logLevel, process.env.LOG_LEVEL);
+      } catch (error) {
+        program.error(error instanceof Error ? error.message : String(error));
+      }
+
+      const logger = createLogger({
+        logPath: resolve(options.log),
+        level: logLevel,
+      });
+
+      logger.info(`Starting pipeline: ${parsedSteps.join(",")}`);
+
       const app = new FreeFloatScraperApp(
         {
           csvPath: options.csv,
@@ -123,6 +102,24 @@ export function buildProgram(): Command {
       );
 
       const result = await app.run(parsedSteps);
+
+      logger.info(`Pipeline finished: steps=${parsedSteps.join(",")} exit=${result.exitCode}`);
+      if (result.scrape) {
+        logger.info(
+          `Scrape: new=${result.scrape.newRecords} skipped=${result.scrape.skippedRecords}`,
+        );
+      }
+      if (result.download) {
+        logger.info(
+          `Download: ok=${result.download.downloaded} failed=${result.download.failed}`,
+        );
+      }
+      if (result.extract) {
+        logger.info(
+          `Extract: ok=${result.extract.extracted} failed=${result.extract.failed} rows=${result.extract.rowsWritten}`,
+        );
+      }
+
       process.exitCode = result.exitCode;
     });
 

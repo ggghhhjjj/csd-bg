@@ -48,6 +48,7 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The CLI l
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 | `CSD_BG_STATISTICS_URL` | Full member statistics page URL for scrape (GET/POST); set in `.env`, not committed |
+| `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; overridden by `--log-level`) |
 
 Never commit `.env`. Copy from `.env.example` locally.
 

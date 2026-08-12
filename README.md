@@ -117,6 +117,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | `--csv <path>` | CSV output path (**required** when `scrape` is included) |
 | `--db <path>` | SQLite database path (**required**) |
 | `--log <path>` | Log file (default: `/data/app.log`) |
+| `--log-level <level>` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; CLI overrides `LOG_LEVEL` env) |
 | `--timeout <sec>` | HTTP timeout (default: 30) |
 | `--no-pagination` | First page only (pagination is on by default) |
 | `--max-pages <n>` | Limit pagination pages |
@@ -127,7 +128,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | `--clear-failed-downloads` | Retry previously failed downloads |
 | `--clear-failed-extracts` | Retry previously failed extractions |
 
-**Environment**: copy `.env.example` → `.env` and set `CSD_BG_STATISTICS_URL` (required for scrape). Loaded automatically via `dotenv`.
+**Environment**: copy `.env.example` → `.env` and set `CSD_BG_STATISTICS_URL` (required for scrape). Optional `LOG_LEVEL` sets default verbosity. Loaded automatically via `dotenv`.
 
 **Examples**:
 
@@ -232,6 +233,7 @@ Package: `packages/vscode` (`csd-bg-vscode`)
 | `csd-bg.earlyStoppingThreshold` | Consecutive duplicate limit |
 | `csd-bg.usePostPagination` | POST pagination (default `true`) |
 | `csd-bg.enableEarlyStopping` | Early stop on scrape (default `true`) |
+| `csd-bg.logLevel` | Minimum log level for output and `app.log` (default `INFO`) |
 
 ## Pipeline workflow
 
@@ -353,6 +355,7 @@ Same Docker image — push to ECR/ACR and run as a scheduled task (EventBridge, 
 | `DATA_HOST_PATH` | Host path mounted to `/data` in compose |
 | `DOCKER_USER` | Container `UID:GID` (Synology) |
 | `CSV_PATH` / `DB_PATH` | Documented production paths (often `/data/...`) |
+| `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 
 Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.

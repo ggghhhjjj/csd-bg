@@ -3,7 +3,8 @@ import { XMLParser } from "fast-xml-parser";
 
 import { WebScraperError } from "./errors.js";
 import { baseUrlFromStatisticsUrl, resolveStatisticsUrl } from "./settings.js";
-import type { FreeFloatLink } from "./types.js";
+import type { FreeFloatLink, Logger } from "./types.js";
+import { consoleLogger } from "./types.js";
 import type { FetchLike } from "./pdf-downloader.js";
 
 export class WebScraper {
@@ -16,17 +17,20 @@ export class WebScraper {
   readonly baseUrl: string;
   readonly timeout: number;
   private readonly fetchImpl: FetchLike;
+  private readonly logger: Logger;
   private readonly cookieJar = new Map<string, string>();
 
   constructor(options: {
     timeout?: number;
     statisticsUrl?: string;
     fetchImpl?: FetchLike;
+    logger?: Logger;
   } = {}) {
     this.statisticsUrl = resolveStatisticsUrl(options.statisticsUrl);
     this.baseUrl = baseUrlFromStatisticsUrl(this.statisticsUrl);
     this.timeout = options.timeout ?? 30;
     this.fetchImpl = options.fetchImpl ?? this.defaultFetch.bind(this);
+    this.logger = options.logger ?? consoleLogger;
   }
 
   private defaultFetch(url: string, init: RequestInit = {}): Promise<Response> {
@@ -285,18 +289,20 @@ export class WebScraper {
 
         if (pageLinks.length === 0) {
           emptyPagesCount += 1;
+          this.logger.debug(`Scraping page ${pageNumber}, found 0 links`);
           if (emptyPagesCount >= maxEmptyPages) {
             break;
           }
         } else {
           emptyPagesCount = 0;
           allLinks.push(...pageLinks);
+          this.logger.debug(`Scraping page ${pageNumber}, found ${pageLinks.length} links`);
         }
 
         pageNumber += 1;
       } catch (error) {
-        console.warn(
-          `Warning: Error fetching page ${pageNumber}: ${error instanceof Error ? error.message : String(error)}`,
+        this.logger.warn(
+          `Error fetching page ${pageNumber}: ${error instanceof Error ? error.message : String(error)}`,
         );
         break;
       }

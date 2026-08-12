@@ -13,6 +13,13 @@ export {
 export { PdfDownloader } from "./pdf-downloader.js";
 export type { FetchLike } from "./pdf-downloader.js";
 export { PdfExtractor } from "./pdf-extractor.js";
+export {
+  createLogger,
+  parseLogLevel,
+  resolveLogLevel,
+  type CreateLoggerOptions,
+  type LogLevel,
+} from "./logger.js";
 export { KNOWN_STEPS, parseSteps, runPipeline } from "./pipeline.js";
 export { baseUrlFromStatisticsUrl, resolveStatisticsUrl } from "./settings.js";
 export type {

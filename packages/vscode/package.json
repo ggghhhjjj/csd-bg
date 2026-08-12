@@ -144,6 +144,12 @@
         "csd-bg.enableEarlyStopping": {
           "type": "boolean",
           "default": true
+        },
+        "csd-bg.logLevel": {
+          "type": "string",
+          "enum": ["ERROR", "WARN", "INFO", "DEBUG"],
+          "default": "INFO",
+          "description": "Minimum log level for pipeline output and app.log"
         }
       }
     }

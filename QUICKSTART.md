@@ -70,7 +70,9 @@ After running, you should see:
 
 1. **data/free_float.csv** - CSV file with records
 2. **data/free_float.db** - SQLite database
-3. **data/app.log** - Application log file
+3. **data/app.log** - Application log file (created on first log write; INFO level by default)
+
+Log verbosity: set `LOG_LEVEL=WARN` in `.env`, or pass `--log-level DEBUG` on the CLI (CLI wins).
 
 Example CSV content:
 ```csv
