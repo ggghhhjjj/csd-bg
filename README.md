@@ -34,7 +34,6 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - [Deployment](#deployment)
 - [Configuration](#configuration)
 - [Database schema](#database-schema)
-- [Legacy Python](#legacy-python)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
@@ -43,7 +42,6 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Node.js 20+** (default runtime)
 - **npm** (workspaces monorepo)
 - **Docker / Docker Compose** (optional, recommended for NAS/production)
-- Python 3.11+ (optional, legacy `app.py` only)
 
 ## Quick Start
 
@@ -168,10 +166,9 @@ node packages/cli/dist/index.js scrape \
 |--------|-------------|
 | `make setup` | `npm install` + build |
 | `make run` | Full Node pipeline → `./data/` |
-| `make test` | Vitest (Node) |
-| `make test-python` | pytest (legacy Python) |
-| `make run-python` | Run legacy `app.py` |
-| `make node-build` | `npm run build` |
+| `make test` | Vitest |
+| `make test-coverage` | Vitest with coverage |
+| `make build` | `npm run build` |
 | `make docker-build` | Build Docker image |
 | `make docker-compose-up` | Foreground compose run |
 | `make assembly` | Zip for Synology deploy |
@@ -278,8 +275,6 @@ csd-bg/
 │       └── src/extension.ts
 ├── tests/fixtures/           # Offline HTML/PDF golden files (shared)
 ├── data/                     # Local CSV/DB output (gitignored)
-├── app.py                    # Legacy Python CLI
-├── src/                      # Legacy Python modules
 ├── package.json              # npm workspaces root
 ├── vitest.config.ts
 ├── Dockerfile                # Node 22 image
@@ -321,21 +316,20 @@ console.log(result.exitCode, result.scrape, result.download, result.extract);
 ## Testing
 
 ```bash
-npm test                    # Node / Vitest (default)
+npm test                    # Vitest
+npm run test:coverage       # Vitest with coverage
 npm run test:watch
-
-make test-python            # Legacy pytest suite
-make test-coverage          # Python coverage (htmlcov/)
 ```
 
 Vitest includes:
 
-- Pipeline step parsing
-- CSV / settings / DB smoke tests
-- Web scraper against `tests/fixtures/csd_home.html`
+- Pipeline step parsing and early stopping
+- CSV / settings / DB tests
+- Web scraper pagination and link extraction (`tests/fixtures/csd_home.html`)
+- PDF downloader retries and validation
 - **PDF golden test** — extracted rows must match `tests/fixtures/FREE_FLOAT_20260723.md`
 
-Do not call the live CSD-BG site from automated tests. Use `test_pagination_live.py` manually when changing pagination.
+Do not call the live CSD-BG site from automated tests.
 
 ## Deployment
 
@@ -426,18 +420,6 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | date   | YYYY-MM-DD         |
 | url    | Full PDF URL       |
 
-## Legacy Python
-
-The original Python implementation remains for reference:
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python app.py scrape,download,extract --csv ./data/free_float.csv --db ./data/free_float.db
-```
-
-Use `make run-python` / `make test-python` for the legacy stack. **Docker and Make `run` use Node.js by default.**
-
 ## Troubleshooting
 
 | Issue | Fix |
@@ -453,7 +435,7 @@ Use `make run-python` / `make test-python` for the legacy stack. **Docker and Ma
 
 1. Fork the repository
 2. Create a feature branch
-3. `npm test` (and `make test-python` if touching legacy Python)
+3. `npm test`
 4. Open a Pull Request
 
 ## License

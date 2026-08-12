@@ -8,42 +8,35 @@ on:
 
 jobs:
   test:
-    name: Test on Python ${{ matrix.python-version }}
+    name: Test on Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
-    
+        node-version: ['20', '22']
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
       with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    
+        node-version: ${{ matrix.node-version }}
+        cache: npm
+
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
+      run: npm ci
+
+    - name: Build packages
+      run: npm run build
+
     - name: Run tests with coverage
-      run: |
-        pytest tests/ --cov=src --cov=app --cov-report=xml --cov-report=term-missing -v
-    
+      run: npm run test:coverage
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: ./coverage.xml
+        file: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -51,99 +44,84 @@ jobs:
   quality:
     name: Code Quality Checks
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        python-version: '3.11'
-    
+        node-version: '22'
+        cache: npm
+
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Check code formatting with Black
-      run: |
-        black --check src/ tests/ app.py
-    
-    - name: Lint with Flake8
-      run: |
-        flake8 src/ tests/ app.py --max-line-length=100 --statistics
-    
-    - name: Type check with Mypy
-      run: |
-        mypy src/ app.py --ignore-missing-imports
-    
-    - name: Security check with Bandit
-      run: |
-        bandit -r src/ app.py -ll
+      run: npm ci
+
+    - name: Typecheck and build all packages
+      run: npm run build
 
   docker:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Build Docker image
-      run: |
-        docker build -t csd-bg-scraper:test .
-    
+      run: docker build -t csd-bg-scraper:test .
+
     - name: Test Docker image
       run: |
         mkdir -p ./data
-        docker run -v $(pwd)/data:/data csd-bg-scraper:test --help || true
+        docker run --rm csd-bg-scraper:test --help
 
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [test, quality]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        python-version: '3.11'
-    
+        node-version: '22'
+        cache: npm
+
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
+      run: npm ci
+
+    - name: Build CLI
+      run: npm run build
+
     - name: Create data directory
       run: mkdir -p ./data
-    
-    - name: Run application (dry run)
-      run: |
-        python app.py --csv ./data/test.csv --db ./data/test.db --timeout 10 || true
-    
-    - name: Check output files
-      run: |
-        ls -la ./data/ || true
+
+    - name: Run application help (smoke test)
+      run: node packages/cli/dist/index.js --help
+
+    - name: Check data directory exists
+      run: ls -la ./data/
 
   notify:
     name: Notification
     runs-on: ubuntu-latest
     needs: [test, quality, docker, integration]
     if: always()
-    
+
     steps:
     - name: Check job status
       run: |
         if [ "${{ needs.test.result }}" = "success" ] && [ "${{ needs.quality.result }}" = "success" ] && [ "${{ needs.docker.result }}" = "success" ]; then
-          echo "✅ All checks passed!"
+          echo "All checks passed!"
         else
-          echo "❌ Some checks failed!"
+          echo "Some checks failed!"
           exit 1
         fi

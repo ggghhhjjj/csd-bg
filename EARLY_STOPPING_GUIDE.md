@@ -53,60 +53,57 @@ Time saved: ~75% reduction in processing time
 ```bash
 # Default behavior: pagination + early stopping enabled (threshold: 10)
 # Perfect for daily incremental updates
-python3 app.py --csv data.csv --db data.db
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db
 
 # Custom threshold (stop after 5 consecutive duplicates)
-python3 app.py --csv data.csv --db data.db --early-stopping-threshold 5
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --early-stopping-threshold 5
 
 # Disable early stopping (check all links)
-python3 app.py --csv data.csv --db data.db --no-early-stopping
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-early-stopping
 
 # Daily update example (recommended for cron jobs)
-python3 app.py --csv data.csv --db data.db --pagination \
-  --early-stopping --max-pages 5
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 5
 ```
 
-### Python API
+### TypeScript API
 
-```python
-from app import FreeFloatScraperApp
+```typescript
+import { FreeFloatScraperApp } from "@csd-bg/core";
 
-# Default early stopping (threshold=10)
-app = FreeFloatScraperApp(
-    csv_path="data.csv",
-    db_path="data.db",
-    use_post_pagination=True,
-    enable_early_stopping=True
-)
-app.run()
+// Default early stopping (threshold=10)
+const app = new FreeFloatScraperApp({
+  csvPath: "data.csv",
+  dbPath: "data.db",
+  usePostPagination: true,
+  enableEarlyStopping: true,
+});
+await app.run(["scrape"]);
 
-# Custom threshold
-app = FreeFloatScraperApp(
-    csv_path="data.csv",
-    db_path="data.db",
-    use_post_pagination=True,
-    enable_early_stopping=True,
-    early_stopping_threshold=5  # Stop after 5 consecutive duplicates
-)
-app.run()
+// Custom threshold
+const appCustom = new FreeFloatScraperApp({
+  csvPath: "data.csv",
+  dbPath: "data.db",
+  usePostPagination: true,
+  enableEarlyStopping: true,
+  earlyStoppingThreshold: 5,
+});
+await appCustom.run(["scrape"]);
 
-# Disabled (default behavior - check all records)
-app = FreeFloatScraperApp(
-    csv_path="data.csv",
-    db_path="data.db",
-    use_post_pagination=True,
-    enable_early_stopping=False  # Check all records
-)
-app.run()
+// Disabled (check all records)
+const appNoStop = new FreeFloatScraperApp({
+  csvPath: "data.csv",
+  dbPath: "data.db",
+  usePostPagination: true,
+  enableEarlyStopping: false,
+});
+await appNoStop.run(["scrape"]);
 ```
 
 ## Configuration
 
-### `--early-stopping`
+### Early stopping (default: enabled)
 
-Enables early stopping optimization.
-
-**Default**: `False` (disabled)
+Early stopping is **on by default** in the Node CLI. Disable with `--no-early-stopping`.
 
 ### `--early-stopping-threshold N`
 
@@ -197,12 +194,10 @@ INFO -   Records skipped (already exist): 10
 #!/bin/bash
 # Daily update script - runs every morning at 6 AM
 
-python3 app.py \
+node packages/cli/dist/index.js scrape \
   --csv /data/free_float.csv \
   --db /data/free_float.db \
-  --pagination \
   --max-pages 5 \
-  --early-stopping \
   --early-stopping-threshold 10
 ```
 
@@ -211,12 +206,11 @@ python3 app.py \
 ### 2. Initial Full Import (Not Recommended)
 
 ```bash
-# First time import - don't use early stopping
-python3 app.py \
+# First time import - disable early stopping
+node packages/cli/dist/index.js scrape \
   --csv /data/free_float.csv \
   --db /data/free_float.db \
-  --pagination
-  # No --early-stopping flag
+  --no-early-stopping
 ```
 
 **Why**: All data is new, no benefit from early stopping.
@@ -225,12 +219,10 @@ python3 app.py \
 
 ```bash
 # Missed several days of updates - use higher threshold
-python3 app.py \
+node packages/cli/dist/index.js scrape \
   --csv /data/free_float.csv \
   --db /data/free_float.db \
-  --pagination \
   --max-pages 20 \
-  --early-stopping \
   --early-stopping-threshold 20
 ```
 
@@ -242,10 +234,10 @@ python3 app.py \
 
 ```bash
 # Run early stopping tests
-python3 -m pytest tests/test_early_stopping.py -v
+npm test -- packages/core/tests/early-stopping.test.ts
 
 # All tests
-python3 -m pytest tests/ -v
+npm test
 ```
 
 ### Test Coverage

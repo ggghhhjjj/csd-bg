@@ -38,5 +38,5 @@ When the website structure changes:
 1. Open the statistics page URL from your local `.env` (`CSD_BG_STATISTICS_URL`)
 2. Save the page as HTML (View Source → Save As)
 3. Replace `csd_home.html` with the new version
-4. Run tests to verify scraper still works: `pytest tests/test_web_scraper.py -v`
+4. Run tests to verify scraper still works: `npm test -- packages/core/tests/web-scraper.test.ts`
 5. Update scraper code if needed to handle new structure

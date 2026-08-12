@@ -34,37 +34,36 @@ Instead of using browser automation (Selenium), we reverse-engineered the AJAX p
 ```bash
 # Scrape all pages using POST pagination (default behavior)
 # Also enables early stopping when duplicates found
-python3 app.py --csv data.csv --db data.db
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db
 
 # Scrape first page only (disable pagination)
-python3 app.py --csv data.csv --db data.db --no-pagination
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-pagination
 
 # Scrape first 5 pages only
-python3 app.py --csv data.csv --db data.db --max-pages 5
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 5
 
 # Scrape all pages without early stopping
-python3 app.py --csv data.csv --db data.db --no-early-stopping
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-early-stopping
 ```
 
-### Python API
+### TypeScript API
 
-```python
-from src.web_scraper import WebScraper
+```typescript
+import { WebScraper } from "@csd-bg/core";
 
-# Create scraper instance
-scraper = WebScraper(timeout=30)
+const scraper = new WebScraper({ timeout: 30 });
 
-# Scrape first page only
-links = scraper.scrape()
-print(f"Found {len(links)} links")  # ~10 links
+// Scrape first page only
+const links = await scraper.scrape();
+console.log(`Found ${links.length} links`); // ~10 links
 
-# Scrape all pages
-all_links = scraper.scrape_with_post_pagination()
-print(f"Found {len(all_links)} links")  # ~1000+ links
+// Scrape all pages
+const allLinks = await scraper.scrapeWithPostPagination();
+console.log(`Found ${allLinks.length} links`); // ~1000+ links
 
-# Scrape limited number of pages
-limited_links = scraper.scrape_with_post_pagination(max_pages=5)
-print(f"Found {len(limited_links)} links")  # ~50 links
+// Scrape limited number of pages
+const limitedLinks = await scraper.scrapeWithPostPagination(5);
+console.log(`Found ${limitedLinks.length} links`); // ~50 links
 ```
 
 ## Technical Details
@@ -147,7 +146,10 @@ The pagination system includes robust error handling:
 Run the comprehensive test suite:
 
 ```bash
-python3 -m pytest tests/test_web_scraper.py -v
+npm test
+
+# Web scraper tests only
+npm test -- packages/core/tests/web-scraper.test.ts
 ```
 
 Tests cover:
@@ -159,82 +161,84 @@ Tests cover:
 
 ### Live Test
 
-Test against the real website (limited to 3 pages):
+Test against the real website manually with limited pages:
 
 ```bash
-python3 test_pagination_live.py
+node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 3
 ```
 
 ## API Reference
 
-### `WebScraper.scrape_with_post_pagination(max_pages=None)`
+### `WebScraper.scrapeWithPostPagination(maxPages?)`
 
 Scrape Free Float links using POST-based pagination.
 
 **Parameters:**
-- `max_pages` (int, optional): Maximum number of pages to scrape. If `None`, scrapes all pages until no more links found.
+- `maxPages` (number, optional): Maximum number of pages to scrape. If omitted, scrapes all pages until no more links found.
 
 **Returns:**
-- `List[Dict[str, str]]`: List of link dictionaries with keys:
+- `FreeFloatLink[]`: Array of link objects with:
   - `date`: Date in YYYY-MM-DD format
   - `url`: Full URL to PDF
   - `href`: Relative path to PDF
 
-**Raises:**
+**Throws:**
 - `WebScraperError`: If fetching initial page fails, or if ViewState/nonce extraction fails
 
 **Example:**
 
-```python
-scraper = WebScraper()
-try:
-    links = scraper.scrape_with_post_pagination(max_pages=10)
-    for link in links:
-        print(f"{link['date']}: {link['url']}")
-except WebScraperError as e:
-    print(f"Error: {e}")
+```typescript
+const scraper = new WebScraper();
+try {
+  const links = await scraper.scrapeWithPostPagination(10);
+  for (const link of links) {
+    console.log(`${link.date}: ${link.url}`);
+  }
+} catch (error) {
+  console.error(`Error: ${error}`);
+}
 ```
 
-### `WebScraper.extract_form_params(html_content)`
+### `WebScraper.extractFormParams(htmlContent)`
 
 Extract ViewState and nonce from HTML page.
 
 **Parameters:**
-- `html_content` (str): HTML content from initial page load
+- `htmlContent` (string): HTML content from initial page load
 
 **Returns:**
-- `Tuple[str, str]`: (view_state, nonce)
+- `{ viewState: string; nonce: string }`
 
-**Raises:**
+**Throws:**
 - `WebScraperError`: If ViewState or nonce cannot be found
 
-### `WebScraper.parse_ajax_response(xml_content)`
+### `WebScraper.parseAjaxResponse(xmlContent)`
 
 Parse AJAX XML response to extract links and ViewState.
 
 **Parameters:**
-- `xml_content` (str): XML response from pagination POST request
+- `xmlContent` (string): XML response from pagination POST request
 
 **Returns:**
-- `Tuple[List[Dict[str, str]], Optional[str]]`: (links, updated_view_state)
+- `{ links: FreeFloatLink[]; viewState: string | null }`
 
-**Raises:**
+**Throws:**
 - `WebScraperError`: If XML parsing fails
 
-### `WebScraper.fetch_paginated_data(page_number, view_state, nonce, rows_per_page=10)`
+### `WebScraper.fetchPaginatedData(pageNumber, viewState, nonce, rowsPerPage?)`
 
 Fetch a specific page using POST request.
 
 **Parameters:**
-- `page_number` (int): Page number (1-indexed)
-- `view_state` (str): Current ViewState value
-- `nonce` (str): Security nonce
-- `rows_per_page` (int): Number of rows per page (default: 10)
+- `pageNumber` (number): Page number (1-indexed)
+- `viewState` (string): Current ViewState value
+- `nonce` (string): Security nonce
+- `rowsPerPage` (number): Number of rows per page (default: 10)
 
 **Returns:**
-- `Tuple[List[Dict[str, str]], Optional[str]]`: (links, updated_view_state)
+- `{ links: FreeFloatLink[]; viewState: string | null }`
 
-**Raises:**
+**Throws:**
 - `WebScraperError`: If POST request fails
 
 ## Troubleshooting

@@ -7,6 +7,11 @@ export default defineConfig({
     environment: "node",
     include: ["packages/**/tests/**/*.test.ts"],
     testTimeout: 30000,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["packages/core/src/**/*.ts", "packages/cli/src/**/*.ts"],
+    },
   },
   resolve: {
     alias: {

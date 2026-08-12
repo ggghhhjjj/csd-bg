@@ -10,11 +10,13 @@ The fastest way to run the application:
 # 1. Ensure Docker is running
 docker --version
 
-# 2. Create data directory
+# 2. Create data directory and configure environment
 mkdir -p data
+cp .env.example .env
+# Edit .env and set CSD_BG_STATISTICS_URL
 
 # 3. Run the application
-docker-compose up
+docker compose run --rm csd-bg-scraper scrape,download,extract
 
 # 4. Check output
 ls -l data/
@@ -23,20 +25,24 @@ cat data/free_float.csv
 
 That's it! The application will scrape the website, store records in the database, and export to CSV.
 
-## Option 2: Local Python
+## Option 2: Local Node.js
 
 If you prefer running locally without Docker:
 
 ```bash
-# 1. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# 1. Install dependencies and build
+npm install
+npm run build
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Configure environment
+cp .env.example .env
+# Edit .env and set CSD_BG_STATISTICS_URL
 
 # 3. Run the application
-python app.py --csv ./data/free_float.csv --db ./data/free_float.db
+node packages/cli/dist/index.js scrape,download,extract \
+  --csv ./data/free_float.csv \
+  --db ./data/free_float.db \
+  --log ./data/app.log
 
 # 4. Check output
 ls -l data/
@@ -52,9 +58,10 @@ For developers who prefer make commands:
 make setup run
 
 # Or step by step
-make install          # Install dependencies
-make init-data-dir    # Create data directory
-make run              # Run application
+make install          # npm install
+make build            # compile TypeScript
+make init-data-dir    # create data directory
+make run              # run full pipeline
 ```
 
 ## Verify Installation
@@ -63,7 +70,7 @@ After running, you should see:
 
 1. **data/free_float.csv** - CSV file with records
 2. **data/free_float.db** - SQLite database
-3. **app.log** - Application log file
+3. **data/app.log** - Application log file
 
 Example CSV content:
 ```csv
@@ -77,19 +84,16 @@ date,url
 Verify everything works correctly:
 
 ```bash
-# With make
 make test
-
-# Or directly with pytest
-pytest tests/ -v
+# or
+npm test
 ```
 
 ## Next Steps
 
 - Read the [README.md](README.md) for detailed documentation
-- Check [Deployment](#deployment) section for production setup
-- Review [Configuration](#configuration) options
-- Explore the [API documentation](docs/) (if available)
+- Check the Deployment section for production setup
+- Review Configuration options in `.env.example`
 
 ## Troubleshooting
 
@@ -103,11 +107,9 @@ sudo chown -R $(whoami):$(whoami) ./data
 ### Issue: Module not found
 
 ```bash
-# Ensure you're in the correct directory
-pwd  # Should show: /path/to/csd-bg.bg
-
-# Reinstall dependencies
-pip install -r requirements.txt
+# Ensure you're in the correct directory and rebuild
+npm install
+npm run build
 ```
 
 ### Issue: Docker connection error
@@ -125,16 +127,20 @@ docker ps
 
 ```bash
 # Run with custom timeout
-python app.py --csv ./data/test.csv --db ./data/test.db --timeout 60
+node packages/cli/dist/index.js scrape,download,extract \
+  --csv ./data/test.csv \
+  --db ./data/test.db \
+  --log ./data/app.log \
+  --timeout 60
 
 # Run in Docker with custom arguments
 docker run -v $(pwd)/data:/data csd-bg-scraper:latest --timeout 60
 
 # View Docker logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop Docker containers
-docker-compose down
+docker compose down
 
 # Clean up
 make clean
@@ -145,5 +151,4 @@ make clean-data
 
 For issues or questions:
 1. Check the [README.md](README.md)
-2. Review [PROJECT REQUIREMENTS.md](PROJECT%20REQUIREMENTS.md)
-3. Open an issue on GitHub
+2. Open an issue on GitHub
