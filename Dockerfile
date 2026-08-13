@@ -49,4 +49,4 @@ USER appuser
 VOLUME ["/data"]
 
 ENTRYPOINT ["node", "packages/cli/dist/index.js"]
-CMD ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--log", "/data/app.log"]
+CMD ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--pdf-dir", "/data/pdfs", "--log", "/data/app.log"]

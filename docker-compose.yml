@@ -20,7 +20,7 @@ services:
     
     # Node.js scraper (packages/cli entrypoint)
     # Synology: docker compose run --rm csd-bg-scraper scrape,download,extract
-    command: ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--log", "/data/app.log", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
+    command: ["scrape,download,extract", "--csv", "/data/free_float.csv", "--db", "/data/free_float.db", "--pdf-dir", "/data/pdfs", "--log", "/data/app.log", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
     
     # Environment variables (if needed)
     env_file:
