@@ -67,6 +67,24 @@ node packages/cli/dist/index.js scrape --db data.db --no-early-stopping
 node packages/cli/dist/index.js scrape --db data.db --max-pages 5
 ```
 
+### Makefile (`make run`)
+
+Local development uses the same incremental pattern by default:
+
+```bash
+make run                              # --max-pages 5 --early-stopping-threshold 10
+make run VERBOSE=1                    # + DEBUG logging and CSV export
+make run MAX_PAGES=2 EARLY_STOPPING_THRESHOLD=5   # match docker-compose.yml
+make run MAX_PAGES=20                 # catch up after missing several days
+```
+
+**Two limits work together:**
+
+1. **`--max-pages`** — caps HTTP pagination requests (stops fetching new pages)
+2. **Early stopping** — after links are collected, stops inserting when N consecutive dates already exist in the DB
+
+For a **full historical import**, use the CLI directly with `--no-early-stopping` and omit `--max-pages`.
+
 ### TypeScript API
 
 ```typescript

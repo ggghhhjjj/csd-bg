@@ -48,6 +48,17 @@ node packages/cli/dist/index.js scrape --db data.db --max-pages 5
 node packages/cli/dist/index.js scrape --db data.db --no-early-stopping
 ```
 
+### Makefile (`make run`)
+
+For local development, `make run` applies incremental limits by default so an already-populated database does not trigger a full-site pagination walk:
+
+```bash
+make run                              # --max-pages 5 --early-stopping-threshold 10
+make run MAX_PAGES=20                 # catch up after a gap
+```
+
+See [PAGINATION_QUICK_REF.md](PAGINATION_QUICK_REF.md) and [EARLY_STOPPING_GUIDE.md](EARLY_STOPPING_GUIDE.md) for details on how page limits and early stopping interact.
+
 ### TypeScript API
 
 ```typescript

@@ -7,7 +7,31 @@ DOCKER_COMPOSE := docker-compose
 DOCKER_IMAGE := csd-bg-scraper
 DATA_DIR := ./data
 VERBOSE ?=
+MAX_PAGES ?= 5
+EARLY_STOPPING_THRESHOLD ?= 10
 RUN_VERBOSE := $(if $(filter 1 true yes verbose,$(VERBOSE)),--verbose,)
+RUN_PAGINATION := --max-pages $(MAX_PAGES) --early-stopping-threshold $(EARLY_STOPPING_THRESHOLD)
+
+define print_run_header
+	@echo "========================================"
+	@echo " CSD-BG Free Float Scraper"
+	@echo " Running scrape → download → extract"
+	@echo "========================================"
+	@echo ""
+	@echo "Incremental scrape settings:"
+	@echo "  MAX_PAGES=$(MAX_PAGES)  (--max-pages)"
+	@echo "  EARLY_STOPPING_THRESHOLD=$(EARLY_STOPPING_THRESHOLD)  (--early-stopping-threshold)"
+	@echo "  VERBOSE=$(if $(RUN_VERBOSE),enabled — DEBUG log + CSV export,off — use VERBOSE=1 for DEBUG log + CSV)"
+	@echo ""
+	@echo "Override examples:"
+	@echo "  make run MAX_PAGES=20"
+	@echo "  make run MAX_PAGES=2 EARLY_STOPPING_THRESHOLD=5"
+	@echo "  make run VERBOSE=1"
+	@echo ""
+	@echo "Full historical import (no page limit):"
+	@echo "  node packages/cli/dist/index.js scrape,download,extract --no-early-stopping --db $(DATA_DIR)/free_float.db"
+	@echo ""
+endef
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -59,13 +83,17 @@ teardown-all: teardown clean-data ## Full teardown including runtime CSV/DB in .
 clean-data: ## Clean up data files (CSV and DB)
 	rm -rf $(DATA_DIR)/*.csv $(DATA_DIR)/*.db
 
-run: build ## Run scrape+download+extract locally (VERBOSE=1 for debug log + CSV export)
+run: build ## Run scrape+download+extract locally (VERBOSE=1; MAX_PAGES=5 default for incremental sync)
 	@mkdir -p $(DATA_DIR)
-	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
+	$(print_run_header)
+	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
 
-run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1 for debug log + CSV)
+run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1; same pagination limits as run)
 	@mkdir -p $(DATA_DIR)
-	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
+	$(print_run_header)
+	@echo "  TIMEOUT=60 seconds (--timeout)"
+	@echo ""
+	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
 
 docker-build: ## Build Docker image
 	$(DOCKER) build -t $(DOCKER_IMAGE):latest .

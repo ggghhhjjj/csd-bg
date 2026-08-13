@@ -67,8 +67,10 @@ make dev-setup      # same as setup
 ### Run locally
 
 ```bash
-make run            # scrape,download,extract → data/free_float.db (CSV only with VERBOSE=1)
+make run            # scrape,download,extract → data/free_float.db (incremental: --max-pages 5, threshold 10)
 make run VERBOSE=1  # same + DEBUG logging and free_float.csv export
+make run MAX_PAGES=20   # catch up after a gap
+make run MAX_PAGES=2 EARLY_STOPPING_THRESHOLD=5   # match docker-compose limits
 node packages/cli/dist/index.js scrape,download,extract --db ./data/free_float.db
 node packages/cli/dist/index.js download --db ./data/free_float.db
 node packages/cli/dist/index.js extract --db ./data/free_float.db

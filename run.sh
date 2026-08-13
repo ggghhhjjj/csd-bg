@@ -73,7 +73,7 @@ Examples
 Other commands
 --------------
   make setup          Install dependencies and build manually
-  make run            Same pipeline via Make (always rebuilds first)
+  make run            Same pipeline via Make; defaults to --max-pages 5 and early stopping (override: MAX_PAGES=N)
   make test           Run the test suite
   node packages/cli/dist/index.js --help   Full CLI reference
 

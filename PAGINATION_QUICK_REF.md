@@ -6,11 +6,14 @@
 # Install and build
 npm install && npm run build
 
+# Local incremental run (Makefile defaults: 5 pages, early-stop threshold 10)
+make run
+
 # Test with 3 pages
 node packages/cli/dist/index.js scrape --db data.db --max-pages 3
 
-# Scrape all pages (takes 2-3 minutes)
-node packages/cli/dist/index.js scrape --db data.db
+# Scrape all pages (takes 2-3 minutes; use for initial import)
+node packages/cli/dist/index.js scrape --db data.db --no-early-stopping
 ```
 
 > CSV export is optional — add `--verbose` to also write `free_float.csv`. See [README.md](README.md#csv-export-verbose-mode).
@@ -66,6 +69,13 @@ npm test -- packages/core/tests/web-scraper.test.ts
 5. Repeat for page 3, 4, 5... until done
 
 ## Common Use Cases
+
+### Daily / incremental update (Makefile)
+
+```bash
+make run                    # default: --max-pages 5
+make run MAX_PAGES=2        # tighter limit (docker-compose uses 2)
+```
 
 ### Get Latest 50 Links
 

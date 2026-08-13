@@ -60,8 +60,12 @@ make setup run
 make install          # npm install
 make build            # compile TypeScript
 make init-data-dir    # create data directory
-make run              # run full pipeline
+make run              # run full pipeline (incremental: max 5 pages, early stopping threshold 10)
+make run VERBOSE=1    # same + DEBUG log and CSV export
+make run MAX_PAGES=20 # override page limit when catching up
 ```
+
+`make run` passes `--max-pages 5` and `--early-stopping-threshold 10` so local runs do not paginate through the entire site when the database is already populated. Override with Make variables `MAX_PAGES` and `EARLY_STOPPING_THRESHOLD`. For a first full import, use the CLI with `--no-early-stopping` and no page limit (see [README.md](README.md#make-targets)).
 
 ## Verify Installation
 

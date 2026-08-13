@@ -114,7 +114,7 @@ make test              # Run tests
 make test-coverage     # Run tests with coverage
 make lint              # Lint code
 make format            # Format code
-make run               # Run application
+make run               # Run application (incremental: MAX_PAGES=5, early-stop threshold 10)
 make docker-build      # Build Docker image
 ```
 

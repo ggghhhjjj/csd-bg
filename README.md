@@ -61,11 +61,13 @@ node packages/cli/dist/index.js scrape,download,extract \
   --log ./data/app.log
 ```
 
-Or use Make:
+Or use Make (incremental defaults: `--max-pages 5`, `--early-stopping-threshold 10`):
 
 ```bash
 make setup   # npm install + build
-make run     # full pipeline to ./data
+make run     # full pipeline to ./data/ (limited pagination for daily-style sync)
+make run VERBOSE=1   # same + DEBUG logging and CSV export
+make run MAX_PAGES=20   # catch up after a gap
 ```
 
 ## Installation
@@ -168,14 +170,19 @@ node packages/cli/dist/index.js scrape \
 | Target | Description |
 |--------|-------------|
 | `make setup` | `npm install` + build |
-| `make run` | Full Node pipeline → `./data/` |
+| `make run` | Full Node pipeline → `./data/` with **incremental scrape limits** (`--max-pages 5`, `--early-stopping-threshold 10`) |
 | `make run VERBOSE=1` | Same, with DEBUG logging and CSV export |
+| `make run MAX_PAGES=N` | Override page limit (e.g. `MAX_PAGES=20` after a gap) |
+| `make run EARLY_STOPPING_THRESHOLD=N` | Override consecutive-duplicate threshold |
+| `make run-timeout` | Same as `make run`, with `--timeout 60` |
 | `make test` | Vitest |
 | `make test-coverage` | Vitest with coverage |
 | `make build` | `npm run build` |
 | `make docker-build` | Build Docker image |
 | `make docker-compose-up` | Foreground compose run |
 | `make assembly` | Zip for Synology deploy |
+
+**Incremental vs full scrape:** `make run` is tuned for regular updates when the database already has history—it fetches at most 5 pages (~50 links) and stops processing after 10 consecutive duplicate dates. For a **first-time full import**, call the CLI directly with `--no-early-stopping` and no `--max-pages` limit (see [CLI examples](#cli)).
 
 Run `make help` for the full list.
 
@@ -204,7 +211,7 @@ cp .env.example .env   # set CSD_BG_STATISTICS_URL and DATA_HOST_PATH
 docker compose run --rm csd-bg-scraper scrape,download,extract
 ```
 
-Compose mounts `${DATA_HOST_PATH:-./data}` → `/data` and passes pipeline args in `docker-compose.yml`. Adjust `command`, memory limits, and `DOCKER_USER` there for production.
+Compose mounts `${DATA_HOST_PATH:-./data}` → `/data` and passes pipeline args in `docker-compose.yml` (including `--max-pages 2` and `--early-stopping-threshold 5` for scheduled incremental runs). Adjust `command`, memory limits, and `DOCKER_USER` there for production. Local `make run` uses a slightly higher default (`MAX_PAGES=5`)—see [Make targets](#make-targets).
 
 ### VS Code extension
 
