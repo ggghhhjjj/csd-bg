@@ -90,14 +90,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
           git add data/free_float.db data/pdfs/
           if git diff --staged --quiet -- data/free_float.db; then
             echo "No database changes; skipping commit"
-          else
-            git commit -m "chore(data): daily scrape $(date -u +%Y-%m-%d)"
-            git push
+            exit 0
           fi
+          git pull --rebase --autostash origin main
+          git add data/free_float.db data/pdfs/
+          if git diff --staged --quiet -- data/free_float.db; then
+            echo "No database changes after rebase; skipping commit"
+            exit 0
+          fi
+          git commit -m "chore(data): daily scrape $(date -u +%Y-%m-%d)"
+          git push
 
       - name: Fail job if pipeline failed
         if: steps.pipeline.outputs.exit_code != '0'
