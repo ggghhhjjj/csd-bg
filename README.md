@@ -13,6 +13,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Step pipeline** — `scrape`, `download`, `extract` with early stopping on duplicates
 - **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
+- **GitHub Actions** — Daily scheduled scrape with data committed to `main` via Git LFS
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
 
@@ -32,6 +33,9 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - [Development](#development)
 - [Testing](#testing)
 - [Deployment](#deployment)
+  - [GitHub Actions (production)](#github-actions-production)
+  - [Synology DSM](#synology-dsm)
+  - [AWS / other](#aws--other)
 - [Configuration](#configuration)
 - [Database schema](#database-schema)
 - [Troubleshooting](#troubleshooting)
@@ -345,7 +349,47 @@ Do not call the live CSD-BG site from automated tests.
 
 ## Deployment
 
+### GitHub Actions (production)
+
+The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow scrapes, downloads, and extracts, then commits `data/free_float.db` and new PDFs to `main` using **Git LFS**.
+
+#### One-time setup
+
+1. **Repository secret** — Settings → Secrets and variables → Actions → add `CSD_BG_STATISTICS_URL` (full member statistics page URL, same as local `.env`).
+
+2. **Branch protection** — Allow `github-actions[bot]` to push to `main`, or use a fine-grained PAT stored as `DATA_PUSH_TOKEN` and pass it to `actions/checkout` if pushes are blocked.
+
+3. **Watch for failures** — On GitHub.com, open the repo → **Watch** → **Custom** → enable **Actions** (or **All activity**). GitHub emails you when a scheduled run fails, with a link to the run.
+
+4. **Git LFS** — `data/free_float.db` and `data/pdfs/*.pdf` are LFS objects ([`.gitattributes`](.gitattributes)). Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
+
+#### What the workflow does
+
+| Phase | Behavior |
+|-------|----------|
+| Data sync | Checkout `main` + LFS first; git HEAD always wins over Actions cache |
+| Pipeline | `scrape,download,extract` with `--max-pages 5`, `--early-stopping-threshold 10` |
+| Commit | Push only if `data/free_float.db` changed (includes new PDFs in the same commit) |
+| Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
+| Cache | Saved only after a fully successful run |
+
+#### Manual run
+
+Actions → **Daily Scrape** → **Run workflow** (`workflow_dispatch`).
+
+#### Failure notification
+
+When any step fails (including Git LFS quota errors at checkout or push):
+
+1. **Watch email** — link to the failed run (GitHub does not embed log text in the email).
+2. **`app.log` artifact** — download from the run page (7-day retention; may be missing if failure occurred before the pipeline ran).
+3. **Job summary** — step outcomes, last 200 lines of `app.log` when present, and an LFS quota hint when checkout or push fails.
+
+After a failure, you can push manual corrections to `data/` on `main`; the next run starts from that git state, not a stale cache.
+
 ### Synology DSM
+
+Alternative on-prem deployment (not required when using GitHub Actions):
 
 1. Copy repo or `make assembly` → `build/csd-bg-synology.zip`
 2. Unzip on NAS, configure `.env` (`CSD_BG_STATISTICS_URL`, `DATA_HOST_PATH`, `DOCKER_USER`)
