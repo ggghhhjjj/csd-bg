@@ -34,9 +34,9 @@ jobs:
       run: npm run test:coverage
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v6
       with:
-        file: ./coverage/lcov.info
+        files: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -70,7 +70,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build Docker image
       run: docker build -t csd-bg-scraper:test .
