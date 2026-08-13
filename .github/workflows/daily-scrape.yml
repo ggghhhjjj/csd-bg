@@ -32,7 +32,7 @@ jobs:
           git checkout HEAD -- data/free_float.db data/pdfs
 
       - name: Restore data cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: data
           key: csd-bg-data-${{ github.run_id }}
@@ -110,14 +110,14 @@ jobs:
 
       - name: Save data cache
         if: success()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: data
           key: csd-bg-data-${{ github.run_id }}
 
       - name: Upload app.log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: app-log-${{ github.run_id }}
           path: data/app.log
