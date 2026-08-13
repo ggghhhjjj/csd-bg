@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository.
 
 ## Purpose
 
-TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, appends new rows to **CSV**, **downloads PDF bytes** into `pdf_content`, and **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`. Default run uses a step pipeline (`scrape,download,extract`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
+TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, appends new rows to **CSV**, **downloads PDF files** into `data/pdfs/{date}.pdf`, and **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`. Default run uses a step pipeline (`scrape,download,extract`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
 
 Entry point: `packages/cli/dist/index.js` (source: `packages/cli/src/index.ts`). Core logic lives in `packages/core/src/`.
 
@@ -18,6 +18,7 @@ packages/
       pipeline.ts        # Step parse/validate/run (scrape, download, extract)
       web-scraper.ts     # fetch + cheerio, POST pagination
       pdf-downloader.ts  # PDF GET with retries + random backoff
+      pdf-storage.ts     # PDF read/write under data/pdfs/
       pdf-extractor.ts   # pdfjs-dist text parse → structured rows
       database-manager.ts # SQLite (better-sqlite3)
       csv-manager.ts     # CSV columns: date, url
@@ -46,6 +47,7 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The CLI l
 | `DOCKER_USER` | Container user `UID:GID` (default Synology-oriented) |
 | `CSV_PATH` | Production CSV path (often `/data/free_float.csv`) |
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
+| `PDF_DIR` | Optional PDF directory (default: sibling `pdfs/` of `DB_PATH`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 | `CSD_BG_STATISTICS_URL` | Full member statistics page URL for scrape (GET/POST); set in `.env`, not committed |
 | `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; overridden by `--log-level`) |
@@ -73,7 +75,7 @@ node packages/cli/dist/index.js scrape --csv ./data/free_float.csv --db ./data/f
 node packages/cli/dist/index.js --help
 ```
 
-Common flags: `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`.
+Common flags: `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`.
 
 ### Quality & tests
 
@@ -119,9 +121,9 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 
 - **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract`; register future steps there and in `FreeFloatScraperApp.run`.
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
-- **Downloader**: `PdfDownloader` — retries with random backoff; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
+- **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
-- **DB**: `free_float` (date unique), `pdf_content` (BLOB + download/extract status), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
+- **DB**: `free_float` (date unique), `pdf_content` (download/extract status; legacy `content` BLOB migrated to disk), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
 - **CSV**: Header `date,url`; append-only for new records; required only for scrape step.
 - **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).
 

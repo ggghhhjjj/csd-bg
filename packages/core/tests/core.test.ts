@@ -35,6 +35,15 @@ describe("settings", () => {
     expect(baseUrlFromStatisticsUrl(process.env.CSD_BG_STATISTICS_URL)).toBe("https://example.test");
     delete process.env.CSD_BG_STATISTICS_URL;
   });
+
+  it("resolves pdf dir from db path or env", async () => {
+    const { resolvePdfDir, PDF_DIR_ENV } = await import("@csd-bg/core");
+    expect(resolvePdfDir(undefined, "/data/free_float.db")).toBe("/data/pdfs");
+    process.env[PDF_DIR_ENV] = "/custom/pdfs";
+    expect(resolvePdfDir(undefined, "/data/free_float.db")).toBe("/custom/pdfs");
+    expect(resolvePdfDir("/explicit/pdfs", "/data/free_float.db")).toBe("/explicit/pdfs");
+    delete process.env[PDF_DIR_ENV];
+  });
 });
 
 describe("WebScraper", () => {
@@ -64,7 +73,8 @@ describe("DatabaseManager", () => {
     const { DatabaseManager } = await import("@csd-bg/core");
     const dir = mkdtempSync(join(tmpdir(), "csd-bg-db-"));
     const dbPath = join(dir, "free_float.db");
-    const db = new DatabaseManager(dbPath);
+    const pdfDir = join(dir, "pdfs");
+    const db = new DatabaseManager(dbPath, pdfDir);
 
     db.using((manager) => {
       manager.initializeTables();

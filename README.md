@@ -11,7 +11,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Web scraping** — Extract Free Float PDF links from the CSD-BG statistics page
 - **POST-based pagination** — Scrape all pages via JSF AJAX POST (no browser)
 - **Step pipeline** — `scrape`, `download`, `extract` with early stopping on duplicates
-- **SQLite + CSV** — Deduplicated metadata, BLOB storage, structured extract tables
+- **SQLite + CSV** — Deduplicated metadata, PDF files on disk, structured extract tables
 - **Docker / Synology** — One-shot container with `/data` volume
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
@@ -107,7 +107,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | Step | Description |
 |------|-------------|
 | `scrape` | Discover PDF links, write SQLite + CSV |
-| `download` | Fetch pending PDFs into `pdf_content` BLOBs |
+| `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` |
 | `extract` | Parse PDFs into `stock_issue` / `issuer` / `stock_issue_daily` |
 
 **Common options**:
@@ -127,6 +127,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | `--download-retry-min` / `--max` | Backoff seconds between retries (default: 10–30) |
 | `--clear-failed-downloads` | Retry previously failed downloads |
 | `--clear-failed-extracts` | Retry previously failed extractions |
+| `--pdf-dir <path>` | PDF storage directory (default: sibling `pdfs/` of `--db`) |
 
 **Environment**: copy `.env.example` → `.env` and set `CSD_BG_STATISTICS_URL` (required for scrape). Optional `LOG_LEVEL` sets default verbosity. Loaded automatically via `dotenv`.
 
@@ -254,12 +255,12 @@ docker compose run --rm csd-bg-scraper scrape,download,extract
 
 1. Optionally clear failed marks (`--clear-failed-downloads`)
 2. For each `free_float` row without `pdf_content`: GET PDF with retries + backoff
-3. Store BLOB or mark `status=failed`
+3. Store file at `{pdfDir}/{date}.pdf` and mark metadata in `pdf_content`, or mark `status=failed`
 
 ### Step: `extract`
 
 1. Optionally clear failed extract marks (`--clear-failed-extracts`)
-2. Parse pending downloaded PDFs (pdfjs-dist + regex, validated against fixtures)
+2. Parse pending downloaded PDFs from disk (pdfjs-dist + regex, validated against fixtures)
 3. Upsert `stock_issue`, `issuer`, `stock_issue_daily`
 4. Set `extract_status=extracted` or `failed`
 
@@ -276,7 +277,7 @@ csd-bg/
 │   └── vscode/               # csd-bg-vscode extension
 │       └── src/extension.ts
 ├── tests/fixtures/           # Offline HTML/PDF golden files (shared)
-├── data/                     # Local CSV/DB output (gitignored)
+├── data/                     # Local CSV/DB/PDF output (gitignored)
 ├── package.json              # npm workspaces root
 ├── vitest.config.ts
 ├── Dockerfile                # Node 22 image
@@ -355,6 +356,7 @@ Same Docker image — push to ECR/ACR and run as a scheduled task (EventBridge, 
 | `DATA_HOST_PATH` | Host path mounted to `/data` in compose |
 | `DOCKER_USER` | Container `UID:GID` (Synology) |
 | `CSV_PATH` / `DB_PATH` | Documented production paths (often `/data/...`) |
+| `PDF_DIR` | Optional PDF directory (default: `{dirname(DB_PATH)}/pdfs`) |
 | `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 
@@ -376,7 +378,7 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | Column             | Type      | Description                          |
 |--------------------|-----------|--------------------------------------|
 | free_float_id      | INTEGER   | PK / FK → `free_float.id`            |
-| content            | BLOB      | PDF bytes                            |
+| content            | BLOB      | Legacy PDF bytes (migrated to disk; NULL for new rows) |
 | size_bytes         | INTEGER   | Content length                       |
 | status             | TEXT      | `downloaded` or `failed`             |
 | attempts           | INTEGER   | Download attempts                    |
@@ -388,6 +390,8 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | extracted_at       | TIMESTAMP | Extract success time                 |
 | created_at         | TIMESTAMP | Row created                          |
 | updated_at         | TIMESTAMP | Last update                          |
+
+PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). On first run after upgrade, any legacy BLOBs in `content` are exported to that folder, cleared from the database, and `VACUUM` reclaims space.
 
 ### Table: `stock_issue`
 

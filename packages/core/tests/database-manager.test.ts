@@ -1,7 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DatabaseManager, DatabaseManagerError } from "@csd-bg/core";
@@ -9,30 +10,37 @@ import { DatabaseManager, DatabaseManagerError } from "@csd-bg/core";
 describe("DatabaseManager", () => {
   let tempDir: string;
   let dbPath: string;
+  let pdfDir: string;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "csd-bg-db-"));
     dbPath = join(tempDir, "test_free_float.db");
+    pdfDir = join(tempDir, "pdfs");
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("creates nested db directories", () => {
+  function createManager(db = dbPath, pdfs = pdfDir): DatabaseManager {
+    return new DatabaseManager(db, pdfs);
+  }
+
+  it("creates nested db and pdf directories", () => {
     const nestedPath = join(tempDir, "nested", "path", "test.db");
-    new DatabaseManager(nestedPath);
-    expect(nestedPath).toContain("test.db");
+    const nestedPdfDir = join(tempDir, "nested", "path", "pdfs");
+    createManager(nestedPath, nestedPdfDir);
+    expect(existsSync(nestedPdfDir)).toBe(true);
   });
 
   it("connects and disconnects", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.connect();
     db.disconnect();
   });
 
   it("supports using() context helper", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       expect(manager.getRecordCount()).toBe(0);
@@ -40,7 +48,7 @@ describe("DatabaseManager", () => {
   });
 
   it("initializes free_float schema", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       expect(manager.recordExists("2025-12-04")).toBe(false);
@@ -48,7 +56,7 @@ describe("DatabaseManager", () => {
   });
 
   it("requires connection for operations", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     expect(() => db.recordExists("2025-12-04")).toThrow(DatabaseManagerError);
     expect(() => db.insertRecord("2025-12-04", "https://example.com/a.pdf")).toThrow(
       DatabaseManagerError,
@@ -56,7 +64,7 @@ describe("DatabaseManager", () => {
   });
 
   it("inserts and checks records", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const id = manager.insertRecord("2025-12-04", "https://example.com/test.pdf");
@@ -66,7 +74,7 @@ describe("DatabaseManager", () => {
   });
 
   it("returns null for duplicate inserts", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       expect(manager.insertRecord("2025-12-04", "https://example.com/test1.pdf")).not.toBeNull();
@@ -76,7 +84,7 @@ describe("DatabaseManager", () => {
   });
 
   it("returns all records ordered by date desc", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       manager.insertRecord("2025-12-04", "https://example.com/test1.pdf");
@@ -94,14 +102,14 @@ describe("DatabaseManager", () => {
   });
 
   it("tracks pending pdf downloads and failures", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const id1 = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
       const id2 = manager.insertRecord("2025-12-03", "https://example.com/b.pdf")!;
       const id3 = manager.insertRecord("2025-12-02", "https://example.com/c.pdf")!;
 
-      manager.upsertPdfDownloaded(id1, Buffer.from("%PDF-a"), 5, 1);
+      manager.upsertPdfDownloaded(id1, "2025-12-04", Buffer.from("%PDF-a"), 5, 1);
       manager.markPdfFailed(id2, 3, "404");
 
       const pending = manager.getPendingPdfDownloads();
@@ -111,22 +119,26 @@ describe("DatabaseManager", () => {
     });
   });
 
-  it("stores downloaded pdf blobs", () => {
-    const db = new DatabaseManager(dbPath);
+  it("stores downloaded pdfs on disk", () => {
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
       const content = Buffer.from("%PDF-1.4 test");
-      manager.upsertPdfDownloaded(rowId, content, content.length, 2);
+      manager.upsertPdfDownloaded(rowId, "2025-12-04", content, content.length, 2);
+
+      const pdfPath = join(pdfDir, "2025-12-04.pdf");
+      expect(existsSync(pdfPath)).toBe(true);
+      expect(readFileSync(pdfPath).equals(content)).toBe(true);
 
       const pending = manager.getPendingPdfExtractions();
       expect(pending).toHaveLength(1);
-      expect(pending[0]?.content.equals(content)).toBe(true);
+      expect(manager.readDownloadedPdf("2025-12-04").equals(content)).toBe(true);
     });
   });
 
   it("clears failed downloads for retry", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
@@ -139,12 +151,12 @@ describe("DatabaseManager", () => {
   });
 
   it("tracks extract status and pending extractions", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
       const content = Buffer.from("%PDF-1.4 test");
-      manager.upsertPdfDownloaded(rowId, content, content.length, 1);
+      manager.upsertPdfDownloaded(rowId, "2025-12-04", content, content.length, 1);
 
       expect(manager.getPendingPdfExtractions()).toHaveLength(1);
 
@@ -164,16 +176,54 @@ describe("DatabaseManager", () => {
   });
 
   it("clears failed extractions for retry", () => {
-    const db = new DatabaseManager(dbPath);
+    const db = createManager();
     db.using((manager) => {
       manager.initializeTables();
       const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
-      manager.upsertPdfDownloaded(rowId, Buffer.from("%PDF"), 4, 1);
+      manager.upsertPdfDownloaded(rowId, "2025-12-04", Buffer.from("%PDF"), 4, 1);
       manager.markPdfExtractFailed(rowId, 1, "parse fail");
 
       expect(manager.getPendingPdfExtractions()).toEqual([]);
       expect(manager.clearFailedPdfExtractions()).toBe(1);
       expect(manager.getPendingPdfExtractions()).toHaveLength(1);
     });
+  });
+
+  it("migrates legacy pdf blobs to files on initialize", () => {
+    const db = createManager();
+    db.using((manager) => {
+      manager.initializeTables();
+      const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
+      const content = Buffer.from("%PDF-legacy");
+      const raw = new Database(dbPath);
+      raw
+        .prepare(
+          `
+          INSERT INTO pdf_content (
+            free_float_id, content, size_bytes, status, attempts, updated_at
+          ) VALUES (?, ?, ?, 'downloaded', 1, CURRENT_TIMESTAMP)
+        `,
+        )
+        .run(rowId, content, content.length);
+      raw.close();
+    });
+
+    const migratedDb = createManager();
+    let migratedPdfs = 0;
+    migratedDb.using((manager) => {
+      ({ migratedPdfs } = manager.initializeTables());
+    });
+    expect(migratedPdfs).toBe(1);
+
+    const pdfPath = join(pdfDir, "2025-12-04.pdf");
+    expect(existsSync(pdfPath)).toBe(true);
+    expect(readFileSync(pdfPath).equals(Buffer.from("%PDF-legacy"))).toBe(true);
+
+    const raw = new Database(dbPath);
+    const row = raw
+      .prepare("SELECT content FROM pdf_content WHERE free_float_id = (SELECT id FROM free_float WHERE date = ?)")
+      .get("2025-12-04") as { content: Buffer | null };
+    expect(row.content).toBeNull();
+    raw.close();
   });
 });

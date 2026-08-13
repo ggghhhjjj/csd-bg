@@ -1,5 +1,9 @@
+import { dirname, join } from "node:path";
+
 import { ScraperConfigError } from "./errors.js";
 import { CSD_BG_STATISTICS_URL_ENV } from "./types.js";
+
+export const PDF_DIR_ENV = "PDF_DIR";
 
 export function baseUrlFromStatisticsUrl(statisticsUrl: string): string {
   let parsed: URL;
@@ -34,4 +38,24 @@ export function resolveStatisticsUrl(explicitUrl?: string | null): string {
 
   baseUrlFromStatisticsUrl(raw);
   return raw;
+}
+
+export function resolvePdfDir(explicitDir?: string | null, dbPath?: string): string {
+  const raw = (
+    explicitDir !== undefined && explicitDir !== null
+      ? explicitDir
+      : process.env[PDF_DIR_ENV] ?? ""
+  ).trim();
+
+  if (raw) {
+    return raw;
+  }
+
+  if (!dbPath) {
+    throw new ScraperConfigError(
+      "PDF directory is not configured. Set PDF_DIR, pass --pdf-dir, or provide a database path.",
+    );
+  }
+
+  return join(dirname(dbPath), "pdfs");
 }

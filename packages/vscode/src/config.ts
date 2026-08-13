@@ -5,6 +5,7 @@ export interface ResolvedPaths {
   dataDirectory: string;
   csvPath: string;
   dbPath: string;
+  pdfDir: string;
   logPath: string;
 }
 
@@ -48,6 +49,7 @@ export function getResolvedPaths(): ResolvedPaths {
     dataDirectory: absoluteDataDir,
     csvPath: join(absoluteDataDir, csvFileName),
     dbPath: join(absoluteDataDir, dbFileName),
+    pdfDir: join(absoluteDataDir, "pdfs"),
     logPath: join(absoluteDataDir, "app.log"),
   };
 }

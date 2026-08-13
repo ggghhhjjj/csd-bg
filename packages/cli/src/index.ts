@@ -43,6 +43,7 @@ export function buildProgram(): Command {
     .option("--download-retry-max <seconds>", "Maximum retry backoff", "30")
     .option("--clear-failed-downloads", "Clear failed download marks before download")
     .option("--clear-failed-extracts", "Clear failed extract marks before extract")
+    .option("--pdf-dir <path>", "Directory for downloaded PDF files (default: sibling pdfs/ of --db)")
     .action(async (stepsArg: string, options) => {
       let parsedSteps;
       try {
@@ -97,6 +98,7 @@ export function buildProgram(): Command {
           downloadRetryMax,
           clearFailedDownloads: Boolean(options.clearFailedDownloads),
           clearFailedExtracts: Boolean(options.clearFailedExtracts),
+          pdfDir: options.pdfDir ? resolve(options.pdfDir) : undefined,
         },
         logger,
       );

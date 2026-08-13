@@ -33,11 +33,11 @@ export interface PendingPdfDownload {
 export interface PendingPdfExtraction {
   free_float_id: number;
   date: string;
-  content: Buffer;
 }
 
 export interface AppOptions {
   csvPath?: string;
+  pdfDir?: string;
   dbPath: string;
   timeout?: number;
   usePostPagination?: boolean;

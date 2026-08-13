@@ -18,6 +18,7 @@ export class PipelineRunner {
 
     mkdirSync(dirname(paths.dbPath), { recursive: true });
     mkdirSync(dirname(paths.csvPath), { recursive: true });
+    mkdirSync(paths.pdfDir, { recursive: true });
     mkdirSync(dirname(paths.logPath), { recursive: true });
 
     const logger = createLogger({
@@ -30,6 +31,7 @@ export class PipelineRunner {
       {
         csvPath: paths.csvPath,
         dbPath: paths.dbPath,
+        pdfDir: paths.pdfDir,
         timeout: settings.timeout,
         usePostPagination: settings.usePostPagination,
         maxPages: settings.maxPages,

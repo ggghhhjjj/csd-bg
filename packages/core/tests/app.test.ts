@@ -174,9 +174,12 @@ describe("FreeFloatScraperApp", () => {
     vi.spyOn(app.dbManager, "connect").mockImplementation(() => {});
     vi.spyOn(app.dbManager, "disconnect").mockImplementation(() => {});
     vi.spyOn(app.dbManager, "getPendingPdfExtractions").mockReturnValue([
-      { free_float_id: 1, date: "2026-07-23", content: Buffer.from("%PDF-ok") },
-      { free_float_id: 2, date: "2026-07-22", content: Buffer.from("%PDF-bad") },
+      { free_float_id: 1, date: "2026-07-23" },
+      { free_float_id: 2, date: "2026-07-22" },
     ]);
+    vi.spyOn(app.dbManager, "readDownloadedPdf")
+      .mockReturnValueOnce(Buffer.from("%PDF-ok"))
+      .mockReturnValueOnce(Buffer.from("%PDF-bad"));
     vi.spyOn(app.dbManager, "saveExtractedRows").mockImplementation(() => {});
     vi.spyOn(app.dbManager, "markPdfExtracted").mockImplementation(() => {});
     vi.spyOn(app.dbManager, "markPdfExtractFailed").mockImplementation(() => {});

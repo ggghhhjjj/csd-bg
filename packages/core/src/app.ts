@@ -21,6 +21,7 @@ import type {
   ScrapeSummary,
 } from "./types.js";
 import { consoleLogger } from "./types.js";
+import { resolvePdfDir } from "./settings.js";
 import { WebScraper } from "./web-scraper.js";
 
 export class FreeFloatScraperApp {
@@ -43,7 +44,10 @@ export class FreeFloatScraperApp {
     private readonly options: AppOptions,
     private readonly logger: Logger = consoleLogger,
   ) {
-    this.dbManager = new DatabaseManager(options.dbPath);
+    this.dbManager = new DatabaseManager(
+      options.dbPath,
+      resolvePdfDir(options.pdfDir, options.dbPath),
+    );
     this.csvManager = options.csvPath ? new CsvManager(options.csvPath) : null;
     this.pdfDownloader = new PdfDownloader({
       timeout: options.timeout ?? 30,
@@ -67,7 +71,10 @@ export class FreeFloatScraperApp {
 
   setup(includeCsv = true): void {
     this.dbManager.using((db) => {
-      db.initializeTables();
+      const { migratedPdfs } = db.initializeTables();
+      if (migratedPdfs > 0) {
+        this.logger.info(`Migrated ${migratedPdfs} PDF(s) from database to ${this.dbManager.pdfDir}`);
+      }
     });
 
     if (includeCsv) {
@@ -174,6 +181,7 @@ export class FreeFloatScraperApp {
             const content = await this.pdfDownloader.download(record.url);
             this.dbManager.upsertPdfDownloaded(
               record.id,
+              record.date,
               content,
               content.length,
               this.pdfDownloader.lastAttempts,
@@ -218,7 +226,8 @@ export class FreeFloatScraperApp {
         const pending = this.dbManager.getPendingPdfExtractions();
         for (const record of pending) {
           try {
-            const rows = await this.pdfExtractor.extract(record.content);
+            const content = this.dbManager.readDownloadedPdf(record.date);
+            const rows = await this.pdfExtractor.extract(content);
             this.dbManager.saveExtractedRows(record.free_float_id, rows);
             this.dbManager.markPdfExtracted(record.free_float_id, 1);
             this.extractedCount += 1;

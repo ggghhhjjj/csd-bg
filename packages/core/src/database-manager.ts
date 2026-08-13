@@ -3,13 +3,22 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { DatabaseManagerError } from "./errors.js";
+import { deletePdf, pdfFileExists, readPdf, writePdf } from "./pdf-storage.js";
 import type { ExtractedRow, FreeFloatRecord, PendingPdfDownload, PendingPdfExtraction } from "./types.js";
+
+export interface InitializeTablesResult {
+  migratedPdfs: number;
+}
 
 export class DatabaseManager {
   private db: Database.Database | null = null;
 
-  constructor(private readonly dbPath: string) {
+  constructor(
+    private readonly dbPath: string,
+    readonly pdfDir: string,
+  ) {
     mkdirSync(dirname(dbPath), { recursive: true });
+    mkdirSync(pdfDir, { recursive: true });
   }
 
   connect(): void {
@@ -46,7 +55,7 @@ export class DatabaseManager {
     return this.db;
   }
 
-  initializeTables(): void {
+  initializeTables(): InitializeTablesResult {
     const db = this.requireConnection();
 
     try {
@@ -108,6 +117,11 @@ export class DatabaseManager {
       `);
 
       this.migratePdfContentExtractColumns(db);
+      const migratedPdfs = this.migratePdfBlobsToFiles(db);
+      if (migratedPdfs > 0) {
+        db.exec("VACUUM");
+      }
+      return { migratedPdfs };
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to initialize tables: ${error instanceof Error ? error.message : String(error)}`,
@@ -131,6 +145,56 @@ export class DatabaseManager {
         db.exec(`ALTER TABLE pdf_content ADD COLUMN ${column} ${typedef}`);
       }
     }
+  }
+
+  private migratePdfBlobsToFiles(db: Database.Database): number {
+    const rows = db
+      .prepare(
+        `
+        SELECT pc.free_float_id, ff.date, pc.content
+        FROM pdf_content pc
+        INNER JOIN free_float ff ON ff.id = pc.free_float_id
+        WHERE pc.status = 'downloaded'
+          AND pc.content IS NOT NULL
+      `,
+      )
+      .all() as Array<{ free_float_id: number; date: string; content: Buffer | Uint8Array }>;
+
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    const clearBlob = db.prepare(
+      `
+      UPDATE pdf_content
+      SET content = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE free_float_id = ?
+    `,
+    );
+
+    const migrate = db.transaction((blobRows: typeof rows) => {
+      let migrated = 0;
+      for (const row of blobRows) {
+        const content = Buffer.isBuffer(row.content) ? row.content : Buffer.from(row.content);
+        if (!pdfFileExists(this.pdfDir, row.date)) {
+          writePdf(this.pdfDir, row.date, content);
+        }
+        clearBlob.run(row.free_float_id);
+        migrated += 1;
+      }
+      return migrated;
+    });
+
+    return migrate(rows);
+  }
+
+  private getFreeFloatDate(freeFloatId: number): string | null {
+    const db = this.requireConnection();
+    const row = db
+      .prepare("SELECT date FROM free_float WHERE id = ?")
+      .get(freeFloatId) as { date: string } | undefined;
+    return row?.date ?? null;
   }
 
   recordExists(date: string): boolean {
@@ -215,23 +279,25 @@ export class DatabaseManager {
 
   upsertPdfDownloaded(
     freeFloatId: number,
+    date: string,
     content: Buffer,
     sizeBytes: number,
     attempts: number,
   ): void {
     const db = this.requireConnection();
     try {
+      writePdf(this.pdfDir, date, content);
       db.prepare(
         `
         INSERT INTO pdf_content (
           free_float_id, content, size_bytes, status, attempts,
           last_error, downloaded_at, failed_at, updated_at
         ) VALUES (
-          ?, ?, ?, 'downloaded', ?,
+          ?, NULL, ?, 'downloaded', ?,
           NULL, CURRENT_TIMESTAMP, NULL, CURRENT_TIMESTAMP
         )
         ON CONFLICT(free_float_id) DO UPDATE SET
-          content = excluded.content,
+          content = NULL,
           size_bytes = excluded.size_bytes,
           status = 'downloaded',
           attempts = excluded.attempts,
@@ -240,7 +306,7 @@ export class DatabaseManager {
           failed_at = NULL,
           updated_at = CURRENT_TIMESTAMP
       `,
-      ).run(freeFloatId, content, sizeBytes, attempts);
+      ).run(freeFloatId, sizeBytes, attempts);
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to store PDF content for id ${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -251,6 +317,11 @@ export class DatabaseManager {
   markPdfFailed(freeFloatId: number, attempts: number, lastError: string): void {
     const db = this.requireConnection();
     try {
+      const date = this.getFreeFloatDate(freeFloatId);
+      if (date) {
+        deletePdf(this.pdfDir, date);
+      }
+
       db.prepare(
         `
         INSERT INTO pdf_content (
@@ -301,27 +372,29 @@ export class DatabaseManager {
       const rows = db
         .prepare(
           `
-          SELECT ff.id AS free_float_id, ff.date, pc.content
+          SELECT ff.id AS free_float_id, ff.date
           FROM free_float ff
           INNER JOIN pdf_content pc ON pc.free_float_id = ff.id
           WHERE pc.status = 'downloaded'
-            AND pc.content IS NOT NULL
             AND pc.extract_status IS NULL
           ORDER BY ff.date DESC
         `,
         )
-        .all() as Array<{ free_float_id: number; date: string; content: Buffer }>;
+        .all() as Array<{ free_float_id: number; date: string }>;
 
       return rows.map((row) => ({
         free_float_id: row.free_float_id,
         date: row.date,
-        content: Buffer.isBuffer(row.content) ? row.content : Buffer.from(row.content),
       }));
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to retrieve pending PDF extractions: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  readDownloadedPdf(date: string): Buffer {
+    return readPdf(this.pdfDir, date);
   }
 
   saveExtractedRows(freeFloatId: number, rows: ExtractedRow[]): void {
