@@ -51,8 +51,12 @@ Thumbs.db
 *.swo
 *~
 
-# Data directory
-data/
+# Data directory — ignore everything except whitelisted paths
+data/*
+data/pdfs/*
+!data/pdfs/
+!data/pdfs/*.pdf
+!data/free_float.db
 output/
 
 # Docker
