@@ -21,7 +21,7 @@ import type {
   ScrapeSummary,
 } from "./types.js";
 import { consoleLogger } from "./types.js";
-import { resolvePdfDir } from "./settings.js";
+import { resolveCsvPath, resolvePdfDir } from "./settings.js";
 import { WebScraper } from "./web-scraper.js";
 
 export class FreeFloatScraperApp {
@@ -48,7 +48,10 @@ export class FreeFloatScraperApp {
       options.dbPath,
       resolvePdfDir(options.pdfDir, options.dbPath),
     );
-    this.csvManager = options.csvPath ? new CsvManager(options.csvPath) : null;
+    this.csvManager =
+      options.exportCsv === true
+        ? new CsvManager(resolveCsvPath(options.csvPath, options.dbPath))
+        : null;
     this.pdfDownloader = new PdfDownloader({
       timeout: options.timeout ?? 30,
       maxRetries: options.downloadRetries ?? 3,
@@ -77,19 +80,12 @@ export class FreeFloatScraperApp {
       }
     });
 
-    if (includeCsv) {
-      if (!this.csvManager) {
-        throw new CsvManagerError("CSV path is required for the scrape step");
-      }
+    if (includeCsv && this.csvManager) {
       this.csvManager.initializeFile();
     }
   }
 
   processLinks(links: FreeFloatLink[]): void {
-    if (!this.csvManager) {
-      throw new CsvManagerError("CSV path is required for the scrape step");
-    }
-
     let consecutiveDuplicates = 0;
 
     this.dbManager.connect();
@@ -121,7 +117,7 @@ export class FreeFloatScraperApp {
         consecutiveDuplicates = 0;
         const insertedId = this.dbManager.insertRecord(date, url);
         if (insertedId !== null) {
-          this.csvManager.appendRecord(date, url);
+          this.csvManager?.appendRecord(date, url);
           this.newRecordsCount += 1;
         } else {
           this.skippedRecordsCount += 1;

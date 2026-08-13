@@ -7,11 +7,13 @@
 npm install && npm run build
 
 # Test with 3 pages
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 3
+node packages/cli/dist/index.js scrape --db data.db --max-pages 3
 
 # Scrape all pages (takes 2-3 minutes)
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db
+node packages/cli/dist/index.js scrape --db data.db
 ```
+
+> CSV export is optional — add `--verbose` to also write `free_float.csv`. See [README.md](README.md#csv-export-verbose-mode).
 
 ## Command-Line Options
 
@@ -21,6 +23,7 @@ node packages/cli/dist/index.js scrape --csv data.csv --db data.db
 | `--no-pagination` | First page only | `--no-pagination` |
 | `--max-pages N` | Limit to N pages | `--max-pages 10` |
 | `--timeout N` | HTTP timeout (seconds) | `--timeout 60` |
+| `-v, --verbose` | DEBUG logging + CSV export | `--verbose` |
 
 ## TypeScript API
 
@@ -67,19 +70,19 @@ npm test -- packages/core/tests/web-scraper.test.ts
 ### Get Latest 50 Links
 
 ```bash
-node packages/cli/dist/index.js scrape --csv latest.csv --db latest.db --max-pages 5
+node packages/cli/dist/index.js scrape --db latest.db --max-pages 5
 ```
 
 ### Get All Historical Data
 
 ```bash
-node packages/cli/dist/index.js scrape --csv all_data.csv --db all_data.db
+node packages/cli/dist/index.js scrape --db all_data.db
 ```
 
 ### Test Setup
 
 ```bash
-node packages/cli/dist/index.js scrape --csv test.csv --db test.db --max-pages 1
+node packages/cli/dist/index.js scrape --db test.db --max-pages 1
 ```
 
 ## Documentation

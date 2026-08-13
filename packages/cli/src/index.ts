@@ -9,8 +9,10 @@ import {
   KNOWN_STEPS,
   PipelineError,
   createLogger,
+  isVerboseLogLevel,
   parseSteps,
   resolveLogLevel,
+  type LogLevel,
 } from "@csd-bg/core";
 
 loadEnv();
@@ -29,7 +31,8 @@ export function buildProgram(): Command {
       `Comma-separated pipeline steps (default: scrape,download,extract; known: ${KNOWN_STEPS.join(", ")})`,
       "scrape,download,extract",
     )
-    .option("--csv <path>", "Path to CSV file (required for scrape)")
+    .option("-v, --verbose", "Enable debug logging and CSV export of scraped records")
+    .option("--csv <path>", "CSV export path (verbose mode only; default: free_float.csv next to --db)")
     .requiredOption("--db <path>", "Path to SQLite database file")
     .option("--log <path>", "Application log file path", DEFAULT_LOG_PATH)
     .option("--log-level <level>", "Minimum log level (ERROR, WARN, INFO, DEBUG)")
@@ -55,10 +58,6 @@ export function buildProgram(): Command {
         throw error;
       }
 
-      if (parsedSteps.includes("scrape") && !options.csv) {
-        program.error("--csv is required when the scrape step is selected");
-      }
-
       const downloadRetries = Number.parseInt(options.downloadRetries, 10);
       const downloadRetryMin = Number.parseInt(options.downloadRetryMin, 10);
       const downloadRetryMax = Number.parseInt(options.downloadRetryMax, 10);
@@ -70,11 +69,14 @@ export function buildProgram(): Command {
         program.error("--download-retry-min cannot exceed --download-retry-max");
       }
 
-      let logLevel;
+      let logLevel: LogLevel;
       try {
-        logLevel = resolveLogLevel(options.logLevel, process.env.LOG_LEVEL);
+        logLevel = options.verbose
+          ? "DEBUG"
+          : resolveLogLevel(options.logLevel, process.env.LOG_LEVEL);
       } catch (error) {
         program.error(error instanceof Error ? error.message : String(error));
+        return;
       }
 
       const logger = createLogger({
@@ -87,6 +89,7 @@ export function buildProgram(): Command {
       const app = new FreeFloatScraperApp(
         {
           csvPath: options.csv,
+          exportCsv: isVerboseLogLevel(logLevel),
           dbPath: resolve(options.db),
           timeout: Number.parseInt(options.timeout, 10),
           usePostPagination: options.pagination !== false,

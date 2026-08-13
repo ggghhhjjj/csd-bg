@@ -31,19 +31,21 @@ Instead of using browser automation (Selenium), we reverse-engineered the AJAX p
 
 ### Command Line
 
+> **Note:** Examples use `--db` only. CSV export is optional and enabled with `--verbose` or `--log-level DEBUG`. See [README.md](README.md#csv-export-verbose-mode).
+
 ```bash
 # Scrape all pages using POST pagination (default behavior)
 # Also enables early stopping when duplicates found
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db
+node packages/cli/dist/index.js scrape --db data.db
 
 # Scrape first page only (disable pagination)
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-pagination
+node packages/cli/dist/index.js scrape --db data.db --no-pagination
 
 # Scrape first 5 pages only
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 5
+node packages/cli/dist/index.js scrape --db data.db --max-pages 5
 
 # Scrape all pages without early stopping
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-early-stopping
+node packages/cli/dist/index.js scrape --db data.db --no-early-stopping
 ```
 
 ### TypeScript API
@@ -164,7 +166,7 @@ Tests cover:
 Test against the real website manually with limited pages:
 
 ```bash
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 3
+node packages/cli/dist/index.js scrape --db data.db --max-pages 3
 ```
 
 ## API Reference

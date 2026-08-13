@@ -40,6 +40,10 @@ export function resolveLogLevel(
   return "INFO";
 }
 
+export function isVerboseLogLevel(level: LogLevel): boolean {
+  return level === "DEBUG";
+}
+
 function formatLine(level: LogLevel, message: string): string {
   return `${new Date().toISOString()} - csd-bg - ${level} - ${message}`;
 }

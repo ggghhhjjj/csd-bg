@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository.
 
 ## Purpose
 
-TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, appends new rows to **CSV**, **downloads PDF files** into `data/pdfs/{date}.pdf`, and **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`. Default run uses a step pipeline (`scrape,download,extract`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
+TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, optionally **appends new rows to CSV in verbose (DEBUG) mode**, **downloads PDF files** into `data/pdfs/{date}.pdf`, and **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`. Default run uses a step pipeline (`scrape,download,extract`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
 
 Entry point: `packages/cli/dist/index.js` (source: `packages/cli/src/index.ts`). Core logic lives in `packages/core/src/`.
 
@@ -45,12 +45,12 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The CLI l
 |----------|------|
 | `DATA_HOST_PATH` | Host path mounted to `/data` in compose |
 | `DOCKER_USER` | Container user `UID:GID` (default Synology-oriented) |
-| `CSV_PATH` | Production CSV path (often `/data/free_float.csv`) |
+| `CSV_PATH` | CSV export path when verbose/DEBUG (often `/data/free_float.csv`; default: sibling of `DB_PATH`) |
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
 | `PDF_DIR` | Optional PDF directory (default: sibling `pdfs/` of `DB_PATH`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 | `CSD_BG_STATISTICS_URL` | Full member statistics page URL for scrape (GET/POST); set in `.env`, not committed |
-| `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; overridden by `--log-level`) |
+| `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; overridden by `--log-level`). `DEBUG` also enables CSV export |
 
 Never commit `.env`. Copy from `.env.example` locally.
 
@@ -67,15 +67,17 @@ make dev-setup      # same as setup
 ### Run locally
 
 ```bash
-make run            # scrape,download,extract → data/free_float.csv + data/free_float.db
-node packages/cli/dist/index.js scrape,download,extract --csv ./data/free_float.csv --db ./data/free_float.db
+make run            # scrape,download,extract → data/free_float.db (CSV only with VERBOSE=1)
+make run VERBOSE=1  # same + DEBUG logging and free_float.csv export
+node packages/cli/dist/index.js scrape,download,extract --db ./data/free_float.db
 node packages/cli/dist/index.js download --db ./data/free_float.db
 node packages/cli/dist/index.js extract --db ./data/free_float.db
-node packages/cli/dist/index.js scrape --csv ./data/free_float.csv --db ./data/free_float.db
+node packages/cli/dist/index.js scrape --db ./data/free_float.db
+node packages/cli/dist/index.js scrape --verbose --db ./data/free_float.db   # also writes CSV
 node packages/cli/dist/index.js --help
 ```
 
-Common flags: `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`.
+Common flags: `--verbose`, `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`, `--csv PATH` (verbose only).
 
 ### Quality & tests
 
@@ -124,7 +126,7 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 - **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
 - **DB**: `free_float` (date unique), `pdf_content` (download/extract status; legacy `content` BLOB migrated to disk), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
-- **CSV**: Header `date,url`; append-only for new records; required only for scrape step.
+- **CSV**: Optional export in verbose/DEBUG mode only. Header `date,url`; append-only for new records during scrape. SQLite is the source of truth; CSV is not read back by the pipeline. Enable via `--verbose`, `--log-level DEBUG`, `LOG_LEVEL=DEBUG`, or `exportCsv: true` in the API.
 - **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).
 
 ## Don't touch (without explicit intent)

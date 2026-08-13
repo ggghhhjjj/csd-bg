@@ -37,6 +37,7 @@ describe("early stopping", () => {
   } = {}): FreeFloatScraperApp {
     return new FreeFloatScraperApp({
       csvPath: join(tempDir, "test.csv"),
+      exportCsv: true,
       dbPath: join(tempDir, "test.db"),
       timeout: 10,
       enableEarlyStopping: options.enableEarlyStopping ?? true,

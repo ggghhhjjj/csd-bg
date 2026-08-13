@@ -37,6 +37,8 @@ export interface PendingPdfExtraction {
 
 export interface AppOptions {
   csvPath?: string;
+  /** When true (verbose / DEBUG), scraped records are also appended to CSV. */
+  exportCsv?: boolean;
   pdfDir?: string;
   dbPath: string;
   timeout?: number;

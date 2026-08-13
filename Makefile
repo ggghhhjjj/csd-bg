@@ -6,6 +6,8 @@ DOCKER := docker
 DOCKER_COMPOSE := docker-compose
 DOCKER_IMAGE := csd-bg-scraper
 DATA_DIR := ./data
+VERBOSE ?=
+RUN_VERBOSE := $(if $(filter 1 true yes verbose,$(VERBOSE)),--verbose,)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -57,13 +59,13 @@ teardown-all: teardown clean-data ## Full teardown including runtime CSV/DB in .
 clean-data: ## Clean up data files (CSV and DB)
 	rm -rf $(DATA_DIR)/*.csv $(DATA_DIR)/*.db
 
-run: build ## Run scrape+download+extract pipeline locally (Node CLI)
+run: build ## Run scrape+download+extract locally (VERBOSE=1 for debug log + CSV export)
 	@mkdir -p $(DATA_DIR)
-	node packages/cli/dist/index.js scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
+	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
 
-run-timeout: build ## Run scrape+download+extract with custom timeout
+run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1 for debug log + CSV)
 	@mkdir -p $(DATA_DIR)
-	node packages/cli/dist/index.js scrape,download,extract --csv $(DATA_DIR)/free_float.csv --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
+	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
 
 docker-build: ## Build Docker image
 	$(DOCKER) build -t $(DOCKER_IMAGE):latest .

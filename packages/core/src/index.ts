@@ -17,11 +17,19 @@ export {
   createLogger,
   parseLogLevel,
   resolveLogLevel,
+  isVerboseLogLevel,
   type CreateLoggerOptions,
   type LogLevel,
 } from "./logger.js";
 export { KNOWN_STEPS, parseSteps, runPipeline } from "./pipeline.js";
-export { baseUrlFromStatisticsUrl, PDF_DIR_ENV, resolvePdfDir, resolveStatisticsUrl } from "./settings.js";
+export {
+  baseUrlFromStatisticsUrl,
+  CSV_PATH_ENV,
+  PDF_DIR_ENV,
+  resolveCsvPath,
+  resolvePdfDir,
+  resolveStatisticsUrl,
+} from "./settings.js";
 export type {
   AppOptions,
   DownloadSummary,

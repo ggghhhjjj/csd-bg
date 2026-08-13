@@ -11,7 +11,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Web scraping** — Extract Free Float PDF links from the CSD-BG statistics page
 - **POST-based pagination** — Scrape all pages via JSF AJAX POST (no browser)
 - **Step pipeline** — `scrape`, `download`, `extract` with early stopping on duplicates
-- **SQLite + CSV** — Deduplicated metadata, PDF files on disk, structured extract tables
+- **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
@@ -57,7 +57,6 @@ npm run build
 
 mkdir -p data
 node packages/cli/dist/index.js scrape,download,extract \
-  --csv ./data/free_float.csv \
   --db ./data/free_float.db \
   --log ./data/app.log
 ```
@@ -106,7 +105,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 
 | Step | Description |
 |------|-------------|
-| `scrape` | Discover PDF links, write SQLite + CSV |
+| `scrape` | Discover PDF links, write SQLite (CSV in verbose mode only) |
 | `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` |
 | `extract` | Parse PDFs into `stock_issue` / `issuer` / `stock_issue_daily` |
 
@@ -114,10 +113,11 @@ npm run csd-bg -- [steps] --db <path> [options]
 
 | Flag | Description |
 |------|-------------|
-| `--csv <path>` | CSV output path (**required** when `scrape` is included) |
+| `-v, --verbose` | Enable DEBUG logging and CSV export of scraped records |
+| `--csv <path>` | CSV export path (**verbose mode only**; default: `free_float.csv` next to `--db`, or `CSV_PATH` env) |
 | `--db <path>` | SQLite database path (**required**) |
 | `--log <path>` | Log file (default: `/data/app.log`) |
-| `--log-level <level>` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; CLI overrides `LOG_LEVEL` env) |
+| `--log-level <level>` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; CLI overrides `LOG_LEVEL` env). `DEBUG` also enables CSV export (same as `--verbose`) |
 | `--timeout <sec>` | HTTP timeout (default: 30) |
 | `--no-pagination` | First page only (pagination is on by default) |
 | `--max-pages <n>` | Limit pagination pages |
@@ -136,13 +136,16 @@ npm run csd-bg -- [steps] --db <path> [options]
 ```bash
 # Full pipeline (typical daily / Synology job)
 node packages/cli/dist/index.js scrape,download,extract \
-  --csv ./data/free_float.csv \
   --db ./data/free_float.db \
   --log ./data/app.log
 
 # Scrape only (incremental; early stopping on by default)
 node packages/cli/dist/index.js scrape \
-  --csv ./data/free_float.csv \
+  --db ./data/free_float.db
+
+# Verbose scrape — also writes free_float.csv next to the database
+node packages/cli/dist/index.js scrape \
+  --verbose \
   --db ./data/free_float.db
 
 # Catch up downloads / extracts
@@ -151,13 +154,11 @@ node packages/cli/dist/index.js extract --db ./data/free_float.db
 
 # Full historical scrape (no early stop)
 node packages/cli/dist/index.js scrape \
-  --csv ./data/free_float.csv \
   --db ./data/free_float.db \
   --no-early-stopping
 
 # Limited pagination test
 node packages/cli/dist/index.js scrape \
-  --csv ./data/free_float.csv \
   --db ./data/free_float.db \
   --max-pages 5
 ```
@@ -168,6 +169,7 @@ node packages/cli/dist/index.js scrape \
 |--------|-------------|
 | `make setup` | `npm install` + build |
 | `make run` | Full Node pipeline → `./data/` |
+| `make run VERBOSE=1` | Same, with DEBUG logging and CSV export |
 | `make test` | Vitest |
 | `make test-coverage` | Vitest with coverage |
 | `make build` | `npm run build` |
@@ -187,7 +189,6 @@ docker run --rm \
   --env-file .env \
   csd-bg-scraper:latest \
   scrape,download,extract \
-  --csv /data/free_float.csv \
   --db /data/free_float.db \
   --log /data/app.log
 ```
@@ -234,7 +235,7 @@ Package: `packages/vscode` (`csd-bg-vscode`)
 | `csd-bg.earlyStoppingThreshold` | Consecutive duplicate limit |
 | `csd-bg.usePostPagination` | POST pagination (default `true`) |
 | `csd-bg.enableEarlyStopping` | Early stop on scrape (default `true`) |
-| `csd-bg.logLevel` | Minimum log level for output and `app.log` (default `INFO`) |
+| `csd-bg.logLevel` | Minimum log level for output and `app.log` (default `INFO`). `DEBUG` also enables CSV export during scrape |
 
 ## Pipeline workflow
 
@@ -249,7 +250,7 @@ docker compose run --rm csd-bg-scraper scrape,download,extract
 1. Load statistics page (`CSD_BG_STATISTICS_URL`)
 2. POST paginate through JSF form `formFF` until empty pages or `--max-pages`
 3. For each link: skip if date exists; optionally **early-stop** after N consecutive duplicates
-4. Insert new rows into `free_float` and append CSV (`date,url`)
+4. Insert new rows into `free_float`; in **verbose mode** (`--verbose` or `--log-level DEBUG`), also append CSV (`date,url`)
 
 ### Step: `download`
 
@@ -301,8 +302,9 @@ npm run test:watch   # watch mode
 import { FreeFloatScraperApp, WebScraper, PdfExtractor } from "@csd-bg/core";
 
 const app = new FreeFloatScraperApp({
-  csvPath: "./data/free_float.csv",
   dbPath: "./data/free_float.db",
+  exportCsv: true, // optional; set true to write CSV during scrape (CLI: --verbose)
+  csvPath: "./data/free_float.csv", // optional override when exportCsv is true
   statisticsUrl: process.env.CSD_BG_STATISTICS_URL,
 });
 
@@ -355,7 +357,8 @@ Same Docker image — push to ECR/ACR and run as a scheduled task (EventBridge, 
 | `CSD_BG_STATISTICS_URL` | Full member statistics page URL (**required for scrape**) |
 | `DATA_HOST_PATH` | Host path mounted to `/data` in compose |
 | `DOCKER_USER` | Container `UID:GID` (Synology) |
-| `CSV_PATH` / `DB_PATH` | Documented production paths (often `/data/...`) |
+| `CSV_PATH` | CSV export path when verbose (often `/data/free_float.csv`; default: sibling of `DB_PATH`) |
+| `DB_PATH` | Production DB path (often `/data/free_float.db`) |
 | `PDF_DIR` | Optional PDF directory (default: `{dirname(DB_PATH)}/pdfs`) |
 | `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
@@ -420,7 +423,23 @@ PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the databa
 | free_float     | INTEGER   | Фрий Флоат            |
 | shareholders   | INTEGER   | Брой Акционери        |
 
-## CSV format
+## CSV export (verbose mode)
+
+CSV is **optional**. Normal runs (`INFO` level) use SQLite only. Enable CSV when you want a plain-text audit log of newly scraped links:
+
+| Trigger | CSV written? |
+|---------|----------------|
+| Default (`INFO`) | No |
+| `--verbose` | Yes |
+| `--log-level DEBUG` | Yes |
+| `LOG_LEVEL=DEBUG` in `.env` | Yes |
+| VS Code `csd-bg.logLevel` = `DEBUG` | Yes |
+
+When enabled, the file is append-only with header `date,url`. Path resolution: `--csv` → `CSV_PATH` env → `{dirname(--db)}/free_float.csv`.
+
+The database remains the source of truth. The app does **not** read CSV back for deduplication, download, or extract.
+
+### CSV format
 
 | Column | Description        |
 |--------|--------------------|

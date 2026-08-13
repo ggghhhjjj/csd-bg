@@ -27,6 +27,7 @@ describe("FreeFloatScraperApp", () => {
   function createApp(options: Record<string, unknown> = {}): FreeFloatScraperApp {
     return new FreeFloatScraperApp({
       csvPath: join(tempDir, "test.csv"),
+      exportCsv: true,
       dbPath: join(tempDir, "test.db"),
       timeout: 10,
       ...options,
@@ -57,6 +58,23 @@ describe("FreeFloatScraperApp", () => {
     expect(app.newRecordsCount).toBe(2);
     expect(app.skippedRecordsCount).toBe(0);
     expect(app.csvManager!.appendRecord).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips CSV export when exportCsv is false", () => {
+    const app = createApp({ exportCsv: false });
+    expect(app.csvManager).toBeNull();
+
+    vi.spyOn(app.dbManager, "getRecordCount").mockReturnValue(0);
+    vi.spyOn(app.dbManager, "recordExists").mockReturnValue(false);
+    vi.spyOn(app.dbManager, "insertRecord").mockReturnValueOnce(1);
+    vi.spyOn(app.dbManager, "connect").mockImplementation(() => {});
+    vi.spyOn(app.dbManager, "disconnect").mockImplementation(() => {});
+
+    app.processLinks([
+      { date: "2025-12-04", url: "https://example.com/test1.pdf", href: "/a.pdf" },
+    ]);
+
+    expect(app.newRecordsCount).toBe(1);
   });
 
   it("skips existing links", () => {

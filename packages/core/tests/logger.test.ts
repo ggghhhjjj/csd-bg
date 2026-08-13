@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createLogger,
+  isVerboseLogLevel,
   parseLogLevel,
   resolveLogLevel,
   type LogLevel,
@@ -37,6 +38,15 @@ describe("resolveLogLevel", () => {
   it("falls back to env then INFO", () => {
     expect(resolveLogLevel(undefined, "WARN")).toBe("WARN");
     expect(resolveLogLevel(undefined, undefined)).toBe("INFO");
+  });
+});
+
+describe("isVerboseLogLevel", () => {
+  it("returns true only for DEBUG", () => {
+    expect(isVerboseLogLevel("DEBUG")).toBe(true);
+    expect(isVerboseLogLevel("INFO")).toBe(false);
+    expect(isVerboseLogLevel("WARN")).toBe(false);
+    expect(isVerboseLogLevel("ERROR")).toBe(false);
   });
 });
 

@@ -4,6 +4,7 @@ import { ScraperConfigError } from "./errors.js";
 import { CSD_BG_STATISTICS_URL_ENV } from "./types.js";
 
 export const PDF_DIR_ENV = "PDF_DIR";
+export const CSV_PATH_ENV = "CSV_PATH";
 
 export function baseUrlFromStatisticsUrl(statisticsUrl: string): string {
   let parsed: URL;
@@ -58,4 +59,24 @@ export function resolvePdfDir(explicitDir?: string | null, dbPath?: string): str
   }
 
   return join(dirname(dbPath), "pdfs");
+}
+
+export function resolveCsvPath(explicitPath?: string | null, dbPath?: string): string {
+  const raw = (
+    explicitPath !== undefined && explicitPath !== null
+      ? explicitPath
+      : process.env[CSV_PATH_ENV] ?? ""
+  ).trim();
+
+  if (raw) {
+    return raw;
+  }
+
+  if (!dbPath) {
+    throw new ScraperConfigError(
+      "CSV path is not configured. Set CSV_PATH, pass --csv, or provide a database path.",
+    );
+  }
+
+  return join(dirname(dbPath), "free_float.csv");
 }

@@ -50,19 +50,21 @@ Time saved: ~75% reduction in processing time
 
 ### Command Line
 
+> **Note:** Examples use `--db` only. CSV export is optional and enabled with `--verbose` or `--log-level DEBUG`. See [README.md](README.md#csv-export-verbose-mode).
+
 ```bash
 # Default behavior: pagination + early stopping enabled (threshold: 10)
 # Perfect for daily incremental updates
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db
+node packages/cli/dist/index.js scrape --db data.db
 
 # Custom threshold (stop after 5 consecutive duplicates)
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --early-stopping-threshold 5
+node packages/cli/dist/index.js scrape --db data.db --early-stopping-threshold 5
 
 # Disable early stopping (check all links)
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --no-early-stopping
+node packages/cli/dist/index.js scrape --db data.db --no-early-stopping
 
 # Daily update example (recommended for cron jobs)
-node packages/cli/dist/index.js scrape --csv data.csv --db data.db --max-pages 5
+node packages/cli/dist/index.js scrape --db data.db --max-pages 5
 ```
 
 ### TypeScript API
@@ -72,8 +74,8 @@ import { FreeFloatScraperApp } from "@csd-bg/core";
 
 // Default early stopping (threshold=10)
 const app = new FreeFloatScraperApp({
-  csvPath: "data.csv",
   dbPath: "data.db",
+  exportCsv: false, // set true or use DEBUG log level to write CSV
   usePostPagination: true,
   enableEarlyStopping: true,
 });
@@ -195,7 +197,6 @@ INFO -   Records skipped (already exist): 10
 # Daily update script - runs every morning at 6 AM
 
 node packages/cli/dist/index.js scrape \
-  --csv /data/free_float.csv \
   --db /data/free_float.db \
   --max-pages 5 \
   --early-stopping-threshold 10
@@ -208,7 +209,6 @@ node packages/cli/dist/index.js scrape \
 ```bash
 # First time import - disable early stopping
 node packages/cli/dist/index.js scrape \
-  --csv /data/free_float.csv \
   --db /data/free_float.db \
   --no-early-stopping
 ```
@@ -220,7 +220,6 @@ node packages/cli/dist/index.js scrape \
 ```bash
 # Missed several days of updates - use higher threshold
 node packages/cli/dist/index.js scrape \
-  --csv /data/free_float.csv \
   --db /data/free_float.db \
   --max-pages 20 \
   --early-stopping-threshold 20
