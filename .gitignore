@@ -6,6 +6,11 @@ coverage/
 # Build artifacts
 build/
 
+# Python (legacy)
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Virtual environments (legacy)
 venv/
 .venv
