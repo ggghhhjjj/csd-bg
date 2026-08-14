@@ -46,3 +46,10 @@ export class PipelineError extends Error {
     this.name = "PipelineError";
   }
 }
+
+export class VectorExporterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VectorExporterError";
+  }
+}

@@ -539,4 +539,56 @@ export class DatabaseManager {
       shareholders: number;
     }>;
   }
+
+  queryVectorCatalog(): Array<{ id: number; isin: string; name: string }> {
+    const db = this.requireConnection();
+    return db
+      .prepare(
+        `
+        SELECT si.id, si.isin,
+               (SELECT i.name FROM issuer i
+                INNER JOIN free_float ff ON ff.id = i.free_float_id
+                WHERE i.stock_issue_id = si.id
+                ORDER BY ff.date DESC LIMIT 1) AS name
+        FROM stock_issue si
+        ORDER BY si.id ASC
+      `,
+      )
+      .all() as Array<{ id: number; isin: string; name: string }>;
+  }
+
+  queryVectorDates(): string[] {
+    const db = this.requireConnection();
+    const rows = db
+      .prepare(`SELECT date FROM free_float ORDER BY date ASC`)
+      .all() as Array<{ date: string }>;
+    return rows.map((row) => row.date);
+  }
+
+  queryVectorGrid(): Array<{
+    stock_issue_id: number;
+    total_shares: number | null;
+    free_float: number | null;
+    shareholders: number | null;
+  }> {
+    const db = this.requireConnection();
+    return db
+      .prepare(
+        `
+        SELECT si.id AS stock_issue_id,
+               sid.total_shares, sid.free_float, sid.shareholders
+        FROM stock_issue si
+        CROSS JOIN free_float ff
+        LEFT JOIN stock_issue_daily sid
+          ON sid.stock_issue_id = si.id AND sid.free_float_id = ff.id
+        ORDER BY si.id ASC, ff.date ASC
+      `,
+      )
+      .all() as Array<{
+      stock_issue_id: number;
+      total_shares: number | null;
+      free_float: number | null;
+      shareholders: number | null;
+    }>;
+  }
 }

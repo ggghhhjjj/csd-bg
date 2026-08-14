@@ -141,10 +141,10 @@ if [[ ! -f .env ]]; then
 fi
 
 if [[ $# -gt 0 ]]; then
-  echo "Running scrape,download,extract pipeline..."
+  echo "Running scrape,download,extract,vectors pipeline..."
 fi
 
-exec node "$CLI_ENTRY" scrape,download,extract \
+exec node "$CLI_ENTRY" scrape,download,extract,vectors \
   --csv "$DATA_DIR/free_float.csv" \
   --db "$DATA_DIR/free_float.db" \
   --log "$DATA_DIR/app.log" \

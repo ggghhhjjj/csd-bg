@@ -5,6 +5,7 @@ import {
   DatabaseManagerError,
   PdfExtractorError,
   ScraperConfigError,
+  VectorExporterError,
   WebScraperError,
 } from "./errors.js";
 import { PdfDownloader } from "./pdf-downloader.js";
@@ -19,9 +20,11 @@ import type {
   PipelineRunResult,
   PipelineStep,
   ScrapeSummary,
+  VectorsSummary,
 } from "./types.js";
 import { consoleLogger } from "./types.js";
-import { resolveCsvPath, resolvePdfDir } from "./settings.js";
+import { resolveCsvPath, resolvePdfDir, resolveVectorsDir } from "./settings.js";
+import { VectorExporter } from "./vector-exporter.js";
 import { WebScraper } from "./web-scraper.js";
 
 export class FreeFloatScraperApp {
@@ -34,6 +37,7 @@ export class FreeFloatScraperApp {
   extractedCount = 0;
   extractFailedCount = 0;
   extractRowsCount = 0;
+  vectorsSummary: VectorsSummary | null = null;
 
   readonly dbManager: DatabaseManager;
   readonly csvManager: CsvManager | null;
@@ -247,11 +251,40 @@ export class FreeFloatScraperApp {
     }
   }
 
+  async runVectors(): Promise<number> {
+    try {
+      this.logger.info("Starting vectors export");
+      this.setup(false);
+
+      this.dbManager.connect();
+      try {
+        const exporter = new VectorExporter(
+          this.dbManager,
+          resolveVectorsDir(this.options.vectorsDir, this.options.dbPath),
+          this.logger,
+        );
+        this.vectorsSummary = exporter.export();
+      } finally {
+        this.dbManager.disconnect();
+      }
+
+      return 0;
+    } catch (error) {
+      if (error instanceof DatabaseManagerError || error instanceof VectorExporterError) {
+        this.logger.error(error.message);
+        return 1;
+      }
+      this.logger.error(`Unexpected error during vectors export: ${String(error)}`);
+      return 1;
+    }
+  }
+
   async run(steps: PipelineStep[]): Promise<PipelineRunResult> {
     const exitCode = await runPipeline(steps, {
       scrape: () => this.runScrape(),
       download: () => this.runDownload(),
       extract: () => this.runExtract(),
+      vectors: () => this.runVectors(),
     });
 
     const result: PipelineRunResult = { exitCode };
@@ -263,6 +296,9 @@ export class FreeFloatScraperApp {
     }
     if (steps.includes("extract")) {
       result.extract = this.getExtractSummary();
+    }
+    if (steps.includes("vectors") && this.vectorsSummary) {
+      result.vectors = this.vectorsSummary;
     }
     return result;
   }
@@ -288,5 +324,12 @@ export class FreeFloatScraperApp {
       failed: this.extractFailedCount,
       rowsWritten: this.extractRowsCount,
     };
+  }
+
+  getVectorsSummary(): VectorsSummary {
+    if (!this.vectorsSummary) {
+      throw new VectorExporterError("Vectors step did not produce a summary");
+    }
+    return this.vectorsSummary;
   }
 }

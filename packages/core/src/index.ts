@@ -8,6 +8,7 @@ export {
   PdfExtractorError,
   PipelineError,
   ScraperConfigError,
+  VectorExporterError,
   WebScraperError,
 } from "./errors.js";
 export { PdfDownloader } from "./pdf-downloader.js";
@@ -22,13 +23,17 @@ export {
   type LogLevel,
 } from "./logger.js";
 export { KNOWN_STEPS, parseSteps, runPipeline } from "./pipeline.js";
+export { VectorExporter } from "./vector-exporter.js";
+export type { VectorCatalog, VectorCatalogEntry, VectorManifest } from "./vector-exporter.js";
 export {
   baseUrlFromStatisticsUrl,
   CSV_PATH_ENV,
   PDF_DIR_ENV,
+  VECTORS_DIR_ENV,
   resolveCsvPath,
   resolvePdfDir,
   resolveStatisticsUrl,
+  resolveVectorsDir,
 } from "./settings.js";
 export type {
   AppOptions,
@@ -43,6 +48,7 @@ export type {
   PipelineRunResult,
   PipelineStep,
   ScrapeSummary,
+  VectorsSummary,
 } from "./types.js";
 export { CSD_BG_STATISTICS_URL_ENV, consoleLogger } from "./types.js";
 export { WebScraper } from "./web-scraper.js";

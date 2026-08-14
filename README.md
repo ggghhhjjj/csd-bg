@@ -60,7 +60,7 @@ npm install
 npm run build
 
 mkdir -p data
-node packages/cli/dist/index.js scrape,download,extract \
+node packages/cli/dist/index.js scrape,download,extract,vectors \
   --db ./data/free_float.db \
   --log ./data/app.log
 ```
@@ -107,13 +107,14 @@ node packages/cli/dist/index.js [steps] --db <path> [options]
 npm run csd-bg -- [steps] --db <path> [options]
 ```
 
-**Steps** (comma-separated, default: `scrape,download,extract`):
+**Steps** (comma-separated, default: `scrape,download,extract,vectors`):
 
 | Step | Description |
 |------|-------------|
 | `scrape` | Discover PDF links, write SQLite (CSV in verbose mode only) |
 | `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` |
 | `extract` | Parse PDFs into `stock_issue` / `issuer` / `stock_issue_daily` |
+| `vectors` | Export Arrow vectors + catalog for offline charting (`data/vectors/`) |
 
 **Common options**:
 
@@ -134,6 +135,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | `--clear-failed-downloads` | Retry previously failed downloads |
 | `--clear-failed-extracts` | Retry previously failed extractions |
 | `--pdf-dir <path>` | PDF storage directory (default: sibling `pdfs/` of `--db`) |
+| `--vectors-dir <path>` | Arrow vector export directory (default: sibling `vectors/` of `--db`) |
 
 **Environment**: copy `.env.example` → `.env` and set `CSD_BG_STATISTICS_URL` (required for scrape). Optional `LOG_LEVEL` sets default verbosity. Loaded automatically via `dotenv`.
 
@@ -141,7 +143,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 
 ```bash
 # Full pipeline (typical daily / Synology job)
-node packages/cli/dist/index.js scrape,download,extract \
+node packages/cli/dist/index.js scrape,download,extract,vectors \
   --db ./data/free_float.db \
   --log ./data/app.log
 
@@ -154,9 +156,10 @@ node packages/cli/dist/index.js scrape \
   --verbose \
   --db ./data/free_float.db
 
-# Catch up downloads / extracts
+# Catch up downloads / extracts / vectors
 node packages/cli/dist/index.js download --db ./data/free_float.db
 node packages/cli/dist/index.js extract --db ./data/free_float.db
+node packages/cli/dist/index.js vectors --db ./data/free_float.db
 
 # Full historical scrape (no early stop)
 node packages/cli/dist/index.js scrape \
@@ -199,7 +202,7 @@ docker run --rm \
   -v "$(pwd)/data:/data" \
   --env-file .env \
   csd-bg-scraper:latest \
-  scrape,download,extract \
+  scrape,download,extract,vectors \
   --db /data/free_float.db \
   --log /data/app.log
 ```
@@ -212,7 +215,7 @@ The image uses **Node 22** and entrypoint `node packages/cli/dist/index.js`.
 mkdir -p data
 cp .env.example .env   # set CSD_BG_STATISTICS_URL and DATA_HOST_PATH
 
-docker compose run --rm csd-bg-scraper scrape,download,extract
+docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 ```
 
 Compose mounts `${DATA_HOST_PATH:-./data}` → `/data` and passes pipeline args in `docker-compose.yml` (including `--max-pages 2` and `--early-stopping-threshold 5` for scheduled incremental runs). Adjust `command`, memory limits, and `DOCKER_USER` there for production. Local `make run` uses a slightly higher default (`MAX_PAGES=5`)—see [Make targets](#make-targets).
@@ -253,7 +256,7 @@ Package: `packages/vscode` (`csd-bg-vscode`)
 Default production command:
 
 ```bash
-docker compose run --rm csd-bg-scraper scrape,download,extract
+docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 ```
 
 ### Step: `scrape`
@@ -368,7 +371,7 @@ The recommended production setup runs on **GitHub-hosted Actions** daily at **19
 | Phase | Behavior |
 |-------|----------|
 | Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/` from local LFS objects (remote fetch only for OIDs not in cache). |
-| Pipeline | `scrape,download,extract` with `--max-pages 5`, `--early-stopping-threshold 10` |
+| Pipeline | `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10` |
 | Commit | Push only if `data/free_float.db` changed (includes new PDFs in the same commit) |
 | Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
 | Cache | Saved only after a fully successful run |
@@ -393,7 +396,7 @@ Alternative on-prem deployment (not required when using GitHub Actions):
 
 1. Copy repo or `make assembly` → `build/csd-bg-synology.zip`
 2. Unzip on NAS, configure `.env` (`CSD_BG_STATISTICS_URL`, `DATA_HOST_PATH`, `DOCKER_USER`)
-3. Schedule: `docker compose run --rm csd-bg-scraper scrape,download,extract`
+3. Schedule: `docker compose run --rm csd-bg-scraper scrape,download,extract,vectors`
 
 ### AWS / other
 
@@ -472,6 +475,19 @@ PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the databa
 | total_shares   | INTEGER   | Общ Брой Фи           |
 | free_float     | INTEGER   | Фрий Флоат            |
 | shareholders   | INTEGER   | Брой Акционери        |
+
+## Vector export (`vectors` step)
+
+After extract, the pipeline exports chart-ready artifacts under `data/vectors/` (or `--vectors-dir` / `VECTORS_DIR`):
+
+| File | Description |
+|------|-------------|
+| `catalog.json` | Static `{ id, isin, name }` mapping (not vectorized) |
+| `manifest.json` | Bootstrap metadata (counts, date range, file names) |
+| `dates.arrow` | Shared report-date axis (LZ4 IPC, Date32 column) |
+| `free_float_vectors.arrow` | Numeric series only: `total_shares`, `free_float`, `shareholders` as FixedSizeList&lt;Int32&gt; per issuer |
+
+Row index `i` in the series file maps to `catalog.issuers[i]`. Missing `(issuer, date)` cells are Arrow nulls. Read with [`apache-arrow`](https://arrow.apache.org/docs/js/) in Node or the browser.
 
 ## CSV export (verbose mode)
 

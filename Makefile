@@ -15,7 +15,7 @@ RUN_PAGINATION := --max-pages $(MAX_PAGES) --early-stopping-threshold $(EARLY_ST
 define print_run_header
 	@echo "========================================"
 	@echo " CSD-BG Free Float Scraper"
-	@echo " Running scrape → download → extract"
+	@echo " Running scrape → download → extract → vectors"
 	@echo "========================================"
 	@echo ""
 	@echo "Incremental scrape settings:"
@@ -29,7 +29,7 @@ define print_run_header
 	@echo "  make run VERBOSE=1"
 	@echo ""
 	@echo "Full historical import (no page limit):"
-	@echo "  node packages/cli/dist/index.js scrape,download,extract --no-early-stopping --db $(DATA_DIR)/free_float.db"
+	@echo "  node packages/cli/dist/index.js scrape,download,extract,vectors --no-early-stopping --db $(DATA_DIR)/free_float.db"
 	@echo ""
 endef
 
@@ -86,14 +86,14 @@ clean-data: ## Clean up data files (CSV and DB)
 run: build ## Run scrape+download+extract locally (VERBOSE=1; MAX_PAGES=5 default for incremental sync)
 	@mkdir -p $(DATA_DIR)
 	$(print_run_header)
-	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
+	node packages/cli/dist/index.js scrape,download,extract,vectors $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
 
 run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1; same pagination limits as run)
 	@mkdir -p $(DATA_DIR)
 	$(print_run_header)
 	@echo "  TIMEOUT=60 seconds (--timeout)"
 	@echo ""
-	node packages/cli/dist/index.js scrape,download,extract $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
+	node packages/cli/dist/index.js scrape,download,extract,vectors $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
 
 docker-build: ## Build Docker image
 	$(DOCKER) build -t $(DOCKER_IMAGE):latest .

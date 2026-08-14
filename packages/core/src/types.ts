@@ -1,6 +1,6 @@
 export const CSD_BG_STATISTICS_URL_ENV = "CSD_BG_STATISTICS_URL";
 
-export const KNOWN_STEPS = ["scrape", "download", "extract"] as const;
+export const KNOWN_STEPS = ["scrape", "download", "extract", "vectors"] as const;
 export type PipelineStep = (typeof KNOWN_STEPS)[number];
 
 export interface FreeFloatLink {
@@ -52,6 +52,7 @@ export interface AppOptions {
   clearFailedDownloads?: boolean;
   clearFailedExtracts?: boolean;
   statisticsUrl?: string;
+  vectorsDir?: string;
 }
 
 export interface ScrapeSummary {
@@ -71,11 +72,22 @@ export interface ExtractSummary {
   rowsWritten: number;
 }
 
+export interface VectorsSummary {
+  issuerCount: number;
+  dateCount: number;
+  outputPath: string;
+  datesPath: string;
+  catalogPath: string;
+  manifestPath: string;
+  bytesWritten: number;
+}
+
 export interface PipelineRunResult {
   exitCode: number;
   scrape?: ScrapeSummary;
   download?: DownloadSummary;
   extract?: ExtractSummary;
+  vectors?: VectorsSummary;
 }
 
 export interface Logger {

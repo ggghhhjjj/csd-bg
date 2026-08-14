@@ -19,8 +19,8 @@ services:
       - ${DATA_HOST_PATH:-/volume1/homes/dandelion/docker/csd-bg}:/data
     
     # Node.js scraper (packages/cli entrypoint)
-    # Synology: docker compose run --rm csd-bg-scraper scrape,download,extract
-    command: ["scrape,download,extract", "--db", "/data/free_float.db", "--pdf-dir", "/data/pdfs", "--log", "/data/app.log", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
+    # Synology: docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
+    command: ["scrape,download,extract,vectors", "--db", "/data/free_float.db", "--pdf-dir", "/data/pdfs", "--log", "/data/app.log", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
     
     # Environment variables (if needed)
     env_file:

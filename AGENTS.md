@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository.
 
 ## Purpose
 
-TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, optionally **appends new rows to CSV in verbose (DEBUG) mode**, **downloads PDF files** into `data/pdfs/{date}.pdf`, and **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`. Default run uses a step pipeline (`scrape,download,extract`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
+TypeScript/Node.js batch app that scrapes **Free Float PDF links** from the CSD-BG website (`csd-bg.bg`), deduplicates by date in **SQLite**, optionally **appends new rows to CSV in verbose (DEBUG) mode**, **downloads PDF files** into `data/pdfs/{date}.pdf`, **extracts** issuer/issue metrics into `stock_issue` / `issuer` / `stock_issue_daily`, and **exports** LZ4-compressed Apache Arrow vectors into `data/vectors/` for offline charting. Default run uses a step pipeline (`scrape,download,extract,vectors`) with **POST-based pagination** (no browser) and **early stopping** when consecutive duplicates indicate an incremental sync is complete.
 
 Entry point: `packages/cli/dist/index.js` (source: `packages/cli/src/index.ts`). Core logic lives in `packages/core/src/`.
 
@@ -15,7 +15,8 @@ packages/
   core/                  # @csd-bg/core — scraper library
     src/
       app.ts             # FreeFloatScraperApp orchestrator
-      pipeline.ts        # Step parse/validate/run (scrape, download, extract)
+      pipeline.ts        # Step parse/validate/run (scrape, download, extract, vectors)
+      vector-exporter.ts # SQLite → catalog.json + Arrow IPC (dates + series)
       web-scraper.ts     # fetch + cheerio, POST pagination
       pdf-downloader.ts  # PDF GET with retries + random backoff
       pdf-storage.ts     # PDF read/write under data/pdfs/
@@ -48,6 +49,7 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The CLI l
 | `CSV_PATH` | CSV export path when verbose/DEBUG (often `/data/free_float.csv`; default: sibling of `DB_PATH`) |
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
 | `PDF_DIR` | Optional PDF directory (default: sibling `pdfs/` of `DB_PATH`) |
+| `VECTORS_DIR` | Arrow vector export directory (default: sibling `vectors/` of `DB_PATH`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
 | `CSD_BG_STATISTICS_URL` | Full member statistics page URL for scrape (GET/POST); set in `.env`, not committed |
 | `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`; overridden by `--log-level`). `DEBUG` also enables CSV export |
@@ -67,19 +69,20 @@ make dev-setup      # same as setup
 ### Run locally
 
 ```bash
-make run            # scrape,download,extract → data/free_float.db (incremental: --max-pages 5, threshold 10)
+make run            # scrape,download,extract,vectors → data/free_float.db (incremental: --max-pages 5, threshold 10)
 make run VERBOSE=1  # same + DEBUG logging and free_float.csv export
 make run MAX_PAGES=20   # catch up after a gap
 make run MAX_PAGES=2 EARLY_STOPPING_THRESHOLD=5   # match docker-compose limits
-node packages/cli/dist/index.js scrape,download,extract --db ./data/free_float.db
+node packages/cli/dist/index.js scrape,download,extract,vectors --db ./data/free_float.db
 node packages/cli/dist/index.js download --db ./data/free_float.db
 node packages/cli/dist/index.js extract --db ./data/free_float.db
+node packages/cli/dist/index.js vectors --db ./data/free_float.db
 node packages/cli/dist/index.js scrape --db ./data/free_float.db
 node packages/cli/dist/index.js scrape --verbose --db ./data/free_float.db   # also writes CSV
 node packages/cli/dist/index.js --help
 ```
 
-Common flags: `--verbose`, `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`, `--csv PATH` (verbose only).
+Common flags: `--verbose`, `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`, `--vectors-dir PATH`, `--csv PATH` (verbose only).
 
 ### Quality & tests
 
@@ -96,7 +99,7 @@ make ci             # quality + test-coverage
 
 ```bash
 make docker-build
-make docker-run              # mount ./data → /data (default CMD: scrape,download,extract)
+make docker-run              # mount ./data → /data (default CMD: scrape,download,extract,vectors)
 make docker-compose-up       # foreground
 make docker-compose-up-detached
 make docker-compose-down
@@ -107,10 +110,10 @@ make assembly                # build/csd-bg-synology.zip for NAS deploy
 Synology / scheduled one-shot:
 
 ```bash
-cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract
+cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 ```
 
-Compose `command` includes `scrape,download,extract` plus scrape limits (`--max-pages`, `--early-stopping-threshold`); adjust there for production batches, not in Dockerfile `CMD` alone.
+Compose `command` includes `scrape,download,extract,vectors` plus scrape limits (`--max-pages`, `--early-stopping-threshold`); adjust there for production batches, not in Dockerfile `CMD` alone.
 
 ## Testing conventions
 
@@ -119,14 +122,15 @@ Compose `command` includes `scrape,download,extract` plus scrape limits (`--max-
 - **Fixtures**: `tests/fixtures/csd_home.html`, `FREE_FLOAT_*.pdf`, `FREE_FLOAT_20260723.md` — keep scraper/extractor tests offline; do not replace with live site calls in unit tests.
 - **Coverage**: `npm run test:coverage` covers `packages/core/src` and `packages/cli/src`.
 
-When adding features, extend the matching test file (`web-scraper.test.ts`, `database-manager.test.ts`, `app.test.ts`, `pipeline.test.ts`, `pdf-downloader.test.ts`, `pdf-extractor.test.ts`, `early-stopping.test.ts`).
+When adding features, extend the matching test file (`web-scraper.test.ts`, `database-manager.test.ts`, `app.test.ts`, `pipeline.test.ts`, `pdf-downloader.test.ts`, `pdf-extractor.test.ts`, `early-stopping.test.ts`, `vector-exporter.test.ts`).
 
 ## Architecture notes for changes
 
-- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract`; register future steps there and in `FreeFloatScraperApp.run`.
+- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract,vectors`; register future steps there and in `FreeFloatScraperApp.run`.
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
 - **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
+- **Vectors**: `VectorExporter` — full rebuild of `catalog.json`, `manifest.json`, `dates.arrow`, and `free_float_vectors.arrow` under `vectorsDir`. ISIN mapping is static JSON; numeric series use shared date axis with nulls for missing cells.
 - **DB**: `free_float` (date unique), `pdf_content` (download/extract metadata; PDF bytes on disk at `{pdfDir}/{date}.pdf`), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
 - **CSV**: Optional export in verbose/DEBUG mode only. Header `date,url`; append-only for new records during scrape. SQLite is the source of truth; CSV is not read back by the pipeline. Enable via `--verbose`, `--log-level DEBUG`, `LOG_LEVEL=DEBUG`, or `exportCsv: true` in the API.
 - **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).

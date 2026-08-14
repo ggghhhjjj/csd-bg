@@ -24,12 +24,12 @@ export function buildProgram(): Command {
 
   program
     .name("csd-bg")
-    .description("CSD-BG Free Float pipeline - scrape, download, and extract PDF content")
+    .description("CSD-BG Free Float pipeline - scrape, download, extract, and export vectors")
     .version("2.0.0")
     .argument(
       "[steps]",
-      `Comma-separated pipeline steps (default: scrape,download,extract; known: ${KNOWN_STEPS.join(", ")})`,
-      "scrape,download,extract",
+      `Comma-separated pipeline steps (default: scrape,download,extract,vectors; known: ${KNOWN_STEPS.join(", ")})`,
+      "scrape,download,extract,vectors",
     )
     .option("-v, --verbose", "Enable debug logging and CSV export of scraped records")
     .option("--csv <path>", "CSV export path (verbose mode only; default: free_float.csv next to --db)")
@@ -47,6 +47,7 @@ export function buildProgram(): Command {
     .option("--clear-failed-downloads", "Clear failed download marks before download")
     .option("--clear-failed-extracts", "Clear failed extract marks before extract")
     .option("--pdf-dir <path>", "Directory for downloaded PDF files (default: sibling pdfs/ of --db)")
+    .option("--vectors-dir <path>", "Directory for Arrow vector export (default: sibling vectors/ of --db)")
     .action(async (stepsArg: string, options) => {
       let parsedSteps;
       try {
@@ -102,6 +103,7 @@ export function buildProgram(): Command {
           clearFailedDownloads: Boolean(options.clearFailedDownloads),
           clearFailedExtracts: Boolean(options.clearFailedExtracts),
           pdfDir: options.pdfDir ? resolve(options.pdfDir) : undefined,
+          vectorsDir: options.vectorsDir ? resolve(options.vectorsDir) : undefined,
         },
         logger,
       );
@@ -122,6 +124,11 @@ export function buildProgram(): Command {
       if (result.extract) {
         logger.info(
           `Extract: ok=${result.extract.extracted} failed=${result.extract.failed} rows=${result.extract.rowsWritten}`,
+        );
+      }
+      if (result.vectors) {
+        logger.info(
+          `Vectors: issuers=${result.vectors.issuerCount} dates=${result.vectors.dateCount} bytes=${result.vectors.bytesWritten}`,
         );
       }
 

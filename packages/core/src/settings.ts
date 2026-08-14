@@ -5,6 +5,7 @@ import { CSD_BG_STATISTICS_URL_ENV } from "./types.js";
 
 export const PDF_DIR_ENV = "PDF_DIR";
 export const CSV_PATH_ENV = "CSV_PATH";
+export const VECTORS_DIR_ENV = "VECTORS_DIR";
 
 export function baseUrlFromStatisticsUrl(statisticsUrl: string): string {
   let parsed: URL;
@@ -79,4 +80,24 @@ export function resolveCsvPath(explicitPath?: string | null, dbPath?: string): s
   }
 
   return join(dirname(dbPath), "free_float.csv");
+}
+
+export function resolveVectorsDir(explicitDir?: string | null, dbPath?: string): string {
+  const raw = (
+    explicitDir !== undefined && explicitDir !== null
+      ? explicitDir
+      : process.env[VECTORS_DIR_ENV] ?? ""
+  ).trim();
+
+  if (raw) {
+    return raw;
+  }
+
+  if (!dbPath) {
+    throw new ScraperConfigError(
+      "Vectors directory is not configured. Set VECTORS_DIR, pass --vectors-dir, or provide a database path.",
+    );
+  }
+
+  return join(dirname(dbPath), "vectors");
 }

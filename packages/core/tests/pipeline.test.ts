@@ -3,14 +3,20 @@ import { describe, expect, it } from "vitest";
 import { PipelineError, parseSteps, runPipeline, KNOWN_STEPS } from "@csd-bg/core";
 
 describe("parseSteps", () => {
-  it("parses scrape,download,extract", () => {
-    expect(parseSteps("scrape,download,extract")).toEqual(["scrape", "download", "extract"]);
+  it("parses scrape,download,extract,vectors", () => {
+    expect(parseSteps("scrape,download,extract,vectors")).toEqual([
+      "scrape",
+      "download",
+      "extract",
+      "vectors",
+    ]);
   });
 
   it("parses single steps", () => {
     expect(parseSteps("download")).toEqual(["download"]);
     expect(parseSteps("scrape")).toEqual(["scrape"]);
     expect(parseSteps("extract")).toEqual(["extract"]);
+    expect(parseSteps("vectors")).toEqual(["vectors"]);
   });
 
   it("trims whitespace", () => {
@@ -36,7 +42,7 @@ describe("parseSteps", () => {
   });
 
   it("exports known steps", () => {
-    expect(KNOWN_STEPS).toEqual(["scrape", "download", "extract"]);
+    expect(KNOWN_STEPS).toEqual(["scrape", "download", "extract", "vectors"]);
   });
 });
 

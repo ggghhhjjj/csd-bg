@@ -73,10 +73,10 @@ export class PipelineRunner {
 export function buildCronSnippet(): string {
   const paths = getResolvedPaths();
   return `# Run daily at 06:30 (Synology / Linux cron)
-30 6 * * * cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract --log ${paths.logPath}
+30 6 * * * cd /volume2/docker/csd-bg && docker compose run --rm csd-bg-scraper scrape,download,extract,vectors --log ${paths.logPath}
 
 # Local Node CLI equivalent
-# node packages/cli/dist/index.js scrape,download,extract --db ${paths.dbPath} --log ${paths.logPath}
+# node packages/cli/dist/index.js scrape,download,extract,vectors --db ${paths.dbPath} --log ${paths.logPath}
 # Verbose run (also writes free_float.csv):
-# node packages/cli/dist/index.js scrape,download,extract --verbose --db ${paths.dbPath} --log ${paths.logPath}`;
+# node packages/cli/dist/index.js scrape,download,extract,vectors --verbose --db ${paths.dbPath} --log ${paths.logPath}`;
 }

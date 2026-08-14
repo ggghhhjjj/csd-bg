@@ -5,7 +5,7 @@ export { KNOWN_STEPS };
 
 export function parseSteps(raw: string | null | undefined): PipelineStep[] {
   if (raw === null || raw === undefined || !String(raw).trim()) {
-    throw new PipelineError("Steps argument is required (e.g. scrape,download,extract)");
+    throw new PipelineError("Steps argument is required (e.g. scrape,download,extract,vectors)");
   }
 
   const parts = String(raw)
@@ -14,7 +14,7 @@ export function parseSteps(raw: string | null | undefined): PipelineStep[] {
     .filter(Boolean);
 
   if (parts.length === 0) {
-    throw new PipelineError("Steps argument is required (e.g. scrape,download,extract)");
+    throw new PipelineError("Steps argument is required (e.g. scrape,download,extract,vectors)");
   }
 
   const known = new Set<string>(KNOWN_STEPS);

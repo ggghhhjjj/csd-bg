@@ -70,9 +70,10 @@ jobs:
           LOG_LEVEL: INFO
         run: |
           set +e
-          node packages/cli/dist/index.js scrape,download,extract \
+          node packages/cli/dist/index.js scrape,download,extract,vectors \
             --db ./data/free_float.db \
             --pdf-dir ./data/pdfs \
+            --vectors-dir ./data/vectors \
             --log ./data/app.log \
             --max-pages 5 \
             --early-stopping-threshold 10 \
@@ -87,13 +88,13 @@ jobs:
           git lfs install --local
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/free_float.db data/pdfs/
+          git add data/free_float.db data/pdfs/ data/vectors/
           if git diff --staged --quiet -- data/free_float.db; then
             echo "No database changes; skipping commit"
             exit 0
           fi
           git pull --rebase --autostash origin main
-          git add data/free_float.db data/pdfs/
+          git add data/free_float.db data/pdfs/ data/vectors/
           if git diff --staged --quiet -- data/free_float.db; then
             echo "No database changes after rebase; skipping commit"
             exit 0

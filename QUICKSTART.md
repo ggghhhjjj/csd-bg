@@ -16,7 +16,7 @@ cp .env.example .env
 # Edit .env and set CSD_BG_STATISTICS_URL
 
 # 3. Run the application
-docker compose run --rm csd-bg-scraper scrape,download,extract
+docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 
 # 4. Check output
 ls -l data/
@@ -39,7 +39,7 @@ cp .env.example .env
 # Edit .env and set CSD_BG_STATISTICS_URL
 
 # 3. Run the application
-node packages/cli/dist/index.js scrape,download,extract \
+node packages/cli/dist/index.js scrape,download,extract,vectors \
   --db ./data/free_float.db \
   --log ./data/app.log
 
@@ -151,13 +151,13 @@ docker ps
 
 ```bash
 # Run with custom timeout
-node packages/cli/dist/index.js scrape,download,extract \
+node packages/cli/dist/index.js scrape,download,extract,vectors \
   --db ./data/test.db \
   --log ./data/app.log \
   --timeout 60
 
 # Verbose run (also writes CSV)
-node packages/cli/dist/index.js scrape,download,extract \
+node packages/cli/dist/index.js scrape,download,extract,vectors \
   --verbose \
   --db ./data/test.db \
   --log ./data/app.log

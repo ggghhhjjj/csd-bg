@@ -232,10 +232,14 @@ describe("FreeFloatScraperApp", () => {
       calls.push("extract");
       return 0;
     });
+    vi.spyOn(app, "runVectors").mockImplementation(async () => {
+      calls.push("vectors");
+      return 0;
+    });
 
-    const result = await app.run(["scrape", "download", "extract"]);
+    const result = await app.run(["scrape", "download", "extract", "vectors"]);
 
     expect(result.exitCode).toBe(0);
-    expect(calls).toEqual(["scrape", "download", "extract"]);
+    expect(calls).toEqual(["scrape", "download", "extract", "vectors"]);
   });
 });
