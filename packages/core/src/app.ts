@@ -74,10 +74,7 @@ export class FreeFloatScraperApp {
 
   setup(includeCsv = true): void {
     this.dbManager.using((db) => {
-      const { migratedPdfs } = db.initializeTables();
-      if (migratedPdfs > 0) {
-        this.logger.info(`Migrated ${migratedPdfs} PDF(s) from database to ${this.dbManager.pdfDir}`);
-      }
+      db.initializeTables();
     });
 
     if (includeCsv && this.csvManager) {

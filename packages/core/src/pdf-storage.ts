@@ -26,7 +26,3 @@ export function deletePdf(pdfDir: string, date: string): void {
     unlinkSync(path);
   }
 }
-
-export function pdfFileExists(pdfDir: string, date: string): boolean {
-  return existsSync(resolvePdfPath(pdfDir, date));
-}

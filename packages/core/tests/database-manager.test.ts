@@ -2,7 +2,6 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DatabaseManager, DatabaseManagerError } from "@csd-bg/core";
@@ -187,43 +186,5 @@ describe("DatabaseManager", () => {
       expect(manager.clearFailedPdfExtractions()).toBe(1);
       expect(manager.getPendingPdfExtractions()).toHaveLength(1);
     });
-  });
-
-  it("migrates legacy pdf blobs to files on initialize", () => {
-    const db = createManager();
-    db.using((manager) => {
-      manager.initializeTables();
-      const rowId = manager.insertRecord("2025-12-04", "https://example.com/a.pdf")!;
-      const content = Buffer.from("%PDF-legacy");
-      const raw = new Database(dbPath);
-      raw
-        .prepare(
-          `
-          INSERT INTO pdf_content (
-            free_float_id, content, size_bytes, status, attempts, updated_at
-          ) VALUES (?, ?, ?, 'downloaded', 1, CURRENT_TIMESTAMP)
-        `,
-        )
-        .run(rowId, content, content.length);
-      raw.close();
-    });
-
-    const migratedDb = createManager();
-    let migratedPdfs = 0;
-    migratedDb.using((manager) => {
-      ({ migratedPdfs } = manager.initializeTables());
-    });
-    expect(migratedPdfs).toBe(1);
-
-    const pdfPath = join(pdfDir, "2025-12-04.pdf");
-    expect(existsSync(pdfPath)).toBe(true);
-    expect(readFileSync(pdfPath).equals(Buffer.from("%PDF-legacy"))).toBe(true);
-
-    const raw = new Database(dbPath);
-    const row = raw
-      .prepare("SELECT content FROM pdf_content WHERE free_float_id = (SELECT id FROM free_float WHERE date = ?)")
-      .get("2025-12-04") as { content: Buffer | null };
-    expect(row.content).toBeNull();
-    raw.close();
   });
 });

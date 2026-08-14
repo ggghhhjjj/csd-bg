@@ -127,7 +127,7 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
 - **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
-- **DB**: `free_float` (date unique), `pdf_content` (download/extract status; legacy `content` BLOB migrated to disk), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
+- **DB**: `free_float` (date unique), `pdf_content` (download/extract metadata; PDF bytes on disk at `{pdfDir}/{date}.pdf`), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
 - **CSV**: Optional export in verbose/DEBUG mode only. Header `date,url`; append-only for new records during scrape. SQLite is the source of truth; CSV is not read back by the pipeline. Enable via `--verbose`, `--log-level DEBUG`, `LOG_LEVEL=DEBUG`, or `exportCsv: true` in the API.
 - **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).
 

@@ -3,12 +3,8 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { DatabaseManagerError } from "./errors.js";
-import { deletePdf, pdfFileExists, readPdf, writePdf } from "./pdf-storage.js";
+import { deletePdf, readPdf, writePdf } from "./pdf-storage.js";
 import type { ExtractedRow, FreeFloatRecord, PendingPdfDownload, PendingPdfExtraction } from "./types.js";
-
-export interface InitializeTablesResult {
-  migratedPdfs: number;
-}
 
 export class DatabaseManager {
   private db: Database.Database | null = null;
@@ -55,7 +51,7 @@ export class DatabaseManager {
     return this.db;
   }
 
-  initializeTables(): InitializeTablesResult {
+  initializeTables(): void {
     const db = this.requireConnection();
 
     try {
@@ -69,7 +65,6 @@ export class DatabaseManager {
 
         CREATE TABLE IF NOT EXISTS pdf_content (
           free_float_id INTEGER PRIMARY KEY,
-          content BLOB,
           size_bytes INTEGER,
           status TEXT NOT NULL CHECK(status IN ('downloaded', 'failed')),
           attempts INTEGER NOT NULL DEFAULT 0,
@@ -117,11 +112,6 @@ export class DatabaseManager {
       `);
 
       this.migratePdfContentExtractColumns(db);
-      const migratedPdfs = this.migratePdfBlobsToFiles(db);
-      if (migratedPdfs > 0) {
-        db.exec("VACUUM");
-      }
-      return { migratedPdfs };
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to initialize tables: ${error instanceof Error ? error.message : String(error)}`,
@@ -145,48 +135,6 @@ export class DatabaseManager {
         db.exec(`ALTER TABLE pdf_content ADD COLUMN ${column} ${typedef}`);
       }
     }
-  }
-
-  private migratePdfBlobsToFiles(db: Database.Database): number {
-    const rows = db
-      .prepare(
-        `
-        SELECT pc.free_float_id, ff.date, pc.content
-        FROM pdf_content pc
-        INNER JOIN free_float ff ON ff.id = pc.free_float_id
-        WHERE pc.status = 'downloaded'
-          AND pc.content IS NOT NULL
-      `,
-      )
-      .all() as Array<{ free_float_id: number; date: string; content: Buffer | Uint8Array }>;
-
-    if (rows.length === 0) {
-      return 0;
-    }
-
-    const clearBlob = db.prepare(
-      `
-      UPDATE pdf_content
-      SET content = NULL,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE free_float_id = ?
-    `,
-    );
-
-    const migrate = db.transaction((blobRows: typeof rows) => {
-      let migrated = 0;
-      for (const row of blobRows) {
-        const content = Buffer.isBuffer(row.content) ? row.content : Buffer.from(row.content);
-        if (!pdfFileExists(this.pdfDir, row.date)) {
-          writePdf(this.pdfDir, row.date, content);
-        }
-        clearBlob.run(row.free_float_id);
-        migrated += 1;
-      }
-      return migrated;
-    });
-
-    return migrate(rows);
   }
 
   private getFreeFloatDate(freeFloatId: number): string | null {
@@ -290,14 +238,13 @@ export class DatabaseManager {
       db.prepare(
         `
         INSERT INTO pdf_content (
-          free_float_id, content, size_bytes, status, attempts,
+          free_float_id, size_bytes, status, attempts,
           last_error, downloaded_at, failed_at, updated_at
         ) VALUES (
-          ?, NULL, ?, 'downloaded', ?,
+          ?, ?, 'downloaded', ?,
           NULL, CURRENT_TIMESTAMP, NULL, CURRENT_TIMESTAMP
         )
         ON CONFLICT(free_float_id) DO UPDATE SET
-          content = NULL,
           size_bytes = excluded.size_bytes,
           status = 'downloaded',
           attempts = excluded.attempts,
@@ -325,14 +272,13 @@ export class DatabaseManager {
       db.prepare(
         `
         INSERT INTO pdf_content (
-          free_float_id, content, size_bytes, status, attempts,
+          free_float_id, size_bytes, status, attempts,
           last_error, downloaded_at, failed_at, updated_at
         ) VALUES (
-          ?, NULL, NULL, 'failed', ?,
+          ?, NULL, 'failed', ?,
           ?, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
         ON CONFLICT(free_float_id) DO UPDATE SET
-          content = NULL,
           size_bytes = NULL,
           status = 'failed',
           attempts = excluded.attempts,

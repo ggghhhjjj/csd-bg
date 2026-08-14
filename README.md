@@ -432,7 +432,6 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | Column             | Type      | Description                          |
 |--------------------|-----------|--------------------------------------|
 | free_float_id      | INTEGER   | PK / FK → `free_float.id`            |
-| content            | BLOB      | Legacy PDF bytes (migrated to disk; NULL for new rows) |
 | size_bytes         | INTEGER   | Content length                       |
 | status             | TEXT      | `downloaded` or `failed`             |
 | attempts           | INTEGER   | Download attempts                    |
@@ -445,7 +444,11 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | created_at         | TIMESTAMP | Row created                          |
 | updated_at         | TIMESTAMP | Last update                          |
 
-PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). On first run after upgrade, any legacy BLOBs in `content` are exported to that folder, cleared from the database, and `VACUUM` reclaims space.
+PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). Download/extract metadata is stored in `pdf_content`.
+
+### Database migrations
+
+One-time upgrade for databases that still have the legacy `pdf_content.content` BLOB column: run [`scripts/drop-pdf-content-column.sh`](scripts/drop-pdf-content-column.sh) against each DB after confirming all blobs are on disk (`content IS NULL` everywhere). New installs created by the current app never include that column.
 
 ### Table: `stock_issue`
 
