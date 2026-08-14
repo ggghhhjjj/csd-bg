@@ -61,6 +61,8 @@ data/*
 data/pdfs/*
 !data/pdfs/
 !data/pdfs/*.pdf
+!data/vectors/
+!data/vectors/*
 !data/free_float.db
 output/
 
