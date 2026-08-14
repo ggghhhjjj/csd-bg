@@ -23,23 +23,22 @@ jobs:
         id: checkout
         uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
           fetch-depth: 1
 
-      - name: Reconcile data with git HEAD
-        run: |
-          git lfs pull --include="data/free_float.db,data/pdfs/*"
-          git checkout HEAD -- data/free_float.db data/pdfs
-
-      - name: Restore data cache
+      - name: Restore LFS object cache
+        id: lfs-cache
         uses: actions/cache/restore@v5
         with:
-          path: data
-          key: csd-bg-data-${{ github.run_id }}
-          restore-keys: csd-bg-data-
+          path: .git/lfs
+          key: csd-bg-lfs-${{ github.run_id }}
+          restore-keys: csd-bg-lfs-
 
-      - name: Reconcile after cache restore
-        run: git checkout HEAD -- data/free_float.db data/pdfs
+      - name: Git LFS pull
+        run: |
+          git lfs install --local
+          mkdir -p data/pdfs
+          git lfs pull --include="data/free_float.db,data/pdfs/*"
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -52,9 +51,6 @@ jobs:
 
       - name: Build packages
         run: npm run build
-
-      - name: Prepare data directory
-        run: mkdir -p data/pdfs
 
       - name: Verify CSD_BG_STATISTICS_URL secret
         env:
@@ -88,6 +84,7 @@ jobs:
       - name: Commit data if database changed
         id: push
         run: |
+          git lfs install --local
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/free_float.db data/pdfs/
@@ -108,12 +105,12 @@ jobs:
         if: steps.pipeline.outputs.exit_code != '0'
         run: exit 1
 
-      - name: Save data cache
+      - name: Save LFS object cache
         if: success()
         uses: actions/cache/save@v5
         with:
-          path: data
-          key: csd-bg-data-${{ github.run_id }}
+          path: .git/lfs
+          key: csd-bg-lfs-${{ github.run_id }}
 
       - name: Upload app.log on failure
         if: failure()

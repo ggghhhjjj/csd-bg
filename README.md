@@ -367,7 +367,7 @@ The recommended production setup runs on **GitHub-hosted Actions** daily at **19
 
 | Phase | Behavior |
 |-------|----------|
-| Data sync | Checkout `main` + LFS first; git HEAD always wins over Actions cache |
+| Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/` from local LFS objects (remote fetch only for OIDs not in cache). |
 | Pipeline | `scrape,download,extract` with `--max-pages 5`, `--early-stopping-threshold 10` |
 | Commit | Push only if `data/free_float.db` changed (includes new PDFs in the same commit) |
 | Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
@@ -385,7 +385,7 @@ When any step fails (including Git LFS quota errors at checkout or push):
 2. **`app.log` artifact** — download from the run page (7-day retention; may be missing if failure occurred before the pipeline ran).
 3. **Job summary** — step outcomes, last 200 lines of `app.log` when present, and an LFS quota hint when checkout or push fails.
 
-After a failure, you can push manual corrections to `data/` on `main`; the next run starts from that git state, not a stale cache.
+After a failure, you can push manual corrections to `data/` on `main`; the next run’s `git lfs pull` downloads only LFS objects not already in the cached `.git/lfs` store.
 
 ### Synology DSM
 
