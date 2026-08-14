@@ -1,0 +1,14 @@
+{
+  "fields": [
+    {
+      "name": "date",
+      "type": {
+        "unit": 0
+      },
+      "nullable": true,
+      "metadata": {}
+    }
+  ],
+  "metadata": {},
+  "dictionaries": {}
+}
