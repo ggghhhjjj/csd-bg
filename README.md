@@ -446,10 +446,6 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 
 PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). Download/extract metadata is stored in `pdf_content`.
 
-### Database migrations
-
-One-time upgrade for databases that still have the legacy `pdf_content.content` BLOB column: run [`scripts/drop-pdf-content-column.sh`](scripts/drop-pdf-content-column.sh) against each DB after confirming all blobs are on disk (`content IS NULL` everywhere). New installs created by the current app never include that column.
-
 ### Table: `stock_issue`
 
 | Column     | Type      | Description              |
