@@ -167,6 +167,7 @@ function buildMetricGrids(
     free_float: number | null;
     shareholders: number | null;
   }>,
+  idToRowIndex: Map<number, number>,
 ): {
   total_shares: Array<Array<number | null>>;
   free_float: Array<Array<number | null>>;
@@ -191,11 +192,13 @@ function buildMetricGrids(
 
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
-    const issuerIndex = row.stock_issue_id - 1;
+    const issuerIndex = idToRowIndex.get(row.stock_issue_id);
     const dateIndex = index % dateCount;
 
-    if (issuerIndex < 0 || issuerIndex >= issuerCount) {
-      throw new VectorExporterError(`Unexpected stock_issue_id: ${row.stock_issue_id}`);
+    if (issuerIndex === undefined) {
+      throw new VectorExporterError(
+        `stock_issue_id ${row.stock_issue_id} not found in catalog`,
+      );
     }
 
     total_shares[issuerIndex][dateIndex] = row.total_shares;
@@ -228,16 +231,12 @@ export class VectorExporter {
       throw new VectorExporterError("No report dates found for vector export");
     }
 
+    const idToRowIndex = new Map<number, number>();
     for (let index = 0; index < catalogRows.length; index += 1) {
-      const expectedId = index + 1;
-      if (catalogRows[index].id !== expectedId) {
-        throw new VectorExporterError(
-          `Non-dense stock_issue.id sequence at index ${index}: expected ${expectedId}, got ${catalogRows[index].id}`,
-        );
-      }
+      idToRowIndex.set(catalogRows[index].id, index);
     }
 
-    const grids = buildMetricGrids(catalogRows.length, dates.length, gridRows);
+    const grids = buildMetricGrids(catalogRows.length, dates.length, gridRows, idToRowIndex);
     const datesTable = buildDatesTable(dates);
     const seriesTable = buildSeriesTable(catalogRows.length, dates.length, grids);
 

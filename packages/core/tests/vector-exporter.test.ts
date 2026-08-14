@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import lz4js from "lz4js";
+import Database from "better-sqlite3";
 import { CompressionType, compressionRegistry, tableFromIPC } from "apache-arrow";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -212,6 +213,76 @@ describe("VectorExporter", () => {
       expect(issuerTwo?.get(0)).toBe(2000);
       expect(issuerTwo?.isValid(1)).toBe(false);
       expect(issuerTwo?.get(2)).toBe(2200);
+    } finally {
+      db.disconnect();
+    }
+  });
+
+  it("exports successfully when stock_issue.id has gaps", () => {
+    const db = seedDatabase();
+    try {
+      db.disconnect();
+      const sqlite = new Database(dbPath);
+      let newStockIssueId = 0;
+      try {
+        sqlite.exec(`
+          DELETE FROM issuer WHERE stock_issue_id = 1;
+          DELETE FROM stock_issue_daily WHERE stock_issue_id = 1;
+          DELETE FROM stock_issue WHERE id = 1;
+          INSERT INTO stock_issue (isin) VALUES ('BG1100000001');
+        `);
+        const row = sqlite
+          .prepare("SELECT id FROM stock_issue WHERE isin = ?")
+          .get("BG1100000001") as { id: number };
+        newStockIssueId = row.id;
+        sqlite
+          .prepare(
+            `INSERT INTO issuer (stock_issue_id, free_float_id, name) VALUES (?, ?, ?)`,
+          )
+          .run(newStockIssueId, 1, "Issuer One");
+        sqlite
+          .prepare(
+            `INSERT INTO issuer (stock_issue_id, free_float_id, name) VALUES (?, ?, ?)`,
+          )
+          .run(newStockIssueId, 2, "Issuer One Renamed");
+        sqlite
+          .prepare(
+            `INSERT INTO stock_issue_daily
+             (stock_issue_id, free_float_id, total_shares, free_float, shareholders)
+             VALUES (?, ?, ?, ?, ?)`,
+          )
+          .run(newStockIssueId, 1, 1000, 100, 10);
+        sqlite
+          .prepare(
+            `INSERT INTO stock_issue_daily
+             (stock_issue_id, free_float_id, total_shares, free_float, shareholders)
+             VALUES (?, ?, ?, ?, ?)`,
+          )
+          .run(newStockIssueId, 2, 1100, 110, 11);
+      } finally {
+        sqlite.close();
+      }
+      db.connect();
+
+      const summary = new VectorExporter(db, vectorsDir).export();
+
+      const catalog = JSON.parse(readFileSync(summary.catalogPath, "utf8")) as {
+        issuers: Array<{ id: number; isin: string }>;
+      };
+      expect(catalog.issuers.map((issuer) => issuer.id)).toEqual([2, newStockIssueId]);
+      expect(newStockIssueId).toBe(3);
+
+      const restored = loadRestoredIssuerSeries(vectorsDir, newStockIssueId);
+      expect(restored.find((point) => point.date === "2026-01-01")?.total_shares).toBe(1000);
+      expect(restored.find((point) => point.date === "2026-01-02")?.total_shares).toBe(1100);
+      expect(restored.find((point) => point.date === "2026-01-03")?.total_shares).toBeNull();
+
+      const seriesTable = tableFromIPC(readFileSync(summary.outputPath));
+      const catalogRowIndex = catalog.issuers.findIndex((issuer) => issuer.id === newStockIssueId);
+      expect(catalogRowIndex).toBe(1);
+      const issuerOne = seriesTable.getChild("total_shares")?.get(catalogRowIndex);
+      expect(issuerOne?.get(0)).toBe(1000);
+      expect(issuerOne?.get(1)).toBe(1100);
     } finally {
       db.disconnect();
     }

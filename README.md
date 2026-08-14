@@ -487,7 +487,7 @@ After extract, the pipeline exports chart-ready artifacts under `data/vectors/` 
 | `dates.arrow` | Shared report-date axis (LZ4 IPC, Date32 column) |
 | `free_float_vectors.arrow` | Numeric series only: `total_shares`, `free_float`, `shareholders` as FixedSizeList&lt;Int32&gt; per issuer |
 
-Row index `i` in the series file maps to `catalog.issuers[i]`. Missing `(issuer, date)` cells are Arrow nulls. Read with [`apache-arrow`](https://arrow.apache.org/docs/js/) in Node or the browser.
+Row index `i` in the series file maps to `catalog.issuers[i]`. `catalog.issuers[i].id` is the database primary key and may be non-contiguous; always resolve series rows by catalog index or lookup, not by `id - 1`. Missing `(issuer, date)` cells are Arrow nulls. Read with [`apache-arrow`](https://arrow.apache.org/docs/js/) in Node or the browser.
 
 ## CSV export (verbose mode)
 
