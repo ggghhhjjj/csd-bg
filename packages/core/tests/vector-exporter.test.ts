@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,13 +92,37 @@ function queryDbTrendByStockIssueId(db: DatabaseManager, stockIssueId: number): 
   return db.queryIssuerTrend(catalogRow.isin);
 }
 
-function vectorArtifactsExist(vectorsDir: string): boolean {
-  return [
-    join(vectorsDir, "catalog.json"),
-    join(vectorsDir, "manifest.json"),
-    join(vectorsDir, "dates.arrow"),
-    join(vectorsDir, "free_float_vectors.arrow"),
-  ].every((path) => existsSync(path));
+function readFileHead(path: string, length: number): Buffer | null {
+  if (!existsSync(path)) {
+    return null;
+  }
+  const fd = openSync(path, "r");
+  try {
+    const buffer = Buffer.alloc(length);
+    const bytesRead = readSync(fd, buffer, 0, length, 0);
+    return bytesRead > 0 ? buffer.subarray(0, bytesRead) : buffer;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function isSqliteDatabase(path: string): boolean {
+  const head = readFileHead(path, 15);
+  return head?.toString("utf8") === "SQLite format 3";
+}
+
+function isArrowIpcFile(path: string): boolean {
+  const head = readFileHead(path, 6);
+  return head?.toString("ascii") === "ARROW1";
+}
+
+function realVectorArtifactsAvailable(vectorsDir: string): boolean {
+  return (
+    existsSync(join(vectorsDir, "catalog.json")) &&
+    existsSync(join(vectorsDir, "manifest.json")) &&
+    isArrowIpcFile(join(vectorsDir, "dates.arrow")) &&
+    isArrowIpcFile(join(vectorsDir, "free_float_vectors.arrow"))
+  );
 }
 
 describe("VectorExporter", () => {
@@ -289,7 +313,8 @@ describe("VectorExporter", () => {
   });
 });
 
-const realDataAvailable = existsSync(REAL_DB_PATH) && vectorArtifactsExist(REAL_VECTORS_DIR);
+const realDataAvailable =
+  isSqliteDatabase(REAL_DB_PATH) && realVectorArtifactsAvailable(REAL_VECTORS_DIR);
 
 describe.skipIf(!realDataAvailable)("VectorExporter real data round-trip", () => {
   const stockIssueId = 1;
