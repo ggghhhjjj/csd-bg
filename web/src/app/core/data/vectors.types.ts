@@ -81,3 +81,48 @@ export function metricAt(
         : dataset.shareholders;
   return values[offset];
 }
+
+export function firstLastInRange(
+  dataset: ParsedDataset,
+  metric: MetricId,
+  issuerIndex: number,
+  from: number,
+  to: number,
+): { first: number | null; last: number | null } {
+  const start = Math.max(0, Math.min(from, to));
+  const end = Math.min(dataset.dates.length - 1, Math.max(from, to));
+  let first: number | null = null;
+  let last: number | null = null;
+  for (let dateIndex = start; dateIndex <= end; dateIndex += 1) {
+    const value = metricAt(dataset, metric, issuerIndex, dateIndex);
+    if (value === null) {
+      continue;
+    }
+    if (first === null) {
+      first = value;
+    }
+    last = value;
+  }
+  return { first, last };
+}
+
+export function formatDelta(
+  first: number | null,
+  last: number | null,
+  asPercent: boolean,
+): string {
+  if (first === null || last === null) {
+    return '—';
+  }
+  const abs = last - first;
+  if (!asPercent) {
+    const sign = abs > 0 ? '+' : '';
+    return `${sign}${abs.toLocaleString()}`;
+  }
+  if (first === 0) {
+    return '—';
+  }
+  const percent = (abs / first) * 100;
+  const sign = percent > 0 ? '+' : '';
+  return `${sign}${percent.toFixed(2)}%`;
+}

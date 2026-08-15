@@ -35,7 +35,11 @@
       </button>
       <ul class="chart-panel__popup-rows">
         @for (row of popup.rows; track row.metric) {
-          <li>{{ labels[row.metric] }}: {{ delta(row.first, row.last) }}</li>
+          <li>
+            {{ labels[row.metric] }}:
+            {{ showPercent() ? row.percent : row.abs }}
+            ({{ showPercent() ? row.abs : row.percent }})
+          </li>
         }
       </ul>
       <button class="chart-panel__preset" type="button" (click)="closeCompare()">{{ closeLabel }}</button>

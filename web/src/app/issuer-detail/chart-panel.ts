@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts';
 
-import { metricAt, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
+import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
 import { VectorsStore } from '../core/data/vectors.store';
 import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
 
@@ -25,7 +25,13 @@ const METRIC_COLORS: Record<MetricId, string> = {
 interface ComparePopup {
   start: string;
   end: string;
-  rows: Array<{ metric: MetricId; first: number | null; last: number | null }>;
+  rows: Array<{
+    metric: MetricId;
+    first: number | null;
+    last: number | null;
+    abs: string;
+    percent: string;
+  }>;
 }
 
 @Component({
@@ -124,20 +130,6 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   protected closeCompare(): void {
     this.compare.set(null);
-  }
-
-  protected delta(first: number | null, last: number | null): string {
-    if (first === null || last === null) {
-      return '—';
-    }
-    const abs = last - first;
-    if (!this.showPercent()) {
-      return abs.toLocaleString();
-    }
-    if (first === 0) {
-      return '—';
-    }
-    return `${((abs / first) * 100).toFixed(2)}%`;
   }
 
   private applyRangeFromPreset(): void {
@@ -278,11 +270,16 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     this.compare.set({
       start: dates[from],
       end: dates[to],
-      rows: this.visibleMetrics().map((metric) => ({
-        metric,
-        first: metricAt(this.dataset(), metric, issuerIndex, from),
-        last: metricAt(this.dataset(), metric, issuerIndex, to),
-      })),
+      rows: this.visibleMetrics().map((metric) => {
+        const { first, last } = firstLastInRange(this.dataset(), metric, issuerIndex, from, to);
+        return {
+          metric,
+          first,
+          last,
+          abs: formatDelta(first, last, false),
+          percent: formatDelta(first, last, true),
+        };
+      }),
     });
   }
 
@@ -315,17 +312,34 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   private indexFromClientX(clientX: number): number {
     const dates = this.dataset().dates;
-    if (!this.chart) {
+    if (!this.chart || dates.length === 0) {
       return 0;
     }
-    const left = this.host().nativeElement.getBoundingClientRect().left;
-    const point = this.chart.convertFromPixel({ xAxisIndex: 0 }, [clientX - left, 0]);
+    const startIndex = indexForDate(dates, this.viewStart);
+    const endIndex = indexForDate(dates, this.viewEnd);
+    const localX = clientX - this.host().nativeElement.getBoundingClientRect().left;
+    const xStart = this.chart.convertToPixel({ xAxisIndex: 0 }, dates[startIndex]);
+    const xEnd = this.chart.convertToPixel({ xAxisIndex: 0 }, dates[endIndex]);
+    if (typeof xStart === 'number' && typeof xEnd === 'number' && xEnd !== xStart) {
+      const t = (localX - xStart) / (xEnd - xStart);
+      const idx = Math.round(startIndex + t * (endIndex - startIndex));
+      return Math.max(0, Math.min(dates.length - 1, idx));
+    }
+    const point = this.chart.convertFromPixel({ xAxisIndex: 0 }, [localX, 0]);
     const raw = Array.isArray(point) ? point[0] : point;
     if (typeof raw === 'string') {
       const found = dates.indexOf(raw);
-      return found >= 0 ? found : 0;
+      return found >= 0 ? found : startIndex;
     }
-    return Math.max(0, Math.min(dates.length - 1, Math.round(Number(raw))));
+    const asNumber = Number(raw);
+    if (Number.isFinite(asNumber)) {
+      const idx = Math.round(startIndex + asNumber);
+      if (idx >= startIndex && idx <= endIndex) {
+        return idx;
+      }
+      return Math.max(0, Math.min(dates.length - 1, Math.round(asNumber)));
+    }
+    return startIndex;
   }
 
   private touchDistance(touches: TouchList): number {
