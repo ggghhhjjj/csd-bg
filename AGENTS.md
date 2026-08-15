@@ -27,6 +27,11 @@ packages/
     tests/               # Vitest suite
   cli/                   # @csd-bg/cli — commander CLI
   vscode/                # csd-bg-vscode — VS Code extension
+web/                     # Angular 22 + Cordova-browser PWA (NOT an npm workspace)
+  src/                   # Angular sources — edit here
+  public/assets/vectors.config.json  # four dataset URLs
+  hooks/before_prepare/build_angular.js
+  www/                   # generated, gitignored
 tests/fixtures/          # Offline HTML/PDF golden files (shared by Vitest)
 data/                    # Local CSV/DB output (gitignored)
 Makefile                 # Dev commands
@@ -130,7 +135,8 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
 - **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
-- **Vectors**: `VectorExporter` — full rebuild of `catalog.json`, `manifest.json`, `dates.arrow`, and `free_float_vectors.arrow` under `vectorsDir`. ISIN mapping is static JSON; numeric series use shared date axis with nulls for missing cells.
+- **Vectors**: `VectorExporter` — full rebuild of `catalog.json`, `manifest.json`, `dates.arrow`, and `free_float_vectors.arrow` under `vectorsDir`. ISIN mapping is static JSON; numeric series use shared date axis with nulls for missing cells. The web client fetches these files from URLs in `web/public/assets/vectors.config.json` (not from disk at build time).
+- **Web client**: Isolated `web/` Angular 22 + Cordova-browser project (not in npm workspaces). `hooks/before_prepare/build_angular.js` runs `npm run build`. GitHub Pages publishes `web/www` via `.github/workflows/pages.yml` when `web/**` changes.
 - **DB**: `free_float` (date unique), `pdf_content` (download/extract metadata; PDF bytes on disk at `{pdfDir}/{date}.pdf`), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
 - **CSV**: Optional export in verbose/DEBUG mode only. Header `date,url`; append-only for new records during scrape. SQLite is the source of truth; CSV is not read back by the pipeline. Enable via `--verbose`, `--log-level DEBUG`, `LOG_LEVEL=DEBUG`, or `exportCsv: true` in the API.
 - **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).
@@ -145,7 +151,7 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 | `tests/fixtures/**` | Breaking HTML/PDF/MD fixtures breaks offline tests |
 | Live CSD-BG in automated tests | Flaky, rate limits, ToS; use mocks/fixtures |
 | `LICENSE`, unrelated pagination markdown archives | Legal/historical docs unless task is doc-only |
-| Docker `APP_UID` / `APP_GID` / Synology user defaults | Deployment-specific; change only for deploy tasks |
+| `web/www/`, `web/platforms/` | Cordova/Angular generated output — edit `web/src/` only |
 
 Do not commit `.env`. Do not run destructive git operations unless the user asks.
 

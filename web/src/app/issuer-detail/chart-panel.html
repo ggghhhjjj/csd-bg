@@ -1,0 +1,44 @@
+<section class="chart-panel">
+  <div class="chart-panel__legend">
+    @for (metric of metricIds; track metric) {
+      <button
+        class="chart-panel__toggle"
+        type="button"
+        [class.chart-panel__toggle--off]="!visible()[metric]"
+        [class.chart-panel__toggle--total_shares]="metric === 'total_shares'"
+        [class.chart-panel__toggle--free_float]="metric === 'free_float'"
+        [class.chart-panel__toggle--shareholders]="metric === 'shareholders'"
+        (click)="toggleMetric(metric)"
+      >
+        {{ labels[metric] }}
+      </button>
+    }
+  </div>
+  <div class="chart-panel__presets">
+    @for (item of presets; track item.id) {
+      <button
+        class="chart-panel__preset"
+        type="button"
+        [class.chart-panel__preset--active]="preset() === item.id"
+        (click)="setPreset(item.id)"
+      >
+        {{ item.label }}
+      </button>
+    }
+  </div>
+  <div class="chart-panel__canvas" #chartHost></div>
+  @if (compare(); as popup) {
+    <div class="chart-panel__popup">
+      <p class="chart-panel__popup-range">{{ popup.start }} — {{ popup.end }}</p>
+      <button class="chart-panel__preset" type="button" (click)="togglePercent()">
+        {{ showPercent() ? percentLabel : absLabel }}
+      </button>
+      <ul class="chart-panel__popup-rows">
+        @for (row of popup.rows; track row.metric) {
+          <li>{{ labels[row.metric] }}: {{ delta(row.first, row.last) }}</li>
+        }
+      </ul>
+      <button class="chart-panel__preset" type="button" (click)="closeCompare()">{{ closeLabel }}</button>
+    </div>
+  }
+</section>

@@ -15,6 +15,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Docker / Synology** — One-shot container with `/data` volume
 - **GitHub Actions** — Daily scheduled scrape with data committed to `main` via Git LFS
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
+- **Web client** — Angular + Cordova-browser PWA under `web/` (not an npm workspace)
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
 
 ## Table of Contents
@@ -291,6 +292,7 @@ csd-bg/
 │   │   └── src/index.ts
 │   └── vscode/               # csd-bg-vscode extension
 │       └── src/extension.ts
+├── web/                      # Angular 22 + Cordova-browser client (isolated npm project)
 ├── tests/fixtures/           # Offline HTML/PDF golden files (shared)
 ├── data/                     # Local CSV/DB/PDF output (gitignored)
 ├── package.json              # npm workspaces root
@@ -488,6 +490,22 @@ After extract, the pipeline exports chart-ready artifacts under `data/vectors/` 
 | `free_float_vectors.arrow` | Numeric series only: `total_shares`, `free_float`, `shareholders` as FixedSizeList&lt;Int32&gt; per issuer |
 
 Row index `i` in the series file maps to `catalog.issuers[i]`. `catalog.issuers[i].id` is the database primary key and may be non-contiguous; always resolve series rows by catalog index or lookup, not by `id - 1`. Missing `(issuer, date)` cells are Arrow nulls. Read with [`apache-arrow`](https://arrow.apache.org/docs/js/) in Node or the browser.
+
+The weekday scrape commits these files to `main`. The web client does **not** copy them into `www/`; it fetches the four URLs in [`web/public/assets/vectors.config.json`](web/public/assets/vectors.config.json) once, then caches them.
+
+## Web client (`web/`)
+
+Isolated Angular 22 + Apache Cordova (`cordova-browser`) app. **Not** an npm workspace package. Sources live in `web/src/`; `web/www/` is generated (gitignored).
+
+```bash
+cd web
+npm install          # Node 24 (Angular 22)
+npm run build        # ng build → www/bg + www/en, then locale index
+npm test
+npm run cordova:run  # before_prepare hook runs npm run build
+```
+
+GitHub Pages deploys `web/www` via [`.github/workflows/pages.yml`](.github/workflows/pages.yml) when `web/**` changes. Vector URL edits belong in `web/public/assets/vectors.config.json`.
 
 ## CSV export (verbose mode)
 

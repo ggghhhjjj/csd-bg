@@ -1,0 +1,12 @@
+<div class="shell">
+  <app-header />
+  @if (store.error()) {
+    <p class="shell__error" role="alert">{{ store.error() }}</p>
+  }
+  @if (store.loading()) {
+    <p class="shell__status">{{ loadingLabel }}</p>
+  }
+  <main class="shell__main">
+    <router-outlet />
+  </main>
+</div>

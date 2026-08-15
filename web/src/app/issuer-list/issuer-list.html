@@ -1,0 +1,13 @@
+<section class="issuer-list">
+  <h2 class="issuer-list__heading">{{ heading }}</h2>
+  <ul class="issuer-list__items">
+    @for (issuer of issuers(); track issuer.isin) {
+      <li class="issuer-list__item">
+        <a class="issuer-list__link" [routerLink]="['/issuer', issuer.isin]">
+          <span class="issuer-list__name">{{ issuer.name }}</span>
+          <span class="issuer-list__isin">{{ issuer.isin }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</section>

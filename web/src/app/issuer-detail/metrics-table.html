@@ -1,0 +1,20 @@
+<table class="data-table">
+  <thead class="data-table__head">
+    <tr>
+      <th class="data-table__heading">{{ dateLabel }}</th>
+      <th class="data-table__heading">{{ totalLabel }}</th>
+      <th class="data-table__heading">{{ floatLabel }}</th>
+      <th class="data-table__heading">{{ holdersLabel }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (row of rows(); track row.date) {
+      <tr class="data-table__row">
+        <td class="data-table__cell" [attr.data-label]="dateLabel">{{ row.date }}</td>
+        <td class="data-table__cell" [attr.data-label]="totalLabel">{{ row.values.total_shares }}</td>
+        <td class="data-table__cell" [attr.data-label]="floatLabel">{{ row.values.free_float }}</td>
+        <td class="data-table__cell" [attr.data-label]="holdersLabel">{{ row.values.shareholders }}</td>
+      </tr>
+    }
+  </tbody>
+</table>

@@ -66,6 +66,14 @@ data/pdfs/*
 !data/free_float.db
 output/
 
+# Web client (Cordova/Angular) generated output
+web/node_modules/
+web/www/
+web/platforms/
+web/plugins/
+web/.angular/
+
+
 # Docker
 .dockerignore
 

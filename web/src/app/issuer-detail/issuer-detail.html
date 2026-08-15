@@ -1,0 +1,12 @@
+<section class="issuer-detail">
+  @if (issuer(); as current) {
+    <h2 class="issuer-detail__name">{{ current.name }}</h2>
+    <p class="issuer-detail__isin">{{ current.isin }}</p>
+    @if (dataset(); as data) {
+      <app-chart-panel [dataset]="data" [issuerIndex]="issuerIndex()" />
+      <app-metrics-table [dataset]="data" [issuerIndex]="issuerIndex()" />
+    }
+  } @else if (dataset()) {
+    <p class="issuer-detail__missing">{{ missingLabel }}</p>
+  }
+</section>
