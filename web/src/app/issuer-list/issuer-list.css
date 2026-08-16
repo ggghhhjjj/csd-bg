@@ -1,5 +1,8 @@
 .issuer-list {
-  padding: 1rem;
+  padding-top: 1rem;
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  padding-bottom: 1rem;
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
 }
 
 .issuer-list__heading {
