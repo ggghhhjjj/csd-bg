@@ -5,7 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { VectorsStore } from '../../core/data/vectors.store';
-import { detectLocale, shouldReloadForRuntimeI18n, urlForLocale } from '../../core/i18n/locale-url';
+import { detectLocale } from '../../core/i18n/locale-url';
 
 @Component({
   selector: 'app-header',
@@ -41,18 +41,12 @@ export class Header {
 
   protected switchLocale(): void {
     const current = detectLocale(
-      window.location.pathname,
       document.documentElement.lang,
       localStorage.getItem('csd-locale'),
     );
     const next = current === 'bg' ? 'en' : 'bg';
     localStorage.setItem('csd-locale', next);
-    const target = urlForLocale(window.location.href, next);
-    if (shouldReloadForRuntimeI18n(window.location.href, target)) {
-      window.location.reload();
-      return;
-    }
-    window.location.assign(target);
+    window.location.reload();
   }
 
   protected refresh(): void {

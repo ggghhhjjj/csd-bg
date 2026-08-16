@@ -1,47 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectLocale, shouldReloadForRuntimeI18n, urlForLocale } from './locale-url';
+import { detectLocale } from './locale-url';
 
 describe('detectLocale', () => {
-  it('prefers a locale path segment', () => {
-    expect(detectLocale('/csd-bg/en/index.html', 'bg', 'bg')).toBe('en');
+  it('uses stored en over lang="bg"', () => {
+    expect(detectLocale('bg', 'en')).toBe('en');
   });
 
-  it('uses stored locale when the path has no locale folder', () => {
-    expect(detectLocale('/', 'bg', 'en')).toBe('en');
-  });
-});
-
-describe('urlForLocale', () => {
-  it('replaces a trailing locale folder', () => {
-    expect(urlForLocale('https://example.com/csd-bg/bg/#/', 'en')).toBe(
-      'https://example.com/csd-bg/en/#/',
-    );
+  it('uses stored bg over lang="en"', () => {
+    expect(detectLocale('en', 'bg')).toBe('bg');
   });
 
-  it('replaces locale before index.html', () => {
-    expect(urlForLocale('https://example.com/csd-bg/bg/index.html#/', 'en')).toBe(
-      'https://example.com/csd-bg/en/index.html#/',
-    );
+  it('defaults to bg when storage is missing', () => {
+    expect(detectLocale('bg', null)).toBe('bg');
   });
 
-  it('does not no-op when the path has no locale segment', () => {
-    const next = urlForLocale('http://localhost:4200/#/issuer/x', 'en');
-    expect(next).toContain('/en/');
-    expect(next).not.toBe('http://localhost:4200/#/issuer/x');
-  });
-});
-
-describe('shouldReloadForRuntimeI18n', () => {
-  it('reloads on the dev server where no locale folder exists', () => {
-    expect(shouldReloadForRuntimeI18n('http://localhost:4200/#/', 'http://localhost:4200/en/#/')).toBe(
-      true,
-    );
+  it('defaults to bg when storage is invalid', () => {
+    expect(detectLocale('bg', 'fr')).toBe('bg');
   });
 
-  it('navigates between compiled locale folders', () => {
-    expect(
-      shouldReloadForRuntimeI18n('https://example.com/csd-bg/bg/#/', 'https://example.com/csd-bg/en/#'),
-    ).toBe(false);
+  it('uses htmlLang en when storage is missing', () => {
+    expect(detectLocale('en', null)).toBe('en');
   });
 });

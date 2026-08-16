@@ -12,18 +12,6 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
-      "i18n": {
-        "sourceLocale": {
-          "code": "bg",
-          "baseHref": ""
-        },
-        "locales": {
-          "en": {
-            "translation": "src/locale/messages.en.xlf",
-            "baseHref": ""
-          }
-        }
-      },
       "architect": {
         "build": {
           "builder": "@angular/build:application",
@@ -35,7 +23,6 @@
             "baseHref": "./",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "localize": true,
             "polyfills": ["@angular/localize/init"],
             "assets": [
               {
@@ -66,8 +53,7 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-            "sourceMap": true,
-            "localize": false
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
@@ -86,12 +72,6 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
-        },
-        "extract-i18n": {
-          "builder": "@angular/build:extract-i18n",
-          "options": {
-            "outputPath": "src/locale"
-          }
         }
       }
     }

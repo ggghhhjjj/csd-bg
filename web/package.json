@@ -8,11 +8,10 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build && node scripts/write-locale-index.mjs",
+    "build": "ng build",
     "build:web": "npm run build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "extract-i18n": "ng extract-i18n --output-path src/locale",
     "clean": "rm -rf www",
     "cordova:run": "cordova run browser",
     "cordova:build": "cordova build browser",

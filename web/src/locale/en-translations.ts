@@ -1,4 +1,4 @@
-/** English runtime map for `ng serve` (compile-time localize inlines these in production). */
+/** English runtime map. Loaded via `loadTranslations()` when locale is `en` (dev and production). */
 export const EN_TRANSLATIONS: Record<string, string> = {
   'error.configMissing': 'Data configuration is missing.',
   'error.configInvalid': 'Invalid URLs in vectors.config.json.',

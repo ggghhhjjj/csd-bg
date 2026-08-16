@@ -500,12 +500,13 @@ Isolated Angular 22 + Apache Cordova (`cordova-browser`) app. **Not** an npm wor
 ```bash
 cd web
 npm install          # Node 24 (Angular 22)
-npm run build        # ng build → www/bg + www/en, then locale index
+npm start            # ng serve; toggle EN/BG via localStorage + reload
+npm run build        # single production app → www/
 npm test
 npm run cordova:run  # before_prepare hook runs npm run build
 ```
 
-GitHub Pages deploys `web/www` via [`.github/workflows/pages.yml`](.github/workflows/pages.yml) when `web/**` changes. Vector URL edits belong in `web/public/assets/vectors.config.json`.
+GitHub Pages deploys `web/www` via [`.github/workflows/pages.yml`](.github/workflows/pages.yml) when `web/**` changes. Vector URL edits belong in `web/public/assets/vectors.config.json`. Old `/en/` and `/bg/` Pages bookmarks 404.
 
 ## CSV export (verbose mode)
 
