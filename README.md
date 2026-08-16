@@ -491,7 +491,7 @@ After extract, the pipeline exports chart-ready artifacts under `data/vectors/` 
 
 Row index `i` in the series file maps to `catalog.issuers[i]`. `catalog.issuers[i].id` is the database primary key and may be non-contiguous; always resolve series rows by catalog index or lookup, not by `id - 1`. Missing `(issuer, date)` cells are Arrow nulls. Read with [`apache-arrow`](https://arrow.apache.org/docs/js/) in Node or the browser.
 
-The weekday scrape commits these files to `main`. The web client does **not** copy them into `www/`; it fetches the four URLs in [`web/public/assets/vectors.config.json`](web/public/assets/vectors.config.json) once, then caches them.
+The weekday scrape commits these files to `main`. The web client does **not** copy them into `www/`; it fetches the four URLs in [`web/public/assets/vectors.config.json`](web/public/assets/vectors.config.json) and caches them for the local calendar day. Header Refresh clears that cache and fully reloads the app.
 
 ## Web client (`web/`)
 

@@ -40,7 +40,7 @@ export class Header {
   }
 
   protected refresh(): void {
-    void this.store.refresh();
+    void this.store.reloadApp();
   }
 
   private isDetailUrl(url: string): boolean {

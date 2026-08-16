@@ -9,9 +9,30 @@ export type StoreError = {
   params?: Record<string, string>;
 };
 
-const CACHE_NAME = 'csd-vectors-v1';
+export const CACHE_NAME = 'csd-vectors-v1';
+export const CACHE_DATE_KEY = 'csd-vectors-cached-on';
 const CONFIG_URL = 'assets/vectors.config.json';
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+let visibilityHandler: (() => void) | null = null;
+let midnightTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function localIsoDate(now = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function msUntilNextLocalMidnight(now = new Date()): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return Math.max(0, next.getTime() - now.getTime());
+}
+
+export const appReloader = {
+  reload(): void {
+    window.location.reload();
+  },
+};
 
 @Injectable({ providedIn: 'root' })
 export class VectorsStore {
@@ -22,17 +43,20 @@ export class VectorsStore {
   readonly showPercentChange = signal(true);
 
   private config: VectorsConfig | null = null;
-  private checkTimer: ReturnType<typeof setInterval> | null = null;
 
   async load(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
       this.config = await this.readConfig();
-      const snapshot = await this.fetchDataset(this.config, false);
+      if (localStorage.getItem(CACHE_DATE_KEY) !== localIsoDate()) {
+        await this.invalidateCache();
+      }
+      const snapshot = await this.fetchDataset(this.config);
       this.dataset.set(snapshot);
       this.generatedAt.set(snapshot.generatedAt);
-      this.startDailyCheck();
+      localStorage.setItem(CACHE_DATE_KEY, localIsoDate());
+      this.startDateWatch();
     } catch (error) {
       this.error.set(toStoreError(error));
     } finally {
@@ -40,28 +64,9 @@ export class VectorsStore {
     }
   }
 
-  async refresh(): Promise<void> {
-    if (!this.config) {
-      await this.load();
-      return;
-    }
-    this.loading.set(true);
-    this.error.set(null);
-    try {
-      const cache = await caches.open(CACHE_NAME);
-      await Promise.all(
-        [this.config.manifestUrl, this.config.catalogUrl, this.config.datesUrl, this.config.seriesUrl].map((url) =>
-          cache.delete(url),
-        ),
-      );
-      const snapshot = await this.fetchDataset(this.config, true);
-      this.dataset.set(snapshot);
-      this.generatedAt.set(snapshot.generatedAt);
-    } catch (error) {
-      this.error.set(toStoreError(error));
-    } finally {
-      this.loading.set(false);
-    }
+  async reloadApp(): Promise<void> {
+    await this.invalidateCache();
+    appReloader.reload();
   }
 
   togglePercentChange(): void {
@@ -76,36 +81,38 @@ export class VectorsStore {
     return dataset.issuers.findIndex((issuer) => issuer.isin === isin);
   }
 
-  private startDailyCheck(): void {
-    if (this.checkTimer) {
-      clearInterval(this.checkTimer);
+  private startDateWatch(): void {
+    if (midnightTimer) {
+      clearTimeout(midnightTimer);
     }
-    this.checkTimer = setInterval(() => {
-      void this.probeUpdate();
-    }, CHECK_INTERVAL_MS);
-    document.addEventListener('visibilitychange', () => {
+    midnightTimer = setTimeout(() => {
+      void this.reloadIfDateChanged();
+    }, msUntilNextLocalMidnight());
+
+    if (visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler);
+    }
+    visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
-        void this.probeUpdate();
+        void this.reloadIfDateChanged();
       }
-    });
+    };
+    document.addEventListener('visibilitychange', visibilityHandler);
   }
 
-  private async probeUpdate(): Promise<void> {
-    if (!this.config || this.loading()) {
+  private async reloadIfDateChanged(): Promise<void> {
+    if (this.loading()) {
       return;
     }
-    try {
-      const response = await fetch(this.config.manifestUrl, { cache: 'no-store', redirect: 'follow' });
-      if (!response.ok) {
-        return;
-      }
-      const manifest = (await response.json()) as { generated_at?: string };
-      if (manifest.generated_at && manifest.generated_at !== this.generatedAt()) {
-        await this.refresh();
-      }
-    } catch {
-      /* keep cached dataset */
+    if (localStorage.getItem(CACHE_DATE_KEY) === localIsoDate()) {
+      return;
     }
+    await this.reloadApp();
+  }
+
+  private async invalidateCache(): Promise<void> {
+    await caches.delete(CACHE_NAME);
+    localStorage.removeItem(CACHE_DATE_KEY);
   }
 
   private async readConfig(): Promise<VectorsConfig> {
@@ -120,28 +127,26 @@ export class VectorsStore {
     return json;
   }
 
-  private async fetchDataset(config: VectorsConfig, bypassCache: boolean): Promise<ParsedDataset> {
+  private async fetchDataset(config: VectorsConfig): Promise<ParsedDataset> {
     const [manifestText, catalogText, datesBuffer, seriesBuffer] = await Promise.all([
-      this.readText(config.manifestUrl, bypassCache),
-      this.readText(config.catalogUrl, bypassCache),
-      this.readBuffer(config.datesUrl, bypassCache),
-      this.readBuffer(config.seriesUrl, bypassCache),
+      this.readText(config.manifestUrl),
+      this.readText(config.catalogUrl),
+      this.readBuffer(config.datesUrl),
+      this.readBuffer(config.seriesUrl),
     ]);
     return this.parseInWorker({ manifestText, catalogText, datesBuffer, seriesBuffer });
   }
 
-  private async readText(url: string, bypassCache: boolean): Promise<string> {
-    const buffer = await this.readBuffer(url, bypassCache);
+  private async readText(url: string): Promise<string> {
+    const buffer = await this.readBuffer(url);
     return new TextDecoder().decode(buffer);
   }
 
-  private async readBuffer(url: string, bypassCache: boolean): Promise<ArrayBuffer> {
+  private async readBuffer(url: string): Promise<ArrayBuffer> {
     const cache = await caches.open(CACHE_NAME);
-    if (!bypassCache) {
-      const cached = await cache.match(url);
-      if (cached) {
-        return cached.arrayBuffer();
-      }
+    const cached = await cache.match(url);
+    if (cached) {
+      return cached.arrayBuffer();
     }
     const response = await fetch(url, { redirect: 'follow', cache: 'no-store' });
     if (!response.ok) {
