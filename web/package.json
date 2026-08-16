@@ -22,7 +22,6 @@
     "@angular/compiler": "^22.1.0",
     "@angular/core": "^22.1.0",
     "@angular/forms": "^22.1.0",
-    "@angular/localize": "^22.1.0",
     "@angular/platform-browser": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@angular/service-worker": "^22.1.0",
@@ -43,6 +42,8 @@
     "vitest": "^4.0.8"
   },
   "cordova": {
-    "platforms": ["browser"]
+    "platforms": [
+      "browser"
+    ]
   }
 }

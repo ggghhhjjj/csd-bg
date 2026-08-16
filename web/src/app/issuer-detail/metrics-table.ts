@@ -1,7 +1,8 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 
 import { metricAt, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
 import { indexForDate } from '../core/data/date-range';
+import { LocaleService } from '../core/i18n/locale.service';
 
 @Component({
   selector: 'app-metrics-table',
@@ -14,10 +15,7 @@ export class MetricsTable {
   readonly startDate = input<string>('');
   readonly endDate = input<string>('');
 
-  protected readonly dateLabel = $localize`:@@table.date:Дата`;
-  protected readonly totalLabel = $localize`:@@metric.totalShares:Общ брой акции`;
-  protected readonly floatLabel = $localize`:@@metric.freeFloat:Свободен флот`;
-  protected readonly holdersLabel = $localize`:@@metric.shareholders:Акционери`;
+  protected readonly i18n = inject(LocaleService);
 
   protected readonly rows = computed(() => {
     const dataset = this.dataset();

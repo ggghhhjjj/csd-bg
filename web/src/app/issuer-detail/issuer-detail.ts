@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 
 import { VectorsStore } from '../core/data/vectors.store';
+import { LocaleService } from '../core/i18n/locale.service';
 import { ChartPanel } from './chart-panel';
 import { MetricsTable } from './metrics-table';
 
@@ -16,12 +17,11 @@ import { MetricsTable } from './metrics-table';
 export class IssuerDetail {
   private readonly store = inject(VectorsStore);
   private readonly route = inject(ActivatedRoute);
+  protected readonly i18n = inject(LocaleService);
 
   private readonly isin = toSignal(this.route.paramMap.pipe(map((params) => params.get('isin') ?? '')), {
     initialValue: '',
   });
-
-  protected readonly missingLabel = $localize`:@@issuer.missing:Емитентът не е намерен.`;
 
   protected readonly dataset = computed(() => this.store.dataset());
   protected readonly issuerIndex = computed(() => this.store.issuerIndexByIsin(this.isin()));

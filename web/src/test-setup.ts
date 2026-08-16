@@ -1,1 +1,1 @@
-import '@angular/localize/init';
+// Test environment bootstrap (no Angular localize polyfill).

@@ -7,6 +7,6 @@
       <app-metrics-table [dataset]="data" [issuerIndex]="issuerIndex()" />
     }
   } @else if (dataset()) {
-    <p class="issuer-detail__missing">{{ missingLabel }}</p>
+    <p class="issuer-detail__missing">{{ i18n.text('issuer.missing') }}</p>
   }
 </section>

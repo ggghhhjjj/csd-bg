@@ -1,7 +1,13 @@
 import { Injectable, signal } from '@angular/core';
 
+import { LocalizedError, type TranslationKey } from '../i18n/translations';
 import type { ParsedDataset, VectorsConfig, WorkerRequest } from './vectors.types';
 import { isVectorsConfig } from './vectors.types';
+
+export type StoreError = {
+  key: TranslationKey;
+  params?: Record<string, string>;
+};
 
 const CACHE_NAME = 'csd-vectors-v1';
 const CONFIG_URL = 'assets/vectors.config.json';
@@ -11,7 +17,7 @@ const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 export class VectorsStore {
   readonly dataset = signal<ParsedDataset | null>(null);
   readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
+  readonly error = signal<StoreError | null>(null);
   readonly generatedAt = signal<string | null>(null);
   readonly showPercentChange = signal(true);
 
@@ -28,7 +34,7 @@ export class VectorsStore {
       this.generatedAt.set(snapshot.generatedAt);
       this.startDailyCheck();
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(toStoreError(error));
     } finally {
       this.loading.set(false);
     }
@@ -52,7 +58,7 @@ export class VectorsStore {
       this.dataset.set(snapshot);
       this.generatedAt.set(snapshot.generatedAt);
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : String(error));
+      this.error.set(toStoreError(error));
     } finally {
       this.loading.set(false);
     }
@@ -105,11 +111,11 @@ export class VectorsStore {
   private async readConfig(): Promise<VectorsConfig> {
     const response = await fetch(CONFIG_URL, { cache: 'no-store' });
     if (!response.ok) {
-      throw new Error($localize`:@@error.configMissing:Липсва конфигурация за данни.`);
+      throw new LocalizedError('error.configMissing');
     }
     const json: unknown = await response.json();
     if (!isVectorsConfig(json)) {
-      throw new Error($localize`:@@error.configInvalid:Невалидни URL адреси в vectors.config.json.`);
+      throw new LocalizedError('error.configInvalid');
     }
     return json;
   }
@@ -139,7 +145,7 @@ export class VectorsStore {
     }
     const response = await fetch(url, { redirect: 'follow', cache: 'no-store' });
     if (!response.ok) {
-      throw new Error($localize`:@@error.fetchFailed:Неуспешно зареждане на данни (${url}).`);
+      throw new LocalizedError('error.fetchFailed', { url });
     }
     const clone = response.clone();
     await cache.put(url, clone);
@@ -164,4 +170,14 @@ export class VectorsStore {
       worker.postMessage(request, [request.datesBuffer, request.seriesBuffer]);
     });
   }
+}
+
+function toStoreError(error: unknown): StoreError {
+  if (error instanceof LocalizedError) {
+    return { key: error.key, params: error.params };
+  }
+  return {
+    key: 'error.fetchFailed',
+    params: { url: error instanceof Error ? error.message : String(error) },
+  };
 }

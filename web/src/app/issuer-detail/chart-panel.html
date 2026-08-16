@@ -10,12 +10,12 @@
         [class.chart-panel__toggle--shareholders]="metric === 'shareholders'"
         (click)="toggleMetric(metric)"
       >
-        {{ labels[metric] }}
+        {{ labels()[metric] }}
       </button>
     }
   </div>
   <div class="chart-panel__presets">
-    @for (item of presets; track item.id) {
+    @for (item of presets(); track item.id) {
       <button
         class="chart-panel__preset"
         type="button"
@@ -31,18 +31,18 @@
     <div class="chart-panel__popup">
       <p class="chart-panel__popup-range">{{ popup.start }} — {{ popup.end }}</p>
       <button class="chart-panel__preset" type="button" (click)="togglePercent()">
-        {{ showPercent() ? percentLabel : absLabel }}
+        {{ showPercent() ? percentLabel() : absLabel() }}
       </button>
       <ul class="chart-panel__popup-rows">
         @for (row of popup.rows; track row.metric) {
           <li>
-            {{ labels[row.metric] }}:
+            {{ labels()[row.metric] }}:
             {{ showPercent() ? row.percent : row.abs }}
             ({{ showPercent() ? row.abs : row.percent }})
           </li>
         }
       </ul>
-      <button class="chart-panel__preset" type="button" (click)="closeCompare()">{{ closeLabel }}</button>
+      <button class="chart-panel__preset" type="button" (click)="closeCompare()">{{ closeLabel() }}</button>
     </div>
   }
 </section>

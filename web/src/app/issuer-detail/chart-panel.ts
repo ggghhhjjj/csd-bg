@@ -15,6 +15,7 @@ import * as echarts from 'echarts';
 import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
 import { VectorsStore } from '../core/data/vectors.store';
 import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
+import { LocaleService } from '../core/i18n/locale.service';
 
 const METRIC_COLORS: Record<MetricId, string> = {
   total_shares: '#38bdf8',
@@ -44,6 +45,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   readonly issuerIndex = input.required<number>();
 
   private readonly store = inject(VectorsStore);
+  private readonly i18n = inject(LocaleService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -59,27 +61,27 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   });
   protected readonly preset = signal<RangePreset | null>('m3');
   protected readonly compare = signal<ComparePopup | null>(null);
-  protected readonly labels: Record<MetricId, string> = {
-    total_shares: $localize`:@@metric.totalShares:Общ брой акции`,
-    free_float: $localize`:@@metric.freeFloat:Свободен флот`,
-    shareholders: $localize`:@@metric.shareholders:Акционери`,
-  };
-  protected readonly presets: Array<{ id: RangePreset; label: string }> = [
-    { id: 'd5', label: $localize`:@@range.d5:5 дни` },
-    { id: 'd10', label: $localize`:@@range.d10:10 дни` },
-    { id: 'm1', label: $localize`:@@range.m1:1 месец` },
-    { id: 'm3', label: $localize`:@@range.m3:3 месеца` },
-    { id: 'm6', label: $localize`:@@range.m6:6 месеца` },
-    { id: 'ytd', label: $localize`:@@range.ytd:YTD` },
-    { id: 'y1', label: $localize`:@@range.y1:12 месеца` },
-    { id: 'y3', label: $localize`:@@range.y3:3 години` },
-    { id: 'y5', label: $localize`:@@range.y5:5 години` },
-    { id: 'max', label: $localize`:@@range.max:Всички` },
-  ];
+  protected readonly labels = computed<Record<MetricId, string>>(() => ({
+    total_shares: this.i18n.text('metric.totalShares'),
+    free_float: this.i18n.text('metric.freeFloat'),
+    shareholders: this.i18n.text('metric.shareholders'),
+  }));
+  protected readonly presets = computed<Array<{ id: RangePreset; label: string }>>(() => [
+    { id: 'd5', label: this.i18n.text('range.d5') },
+    { id: 'd10', label: this.i18n.text('range.d10') },
+    { id: 'm1', label: this.i18n.text('range.m1') },
+    { id: 'm3', label: this.i18n.text('range.m3') },
+    { id: 'm6', label: this.i18n.text('range.m6') },
+    { id: 'ytd', label: this.i18n.text('range.ytd') },
+    { id: 'y1', label: this.i18n.text('range.y1') },
+    { id: 'y3', label: this.i18n.text('range.y3') },
+    { id: 'y5', label: this.i18n.text('range.y5') },
+    { id: 'max', label: this.i18n.text('range.max') },
+  ]);
 
-  protected readonly percentLabel = $localize`:@@compare.percent:Процент`;
-  protected readonly absLabel = $localize`:@@compare.absolute:Абсолютна промяна`;
-  protected readonly closeLabel = $localize`:@@compare.close:Затвори`;
+  protected readonly percentLabel = computed(() => this.i18n.text('compare.percent'));
+  protected readonly absLabel = computed(() => this.i18n.text('compare.absolute'));
+  protected readonly closeLabel = computed(() => this.i18n.text('compare.close'));
   protected readonly metricIds: MetricId[] = ['total_shares', 'free_float', 'shareholders'];
   protected readonly showPercent = computed(() => this.store.showPercentChange());
 
@@ -99,6 +101,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       this.dataset();
       this.issuerIndex();
       this.visible();
+      this.i18n.locale();
       if (this.chart) {
         this.render();
       }
@@ -207,7 +210,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
         },
         yAxis,
         series: metrics.map((metric, index) => ({
-          name: this.labels[metric],
+          name: this.labels()[metric],
           type: 'line',
           showSymbol: false,
           yAxisIndex: index,

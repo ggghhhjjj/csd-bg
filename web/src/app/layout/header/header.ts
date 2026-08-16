@@ -5,7 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { VectorsStore } from '../../core/data/vectors.store';
-import { detectLocale } from '../../core/i18n/locale-url';
+import { LocaleService } from '../../core/i18n/locale.service';
 
 @Component({
   selector: 'app-header',
@@ -16,11 +16,7 @@ export class Header {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   protected readonly store = inject(VectorsStore);
-
-  protected readonly titleLabel = $localize`:@@header.title:Свободен флот`;
-  protected readonly backLabel = $localize`:@@header.back:Назад`;
-  protected readonly refreshLabel = $localize`:@@header.refresh:Опресни`;
-  protected readonly localeLabel = $localize`:@@header.locale:EN`;
+  protected readonly i18n = inject(LocaleService);
 
   protected readonly showBack = toSignal(
     this.router.events.pipe(
@@ -40,13 +36,7 @@ export class Header {
   }
 
   protected switchLocale(): void {
-    const current = detectLocale(
-      document.documentElement.lang,
-      localStorage.getItem('csd-locale'),
-    );
-    const next = current === 'bg' ? 'en' : 'bg';
-    localStorage.setItem('csd-locale', next);
-    window.location.reload();
+    this.i18n.toggle();
   }
 
   protected refresh(): void {

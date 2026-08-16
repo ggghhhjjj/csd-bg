@@ -1,5 +1,5 @@
 <section class="issuer-list">
-  <h2 class="issuer-list__heading">{{ heading }}</h2>
+  <h2 class="issuer-list__heading">{{ i18n.text('issuers.heading') }}</h2>
   <ul class="issuer-list__items">
     @for (issuer of issuers(); track issuer.isin) {
       <li class="issuer-list__item">

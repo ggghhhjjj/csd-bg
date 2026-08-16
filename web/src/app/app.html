@@ -1,10 +1,10 @@
 <div class="shell">
   <app-header />
-  @if (store.error()) {
-    <p class="shell__error" role="alert">{{ store.error() }}</p>
+  @if (store.error(); as error) {
+    <p class="shell__error" role="alert">{{ i18n.text(error.key, error.params) }}</p>
   }
   @if (store.loading()) {
-    <p class="shell__status">{{ loadingLabel }}</p>
+    <p class="shell__status">{{ i18n.text('status.loading') }}</p>
   }
   <main class="shell__main">
     <router-outlet />
