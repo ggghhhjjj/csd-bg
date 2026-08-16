@@ -48,16 +48,16 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private dragStartIndex: number | null = null;
-  private pinchDistance = 0;
   private viewStart = '';
   private viewEnd = '';
+  private applyingPreset = false;
 
   protected readonly visible = signal<Record<MetricId, boolean>>({
     total_shares: true,
     free_float: true,
     shareholders: true,
   });
-  protected readonly preset = signal<RangePreset>('m3');
+  protected readonly preset = signal<RangePreset | null>('m3');
   protected readonly compare = signal<ComparePopup | null>(null);
   protected readonly labels: Record<MetricId, string> = {
     total_shares: $localize`:@@metric.totalShares:Общ брой акции`,
@@ -87,13 +87,17 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     effect(() => {
       this.dataset();
       this.issuerIndex();
-      this.preset();
-      if (this.chart) {
-        this.applyRangeFromPreset();
+      const preset = this.preset();
+      if (this.chart && preset) {
+        this.applyingPreset = true;
+        this.applyRangeFromPreset(preset);
         this.render();
+        this.applyingPreset = false;
       }
     });
     effect(() => {
+      this.dataset();
+      this.issuerIndex();
       this.visible();
       if (this.chart) {
         this.render();
@@ -104,8 +108,14 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.host().nativeElement);
     this.bindInteractions();
-    this.applyRangeFromPreset();
-    this.render();
+    this.bindDataZoom();
+    const preset = this.preset();
+    if (preset) {
+      this.applyingPreset = true;
+      this.applyRangeFromPreset(preset);
+      this.render();
+      this.applyingPreset = false;
+    }
     this.resizeObserver = new ResizeObserver(() => this.chart?.resize());
     this.resizeObserver.observe(this.host().nativeElement);
   }
@@ -132,10 +142,10 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     this.compare.set(null);
   }
 
-  private applyRangeFromPreset(): void {
+  private applyRangeFromPreset(preset: RangePreset): void {
     const dates = this.dataset().dates;
     this.viewEnd = dates[dates.length - 1] ?? '';
-    this.viewStart = rangeStartIso(dates, this.preset());
+    this.viewStart = rangeStartIso(dates, preset);
   }
 
   private visibleMetrics(): MetricId[] {
@@ -173,15 +183,21 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
           trigger: 'axis',
           axisPointer: { type: 'line' },
         },
-        grid: { left: metrics.length >= 3 ? 88 : 56, right: metrics.length >= 2 ? 56 : 24, top: 24, bottom: 72 },
+        grid: { left: metrics.length >= 3 ? 88 : 56, right: metrics.length >= 2 ? 56 : 24, top: 24, bottom: 110 },
         dataZoom: [
           {
-            type: 'inside',
+            type: 'slider',
             startValue: this.viewStart,
             endValue: this.viewEnd,
-            zoomOnMouseWheel: false,
-            moveOnMouseMove: false,
-            moveOnMouseWheel: false,
+            height: 28,
+            bottom: 8,
+            brushSelect: false,
+            borderColor: '#334155',
+            fillerColor: 'rgba(51, 65, 85, 0.55)',
+            handleSize: 24,
+            handleStyle: { color: '#94a3b8' },
+            moveHandleSize: 10,
+            textStyle: { color: '#94a3b8', fontSize: 10 },
           },
         ],
         xAxis: {
@@ -207,41 +223,13 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private bindInteractions(): void {
     const element = this.host().nativeElement;
     element.addEventListener(
-      'wheel',
-      (event) => {
-        event.preventDefault();
-        const focal = this.dateFromClientX(event.clientX);
-        const factor = event.deltaY > 0 ? 1.12 : 0.88;
-        this.zoomToward(focal, factor);
-      },
-      { passive: false },
-    );
-    element.addEventListener(
       'touchstart',
       (event) => {
-        if (event.touches.length === 2) {
-          this.pinchDistance = this.touchDistance(event.touches);
-          this.dragStartIndex = null;
-          return;
-        }
         if (event.touches.length === 1) {
           this.dragStartIndex = this.indexFromClientX(event.touches[0].clientX);
         }
       },
       { passive: true },
-    );
-    element.addEventListener(
-      'touchmove',
-      (event) => {
-        if (event.touches.length === 2 && this.pinchDistance) {
-          event.preventDefault();
-          const next = this.touchDistance(event.touches);
-          const focal = this.dateFromClientX((event.touches[0].clientX + event.touches[1].clientX) / 2);
-          this.zoomToward(focal, this.pinchDistance / next);
-          this.pinchDistance = next;
-        }
-      },
-      { passive: false },
     );
     element.addEventListener('mousedown', (event) => {
       this.dragStartIndex = this.indexFromClientX(event.clientX);
@@ -254,9 +242,42 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       this.finishCompare(this.dragStartIndex, endIndex);
       this.dragStartIndex = null;
     });
-    element.addEventListener('touchend', () => {
-      this.pinchDistance = 0;
+  }
+
+  private bindDataZoom(): void {
+    this.chart?.on('datazoom', () => {
+      this.syncViewFromSlider();
+      if (!this.applyingPreset) {
+        this.preset.set(null);
+      }
     });
+  }
+
+  private syncViewFromSlider(): void {
+    if (!this.chart) {
+      return;
+    }
+    const option = this.chart.getOption() as {
+      dataZoom?: Array<{ startValue?: string | number; endValue?: string | number }>;
+    };
+    const zoom = option.dataZoom?.[0];
+    if (!zoom) {
+      return;
+    }
+    const dates = this.dataset().dates;
+    this.viewStart = this.dateFromZoomValue(zoom.startValue, dates, this.viewStart);
+    this.viewEnd = this.dateFromZoomValue(zoom.endValue, dates, this.viewEnd);
+  }
+
+  private dateFromZoomValue(value: string | number | undefined, dates: string[], fallback: string): string {
+    if (typeof value === 'string' && value) {
+      return dates.includes(value) ? value : fallback;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const idx = Math.round(value);
+      return dates[Math.max(0, Math.min(dates.length - 1, idx))] ?? fallback;
+    }
+    return fallback;
   }
 
   private finishCompare(startIndex: number, endIndex: number): void {
@@ -281,33 +302,6 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
         };
       }),
     });
-  }
-
-  private zoomToward(focalIso: string, factor: number): void {
-    const dates = this.dataset().dates;
-    if (!dates.length) {
-      return;
-    }
-    const startIndex = indexForDate(dates, this.viewStart);
-    const endIndex = indexForDate(dates, this.viewEnd);
-    const focalIndex = indexForDate(dates, focalIso);
-    const left = Math.max(0.5, focalIndex - startIndex);
-    const right = Math.max(0.5, endIndex - focalIndex);
-    const newLeft = left * factor;
-    const newRight = right * factor;
-    const nextStart = Math.max(0, Math.round(focalIndex - newLeft));
-    const nextEnd = Math.min(dates.length - 1, Math.round(focalIndex + newRight));
-    if (nextEnd - nextStart < 2) {
-      return;
-    }
-    this.viewStart = dates[nextStart];
-    this.viewEnd = dates[nextEnd];
-    this.render();
-  }
-
-  private dateFromClientX(clientX: number): string {
-    const dates = this.dataset().dates;
-    return dates[this.indexFromClientX(clientX)] ?? dates[dates.length - 1];
   }
 
   private indexFromClientX(clientX: number): number {
@@ -340,11 +334,5 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       return Math.max(0, Math.min(dates.length - 1, Math.round(asNumber)));
     }
     return startIndex;
-  }
-
-  private touchDistance(touches: TouchList): number {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.hypot(dx, dy);
   }
 }
