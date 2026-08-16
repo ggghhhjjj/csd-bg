@@ -10,6 +10,29 @@
   font-size: 1.05rem;
 }
 
+.issuer-list__search {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 0.75rem;
+  appearance: none;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}
+
+.issuer-list__search::placeholder {
+  color: #94a3b8;
+}
+
+.issuer-list__empty {
+  margin: 0;
+  color: #94a3b8;
+}
+
 .issuer-list__items {
   list-style: none;
   margin: 0;
