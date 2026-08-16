@@ -16,6 +16,7 @@ import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedData
 import { VectorsStore } from '../core/data/vectors.store';
 import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
+import { ComparePointerSession } from './compare-pointer-session';
 
 const METRIC_COLORS: Record<MetricId, string> = {
   total_shares: '#38bdf8',
@@ -49,7 +50,8 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private dragStartIndex: number | null = null;
+  private chartHostEl: HTMLDivElement | null = null;
+  private readonly compareSession = new ComparePointerSession();
   private viewStart = '';
   private viewEnd = '';
   private applyingPreset = false;
@@ -124,6 +126,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unbindInteractions();
     this.resizeObserver?.disconnect();
     this.chart?.dispose();
   }
@@ -224,28 +227,33 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   }
 
   private bindInteractions(): void {
-    const element = this.host().nativeElement;
-    element.addEventListener(
-      'touchstart',
-      (event) => {
-        if (event.touches.length === 1) {
-          this.dragStartIndex = this.indexFromClientX(event.touches[0].clientX);
-        }
-      },
-      { passive: true },
-    );
-    element.addEventListener('mousedown', (event) => {
-      this.dragStartIndex = this.indexFromClientX(event.clientX);
-    });
-    element.addEventListener('mouseup', (event) => {
-      if (this.dragStartIndex === null) {
-        return;
-      }
-      const endIndex = this.indexFromClientX(event.clientX);
-      this.finishCompare(this.dragStartIndex, endIndex);
-      this.dragStartIndex = null;
-    });
+    this.chartHostEl = this.host().nativeElement;
+    this.chartHostEl.addEventListener('pointerdown', this.onPointerDown, { capture: true });
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerCancel);
   }
+
+  private unbindInteractions(): void {
+    this.chartHostEl?.removeEventListener('pointerdown', this.onPointerDown, { capture: true });
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerCancel);
+    this.chartHostEl = null;
+  }
+
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    this.compareSession.start(event.pointerId, this.indexFromClientX(event.clientX));
+  };
+
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    const range = this.compareSession.finish(event.pointerId, this.indexFromClientX(event.clientX));
+    if (range) {
+      this.finishCompare(range.startIndex, range.endIndex);
+    }
+  };
+
+  private readonly onPointerCancel = (event: PointerEvent): void => {
+    this.compareSession.cancel(event.pointerId);
+  };
 
   private bindDataZoom(): void {
     this.chart?.on('datazoom', () => {
