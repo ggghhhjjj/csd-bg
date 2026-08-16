@@ -11,6 +11,12 @@ describe('LocaleService', () => {
     TestBed.resetTestingModule();
   });
 
+  afterEach(() => {
+    localStorage.removeItem(LOCALE_STORAGE_KEY);
+    document.documentElement.lang = 'bg';
+    TestBed.resetTestingModule();
+  });
+
   it('interpolates params in text()', () => {
     const i18n = TestBed.inject(LocaleService);
     expect(i18n.text('error.fetchFailed', { url: 'https://example.com/data' })).toBe(
