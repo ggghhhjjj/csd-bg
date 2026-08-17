@@ -2,7 +2,8 @@ name: Daily Scrape
 
 on:
   schedule:
-    - cron: "30 16 * * *"
+    - cron: "0 19 * * 1-5"
+      timezone: "Europe/Sofia"
   workflow_dispatch:
 
 permissions:
