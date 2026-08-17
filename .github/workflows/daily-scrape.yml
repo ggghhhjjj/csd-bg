@@ -37,8 +37,7 @@ jobs:
       - name: Git LFS pull
         run: |
           git lfs install --local
-          mkdir -p data/pdfs
-          git lfs pull --include="data/free_float.db.gz,data/pdfs/*"
+          git lfs pull --include="data/free_float.db.gz,data/vectors/*"
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -103,13 +102,13 @@ jobs:
           git lfs install --local
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/free_float.db.gz data/pdfs/ data/vectors/ data/db_changed.txt
+          git add data/free_float.db.gz data/vectors/ data/db_changed.txt
           if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes; skipping commit"
             exit 0
           fi
           git pull --rebase --autostash origin main
-          git add data/free_float.db.gz data/pdfs/ data/vectors/ data/db_changed.txt
+          git add data/free_float.db.gz data/vectors/ data/db_changed.txt
           if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes after rebase; skipping commit"
             exit 0

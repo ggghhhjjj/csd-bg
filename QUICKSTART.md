@@ -73,7 +73,7 @@ After running, you should see:
 
 1. **data/free_float.db** — SQLite database (created locally; gitignored — git stores `data/free_float.db.gz`)
 2. **data/app.log** — Application log file (created on first log write; INFO level by default)
-3. **data/pdfs/** — Downloaded PDF files (after download step)
+3. **data/pdfs/** — Downloaded PDF files after the download step (local working files; gitignored — URLs live in SQLite)
 4. **data/free_float.csv** — Only when running in verbose mode (see below)
 5. **data/db_changed.txt** — Written when scrape/download/extract mutate SQLite (used by GitHub Actions as the commit gate)
 

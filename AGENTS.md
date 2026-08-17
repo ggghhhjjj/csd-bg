@@ -34,7 +34,7 @@ web/                     # Angular 22 + Cordova-browser PWA (NOT an npm workspac
   hooks/before_prepare/build_angular.js
   www/                   # generated, gitignored
 tests/fixtures/          # Offline HTML/PDF golden files (shared by Vitest)
-data/                    # Local CSV/DB output (gitignored)
+data/                    # Runtime CSV/DB/PDFs (gitignored); git tracks db.gz, vectors/, db_changed.txt
 Makefile                 # Dev commands
 package.json             # npm workspaces root
 vitest.config.ts         # Test runner config
@@ -135,11 +135,11 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 
 ## Architecture notes for changes
 
-- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract,vectors` (default) plus `decompress` / `compress`; register future steps there and in `FreeFloatScraperApp.run`. GitHub Actions decompresses `data/free_float.db.gz` before the pipeline and compresses after. The uncompressed `.db` is gitignored; git stores the gzip archive plus `data/db_changed.txt`.
+- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract,vectors` (default) plus `decompress` / `compress`; register future steps there and in `FreeFloatScraperApp.run`. GitHub Actions decompresses `data/free_float.db.gz` before the pipeline and compresses after. The uncompressed `.db` and downloaded PDFs under `data/pdfs/` are gitignored; git stores the gzip archive, `data/vectors/`, and `data/db_changed.txt`.
 - **DB archive**: `db-archive.ts` gzip-streams `{dbPath}.gz` with deterministic `mtime: 0`. `decompress` restores the SQLite file; `compress` does not delete it.
 - **DB change stamp**: After mutating scrape/download/extract SQLite writes, the app writes one ISO 8601 UTC timestamp line to `db_changed.txt` (next to `--db`, or `--db-changed` / `DB_CHANGED_PATH`). Daily scrape commits only when that file changes.
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
-- **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
+- **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir` as a local working file (not committed); failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`. PDF URLs in `free_float` are the durable record.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
 - **Vectors**: `VectorExporter` — full rebuild of `catalog.json`, `manifest.json`, `dates.arrow`, and `free_float_vectors.arrow` under `vectorsDir`. ISIN mapping is static JSON; numeric series use shared date axis with nulls for missing cells. The web client fetches these files from URLs in `web/public/assets/vectors.config.json` (not from disk at build time).
 - **Web client**: Isolated `web/` Angular 22 + Cordova-browser project (not in npm workspaces). `hooks/before_prepare/build_angular.js` runs `npm run build`. GitHub Pages publishes `web/www` via `.github/workflows/pages.yml` when `web/**` changes.
@@ -152,7 +152,7 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 | Area | Why |
 |------|-----|
 | `.env`, secrets, real NAS paths | Local/production credentials and paths |
-| `data/*.db`, `data/*.csv` | User/runtime data (git tracks `data/free_float.db.gz` and `data/db_changed.txt` instead) |
+| `data/*.db`, `data/*.csv`, `data/pdfs/` | User/runtime data (git tracks `data/free_float.db.gz`, `data/vectors/`, and `data/db_changed.txt` instead) |
 | `coverage/`, `htmlcov/`, `build/`, `*.log` | Generated artifacts (`make clean` removes many) |
 | `tests/fixtures/**` | Breaking HTML/PDF/MD fixtures breaks offline tests |
 | Live CSD-BG in automated tests | Flaky, rate limits, ToS; use mocks/fixtures |

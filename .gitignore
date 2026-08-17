@@ -56,16 +56,11 @@ Thumbs.db
 *.swo
 *~
 
-# Data directory — ignore everything except whitelisted paths
+# Data directory — ignore everything except whitelisted paths.
+# Downloaded PDFs in data/pdfs/ stay local; scrape URLs live in SQLite.
 data/*
-data/pdfs/*
-!data/pdfs/
-!data/pdfs/*.pdf
 !data/vectors/
 !data/vectors/*
-
-!data/free_float.db
-
 !data/free_float.db.gz
 !data/db_changed.txt
 output/

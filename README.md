@@ -13,7 +13,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Step pipeline** — `decompress`, `scrape`, `download`, `extract`, `vectors`, `compress` with early stopping on duplicates
 - **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
-- **GitHub Actions** — Daily scheduled scrape with data committed to `main` via Git LFS
+- **GitHub Actions** — Daily scheduled scrape with compressed SQLite and vectors committed to `main` via Git LFS
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Web client** — Angular + Cordova-browser PWA under `web/` (not an npm workspace)
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
@@ -114,7 +114,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 |------|-------------|
 | `decompress` | Restore `data/free_float.db` from the gzip archive (`{db}.gz`) |
 | `scrape` | Discover PDF links, write SQLite (CSV in verbose mode only) |
-| `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` |
+| `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` (local; not committed) |
 | `extract` | Parse PDFs into `stock_issue` / `issuer` / `stock_issue_daily` |
 | `vectors` | Export Arrow vectors + catalog for offline charting (`data/vectors/`) |
 | `compress` | Gzip `data/free_float.db` to `{db}.gz` for git (does not delete the uncompressed file) |
@@ -280,7 +280,7 @@ docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 
 1. Optionally clear failed marks (`--clear-failed-downloads`)
 2. For each `free_float` row without `pdf_content`: GET PDF with retries + backoff
-3. Store file at `{pdfDir}/{date}.pdf` and mark metadata in `pdf_content`, or mark `status=failed`
+3. Store file at `{pdfDir}/{date}.pdf` (gitignored local working file) and mark metadata in `pdf_content`, or mark `status=failed`
 
 ### Step: `extract`
 
@@ -303,7 +303,7 @@ csd-bg/
 │       └── src/extension.ts
 ├── web/                      # Angular 22 + Cordova-browser client (isolated npm project)
 ├── tests/fixtures/           # Offline HTML/PDF golden files (shared)
-├── data/                     # Local CSV/DB/PDF output (gitignored)
+├── data/                     # Runtime CSV/DB/PDFs (gitignored); git tracks db.gz, vectors/, db_changed.txt
 ├── package.json              # npm workspaces root
 ├── vitest.config.ts
 ├── Dockerfile                # Node 22 image
@@ -365,7 +365,7 @@ Do not call the live CSD-BG site from automated tests.
 
 ### GitHub Actions (production)
 
-The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow decompresses the git-tracked gzip archive, scrapes/downloads/extracts, then compresses SQLite and commits `data/free_float.db.gz`, `data/db_changed.txt`, and new PDFs to `main` using **Git LFS**. The uncompressed `data/free_float.db` is gitignored.
+The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow decompresses the git-tracked gzip archive, scrapes/downloads/extracts, then compresses SQLite and commits `data/free_float.db.gz`, `data/vectors/`, and `data/db_changed.txt` to `main` using **Git LFS**. Downloaded PDFs under `data/pdfs/` are ephemeral working files (gitignored); PDF URLs stay in SQLite. The uncompressed `data/free_float.db` is gitignored.
 
 #### One-time setup
 
@@ -375,15 +375,15 @@ The recommended production setup runs on **GitHub-hosted Actions** daily at **19
 
 3. **Watch for failures** — On GitHub.com, open the repo → **Watch** → **Custom** → enable **Actions** (or **All activity**). GitHub emails you when a scheduled run fails, with a link to the run.
 
-4. **Git LFS** — `data/free_float.db.gz` and `data/pdfs/*.pdf` are LFS objects ([`.gitattributes`](.gitattributes)). The uncompressed SQLite file is not stored in git. Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
+4. **Git LFS** — `data/free_float.db.gz` and `data/vectors/*.arrow` are LFS objects ([`.gitattributes`](.gitattributes)). Downloaded PDFs are not stored in git. The uncompressed SQLite file is not stored in git. Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
 
 #### What the workflow does
 
 | Phase | Behavior |
 |-------|----------|
-| Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/` from local LFS objects (remote fetch only for OIDs not in cache). |
-| Pipeline | Decompress `data/free_float.db.gz`, then `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10`, then compress |
-| Commit | Push only if `data/db_changed.txt` changed (includes compressed DB, new PDFs, and vectors in the same commit) |
+| Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/free_float.db.gz` and `data/vectors/` from local LFS objects (remote fetch only for OIDs not in cache). |
+| Pipeline | Decompress `data/free_float.db.gz`, then `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10`, then compress. PDFs are downloaded into `data/pdfs/` for extract only and are not committed. |
+| Commit | Push only if `data/db_changed.txt` changed (includes compressed DB and vectors in the same commit) |
 | Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
 | Cache | Saved only after a fully successful run |
 
@@ -459,7 +459,7 @@ Copy [.env.example](.env.example) to `.env` locally. Never commit `.env`.
 | created_at         | TIMESTAMP | Row created                          |
 | updated_at         | TIMESTAMP | Last update                          |
 
-PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). Download/extract metadata is stored in `pdf_content`.
+PDF files live at `{pdfDir}/{date}.pdf` (default `data/pdfs/` next to the database). They are local working files and are gitignored; the durable record is the PDF URL in `free_float`. Download/extract metadata is stored in `pdf_content`.
 
 ### Table: `stock_issue`
 
