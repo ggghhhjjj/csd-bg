@@ -4,6 +4,7 @@ export { DatabaseManager } from "./database-manager.js";
 export {
   CsvManagerError,
   DatabaseManagerError,
+  DbArchiveError,
   PdfDownloaderError,
   PdfExtractorError,
   PipelineError,
@@ -11,6 +12,7 @@ export {
   VectorExporterError,
   WebScraperError,
 } from "./errors.js";
+export { compressDatabase, compressedDbPath, decompressDatabase } from "./db-archive.js";
 export { PdfDownloader } from "./pdf-downloader.js";
 export type { FetchLike } from "./pdf-downloader.js";
 export { PdfExtractor } from "./pdf-extractor.js";
@@ -28,9 +30,11 @@ export type { VectorCatalog, VectorCatalogEntry, VectorManifest } from "./vector
 export {
   baseUrlFromStatisticsUrl,
   CSV_PATH_ENV,
+  DB_CHANGED_PATH_ENV,
   PDF_DIR_ENV,
   VECTORS_DIR_ENV,
   resolveCsvPath,
+  resolveDbChangedPath,
   resolvePdfDir,
   resolveStatisticsUrl,
   resolveVectorsDir,

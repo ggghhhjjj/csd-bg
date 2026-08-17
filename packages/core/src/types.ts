@@ -1,6 +1,13 @@
 export const CSD_BG_STATISTICS_URL_ENV = "CSD_BG_STATISTICS_URL";
 
-export const KNOWN_STEPS = ["scrape", "download", "extract", "vectors"] as const;
+export const KNOWN_STEPS = [
+  "decompress",
+  "scrape",
+  "download",
+  "extract",
+  "vectors",
+  "compress",
+] as const;
 export type PipelineStep = (typeof KNOWN_STEPS)[number];
 
 export interface FreeFloatLink {
@@ -53,6 +60,8 @@ export interface AppOptions {
   clearFailedExtracts?: boolean;
   statisticsUrl?: string;
   vectorsDir?: string;
+  /** Path of the one-line stamp written when SQLite is mutated (default: db_changed.txt next to --db). */
+  dbChangedPath?: string;
 }
 
 export interface ScrapeSummary {

@@ -9,6 +9,7 @@ describe("CLI log level", () => {
     const optionNames = program.options.map((option) => option.long?.replace(/^--/, ""));
 
     expect(optionNames).toContain("log-level");
+    expect(optionNames).toContain("db-changed");
   });
 
   it("resolveLogLevel honors CLI override over env", () => {

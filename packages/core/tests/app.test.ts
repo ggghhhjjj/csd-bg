@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -236,10 +236,98 @@ describe("FreeFloatScraperApp", () => {
       calls.push("vectors");
       return 0;
     });
+    vi.spyOn(app, "runDecompress").mockImplementation(async () => {
+      calls.push("decompress");
+      return 0;
+    });
+    vi.spyOn(app, "runCompress").mockImplementation(async () => {
+      calls.push("compress");
+      return 0;
+    });
 
-    const result = await app.run(["scrape", "download", "extract", "vectors"]);
+    const result = await app.run([
+      "decompress",
+      "scrape",
+      "download",
+      "extract",
+      "vectors",
+      "compress",
+    ]);
 
     expect(result.exitCode).toBe(0);
-    expect(calls).toEqual(["scrape", "download", "extract", "vectors"]);
+    expect(calls).toEqual([
+      "decompress",
+      "scrape",
+      "download",
+      "extract",
+      "vectors",
+      "compress",
+    ]);
+  });
+
+  it("writes db_changed stamp when scrape inserts records", async () => {
+    const app = createApp();
+    const scraper = {
+      scrapeWithPostPagination: vi.fn().mockResolvedValue([
+        { date: "2025-12-04", url: "https://example.com/test1.pdf", href: "/a.pdf" },
+      ]),
+    };
+    vi.spyOn(app as unknown as { getWebScraper: () => typeof scraper }, "getWebScraper").mockReturnValue(
+      scraper,
+    );
+
+    const result = await app.run(["scrape"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(app.dbChangedPath)).toBe(true);
+    expect(readFileSync(app.dbChangedPath, "utf8").trim()).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+  });
+
+  it("does not write db_changed stamp when nothing is mutated", async () => {
+    const app = createApp();
+    const scraper = {
+      scrapeWithPostPagination: vi.fn().mockResolvedValue([]),
+    };
+    vi.spyOn(app as unknown as { getWebScraper: () => typeof scraper }, "getWebScraper").mockReturnValue(
+      scraper,
+    );
+
+    const result = await app.run(["scrape"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(app.dbChangedPath)).toBe(false);
+  });
+
+  it("compresses and decompresses the database file", async () => {
+    const dbPath = join(tempDir, "test.db");
+    const app = createApp();
+    app.setup(false);
+    app.dbManager.using((manager) => {
+      manager.insertRecord("2025-12-04", "https://example.com/a.pdf");
+    });
+
+    expect(await app.runCompress()).toBe(0);
+    expect(existsSync(`${dbPath}.gz`)).toBe(true);
+
+    rmSync(dbPath);
+    expect(await app.runDecompress()).toBe(0);
+    expect(existsSync(dbPath)).toBe(true);
+
+    app.dbManager.using((manager) => {
+      expect(manager.recordExists("2025-12-04")).toBe(true);
+    });
+  });
+
+  it("runCompress returns 1 when the database file is missing", async () => {
+    const app = createApp();
+    expect(await app.runCompress()).toBe(1);
+  });
+
+  it("runDecompress returns 1 when the archive is missing", async () => {
+    const app = createApp();
+    writeFileSync(join(tempDir, "test.db"), "placeholder");
+    expect(await app.runDecompress()).toBe(1);
   });
 });

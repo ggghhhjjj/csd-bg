@@ -8,6 +8,7 @@ import type { ExtractedRow, FreeFloatRecord, PendingPdfDownload, PendingPdfExtra
 
 export class DatabaseManager {
   private db: Database.Database | null = null;
+  private mutated = false;
 
   constructor(
     private readonly dbPath: string,
@@ -15,6 +16,18 @@ export class DatabaseManager {
   ) {
     mkdirSync(dirname(dbPath), { recursive: true });
     mkdirSync(pdfDir, { recursive: true });
+  }
+
+  get hasMutations(): boolean {
+    return this.mutated;
+  }
+
+  clearMutations(): void {
+    this.mutated = false;
+  }
+
+  private markMutated(): void {
+    this.mutated = true;
   }
 
   connect(): void {
@@ -168,6 +181,7 @@ export class DatabaseManager {
       const result = db
         .prepare("INSERT INTO free_float (date, url) VALUES (?, ?)")
         .run(date, url);
+      this.markMutated();
       return Number(result.lastInsertRowid);
     } catch (error) {
       if (error instanceof Error && /UNIQUE constraint failed/.test(error.message)) {
@@ -254,6 +268,7 @@ export class DatabaseManager {
           updated_at = CURRENT_TIMESTAMP
       `,
       ).run(freeFloatId, sizeBytes, attempts);
+      this.markMutated();
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to store PDF content for id ${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -288,6 +303,7 @@ export class DatabaseManager {
           updated_at = CURRENT_TIMESTAMP
       `,
       ).run(freeFloatId, attempts, lastError);
+      this.markMutated();
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to mark PDF failed for id ${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -304,6 +320,9 @@ export class DatabaseManager {
           : db
               .prepare("DELETE FROM pdf_content WHERE status = 'failed' AND free_float_id = ?")
               .run(freeFloatId);
+      if (result.changes > 0) {
+        this.markMutated();
+      }
       return result.changes;
     } catch (error) {
       throw new DatabaseManagerError(
@@ -392,6 +411,7 @@ export class DatabaseManager {
 
     try {
       transaction(rows);
+      this.markMutated();
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to save extracted rows for free_float_id=${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -414,6 +434,7 @@ export class DatabaseManager {
         WHERE free_float_id = ?
       `,
       ).run(attempts, freeFloatId);
+      this.markMutated();
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to mark PDF extracted for id ${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -435,6 +456,7 @@ export class DatabaseManager {
         WHERE free_float_id = ?
       `,
       ).run(attempts, lastError, freeFloatId);
+      this.markMutated();
     } catch (error) {
       throw new DatabaseManagerError(
         `Failed to mark PDF extract failed for id ${freeFloatId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -473,6 +495,9 @@ export class DatabaseManager {
             `,
               )
               .run(freeFloatId);
+      if (result.changes > 0) {
+        this.markMutated();
+      }
       return result.changes;
     } catch (error) {
       throw new DatabaseManagerError(

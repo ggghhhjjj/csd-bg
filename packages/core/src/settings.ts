@@ -6,6 +6,7 @@ import { CSD_BG_STATISTICS_URL_ENV } from "./types.js";
 export const PDF_DIR_ENV = "PDF_DIR";
 export const CSV_PATH_ENV = "CSV_PATH";
 export const VECTORS_DIR_ENV = "VECTORS_DIR";
+export const DB_CHANGED_PATH_ENV = "DB_CHANGED_PATH";
 
 export function baseUrlFromStatisticsUrl(statisticsUrl: string): string {
   let parsed: URL;
@@ -100,4 +101,24 @@ export function resolveVectorsDir(explicitDir?: string | null, dbPath?: string):
   }
 
   return join(dirname(dbPath), "vectors");
+}
+
+export function resolveDbChangedPath(explicitPath?: string | null, dbPath?: string): string {
+  const raw = (
+    explicitPath !== undefined && explicitPath !== null
+      ? explicitPath
+      : process.env[DB_CHANGED_PATH_ENV] ?? ""
+  ).trim();
+
+  if (raw) {
+    return raw;
+  }
+
+  if (!dbPath) {
+    throw new ScraperConfigError(
+      "Database change stamp path is not configured. Set DB_CHANGED_PATH, pass --db-changed, or provide a database path.",
+    );
+  }
+
+  return join(dirname(dbPath), "db_changed.txt");
 }

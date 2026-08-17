@@ -187,4 +187,22 @@ describe("DatabaseManager", () => {
       expect(manager.getPendingPdfExtractions()).toHaveLength(1);
     });
   });
+
+  it("flags mutations on writes but not on initialize or duplicate insert", () => {
+    const db = createManager();
+    db.using((manager) => {
+      manager.initializeTables();
+      expect(manager.hasMutations).toBe(false);
+
+      expect(manager.insertRecord("2025-12-04", "https://example.com/a.pdf")).not.toBeNull();
+      expect(manager.hasMutations).toBe(true);
+
+      manager.clearMutations();
+      expect(manager.insertRecord("2025-12-04", "https://example.com/a.pdf")).toBeNull();
+      expect(manager.hasMutations).toBe(false);
+
+      expect(manager.clearFailedPdfDownloads()).toBe(0);
+      expect(manager.hasMutations).toBe(false);
+    });
+  });
 });

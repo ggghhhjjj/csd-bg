@@ -1,8 +1,13 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 import { CsvManager } from "./csv-manager.js";
 import { DatabaseManager } from "./database-manager.js";
+import { compressDatabase, compressedDbPath, decompressDatabase } from "./db-archive.js";
 import {
   CsvManagerError,
   DatabaseManagerError,
+  DbArchiveError,
   PdfExtractorError,
   ScraperConfigError,
   VectorExporterError,
@@ -23,7 +28,7 @@ import type {
   VectorsSummary,
 } from "./types.js";
 import { consoleLogger } from "./types.js";
-import { resolveCsvPath, resolvePdfDir, resolveVectorsDir } from "./settings.js";
+import { resolveCsvPath, resolveDbChangedPath, resolvePdfDir, resolveVectorsDir } from "./settings.js";
 import { VectorExporter } from "./vector-exporter.js";
 import { WebScraper } from "./web-scraper.js";
 
@@ -44,10 +49,13 @@ export class FreeFloatScraperApp {
   readonly pdfDownloader: PdfDownloader;
   readonly pdfExtractor: PdfExtractor;
 
+  readonly dbChangedPath: string;
+
   constructor(
     private readonly options: AppOptions,
     private readonly logger: Logger = consoleLogger,
   ) {
+    this.dbChangedPath = resolveDbChangedPath(options.dbChangedPath, options.dbPath);
     this.dbManager = new DatabaseManager(
       options.dbPath,
       resolvePdfDir(options.pdfDir, options.dbPath),
@@ -126,6 +134,41 @@ export class FreeFloatScraperApp {
       }
     } finally {
       this.dbManager.disconnect();
+    }
+  }
+
+  async runDecompress(): Promise<number> {
+    try {
+      this.logger.info("Starting decompress");
+      this.dbManager.disconnect();
+      const archivePath = compressedDbPath(this.options.dbPath);
+      await decompressDatabase(this.options.dbPath, archivePath);
+      this.logger.info(`Restored database from ${archivePath}`);
+      return 0;
+    } catch (error) {
+      if (error instanceof DbArchiveError) {
+        this.logger.error(error.message);
+        return 1;
+      }
+      this.logger.error(`Unexpected error during decompress: ${String(error)}`);
+      return 1;
+    }
+  }
+
+  async runCompress(): Promise<number> {
+    try {
+      this.logger.info("Starting compress");
+      this.dbManager.disconnect();
+      const archivePath = await compressDatabase(this.options.dbPath);
+      this.logger.info(`Compressed database to ${archivePath}`);
+      return 0;
+    } catch (error) {
+      if (error instanceof DbArchiveError) {
+        this.logger.error(error.message);
+        return 1;
+      }
+      this.logger.error(`Unexpected error during compress: ${String(error)}`);
+      return 1;
     }
   }
 
@@ -280,12 +323,17 @@ export class FreeFloatScraperApp {
   }
 
   async run(steps: PipelineStep[]): Promise<PipelineRunResult> {
+    this.dbManager.clearMutations();
     const exitCode = await runPipeline(steps, {
+      decompress: () => this.runDecompress(),
       scrape: () => this.runScrape(),
       download: () => this.runDownload(),
       extract: () => this.runExtract(),
       vectors: () => this.runVectors(),
+      compress: () => this.runCompress(),
     });
+
+    this.writeDbChangedStampIfNeeded();
 
     const result: PipelineRunResult = { exitCode };
     if (steps.includes("scrape")) {
@@ -331,5 +379,15 @@ export class FreeFloatScraperApp {
       throw new VectorExporterError("Vectors step did not produce a summary");
     }
     return this.vectorsSummary;
+  }
+
+  private writeDbChangedStampIfNeeded(): void {
+    if (!this.dbManager.hasMutations) {
+      return;
+    }
+
+    mkdirSync(dirname(this.dbChangedPath), { recursive: true });
+    writeFileSync(this.dbChangedPath, `${new Date().toISOString()}\n`, "utf8");
+    this.logger.info(`Database changed; wrote stamp ${this.dbChangedPath}`);
   }
 }

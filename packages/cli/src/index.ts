@@ -24,7 +24,7 @@ export function buildProgram(): Command {
 
   program
     .name("csd-bg")
-    .description("CSD-BG Free Float pipeline - scrape, download, extract, and export vectors")
+    .description("CSD-BG Free Float pipeline - decompress, scrape, download, extract, export vectors, and compress")
     .version("2.0.0")
     .argument(
       "[steps]",
@@ -48,6 +48,10 @@ export function buildProgram(): Command {
     .option("--clear-failed-extracts", "Clear failed extract marks before extract")
     .option("--pdf-dir <path>", "Directory for downloaded PDF files (default: sibling pdfs/ of --db)")
     .option("--vectors-dir <path>", "Directory for Arrow vector export (default: sibling vectors/ of --db)")
+    .option(
+      "--db-changed <path>",
+      "Stamp file written when SQLite is mutated (default: db_changed.txt next to --db)",
+    )
     .action(async (stepsArg: string, options) => {
       let parsedSteps;
       try {
@@ -104,6 +108,7 @@ export function buildProgram(): Command {
           clearFailedExtracts: Boolean(options.clearFailedExtracts),
           pdfDir: options.pdfDir ? resolve(options.pdfDir) : undefined,
           vectorsDir: options.vectorsDir ? resolve(options.vectorsDir) : undefined,
+          dbChangedPath: options.dbChanged ? resolve(options.dbChanged) : undefined,
         },
         logger,
       );

@@ -17,6 +17,8 @@ describe("parseSteps", () => {
     expect(parseSteps("scrape")).toEqual(["scrape"]);
     expect(parseSteps("extract")).toEqual(["extract"]);
     expect(parseSteps("vectors")).toEqual(["vectors"]);
+    expect(parseSteps("decompress")).toEqual(["decompress"]);
+    expect(parseSteps("compress")).toEqual(["compress"]);
   });
 
   it("trims whitespace", () => {
@@ -25,6 +27,14 @@ describe("parseSteps", () => {
 
   it("preserves order", () => {
     expect(parseSteps("download,scrape")).toEqual(["download", "scrape"]);
+  });
+
+  it("parses decompress and compress with other steps", () => {
+    expect(parseSteps("decompress,scrape,compress")).toEqual([
+      "decompress",
+      "scrape",
+      "compress",
+    ]);
   });
 
   it("rejects unknown steps", () => {
@@ -42,7 +52,14 @@ describe("parseSteps", () => {
   });
 
   it("exports known steps", () => {
-    expect(KNOWN_STEPS).toEqual(["scrape", "download", "extract", "vectors"]);
+    expect(KNOWN_STEPS).toEqual([
+      "decompress",
+      "scrape",
+      "download",
+      "extract",
+      "vectors",
+      "compress",
+    ]);
   });
 });
 

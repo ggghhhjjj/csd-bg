@@ -53,3 +53,10 @@ export class VectorExporterError extends Error {
     this.name = "VectorExporterError";
   }
 }
+
+export class DbArchiveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DbArchiveError";
+  }
+}

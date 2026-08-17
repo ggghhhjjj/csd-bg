@@ -38,7 +38,7 @@ jobs:
         run: |
           git lfs install --local
           mkdir -p data/pdfs
-          git lfs pull --include="data/free_float.db,data/pdfs/*"
+          git lfs pull --include="data/free_float.db.gz,data/pdfs/*"
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -61,6 +61,13 @@ jobs:
             exit 1
           fi
 
+      - name: Decompress database
+        id: decompress
+        run: |
+          node packages/cli/dist/index.js decompress \
+            --db ./data/free_float.db \
+            --log ./data/app.log
+
       - name: Run pipeline
         id: pipeline
         continue-on-error: true
@@ -72,6 +79,7 @@ jobs:
           set +e
           node packages/cli/dist/index.js scrape,download,extract,vectors \
             --db ./data/free_float.db \
+            --db-changed ./data/db_changed.txt \
             --pdf-dir ./data/pdfs \
             --vectors-dir ./data/vectors \
             --log ./data/app.log \
@@ -82,20 +90,27 @@ jobs:
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit "$exit_code"
 
+      - name: Compress database
+        id: compress
+        run: |
+          node packages/cli/dist/index.js compress \
+            --db ./data/free_float.db \
+            --log ./data/app.log
+
       - name: Commit data if database changed
         id: push
         run: |
           git lfs install --local
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/free_float.db data/pdfs/ data/vectors/
-          if git diff --staged --quiet -- data/free_float.db; then
+          git add data/free_float.db.gz data/pdfs/ data/vectors/ data/db_changed.txt
+          if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes; skipping commit"
             exit 0
           fi
           git pull --rebase --autostash origin main
-          git add data/free_float.db data/pdfs/ data/vectors/
-          if git diff --staged --quiet -- data/free_float.db; then
+          git add data/free_float.db.gz data/pdfs/ data/vectors/ data/db_changed.txt
+          if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes after rebase; skipping commit"
             exit 0
           fi
@@ -126,7 +141,9 @@ jobs:
         if: failure()
         env:
           CHECKOUT_OUT: ${{ steps.checkout.outcome }}
+          DECOMPRESS_OUT: ${{ steps.decompress.outcome }}
           PIPELINE_OUT: ${{ steps.pipeline.outcome }}
+          COMPRESS_OUT: ${{ steps.compress.outcome }}
           PUSH_OUT: ${{ steps.push.outcome }}
         run: |
           {
@@ -135,7 +152,9 @@ jobs:
             echo "| Step | Outcome |"
             echo "|------|---------|"
             echo "| checkout | ${CHECKOUT_OUT:-skipped} |"
+            echo "| decompress | ${DECOMPRESS_OUT:-skipped} |"
             echo "| pipeline | ${PIPELINE_OUT:-skipped} |"
+            echo "| compress | ${COMPRESS_OUT:-skipped} |"
             echo "| commit/push | ${PUSH_OUT:-skipped} |"
             echo ""
             if [[ "${CHECKOUT_OUT:-}" == "failure" || "${PUSH_OUT:-}" == "failure" ]]; then

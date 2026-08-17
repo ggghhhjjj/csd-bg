@@ -15,7 +15,8 @@ packages/
   core/                  # @csd-bg/core — scraper library
     src/
       app.ts             # FreeFloatScraperApp orchestrator
-      pipeline.ts        # Step parse/validate/run (scrape, download, extract, vectors)
+      pipeline.ts        # Step parse/validate/run (decompress, scrape, download, extract, vectors, compress)
+      db-archive.ts      # gzip compress/decompress of the SQLite file
       vector-exporter.ts # SQLite → catalog.json + Arrow IPC (dates + series)
       web-scraper.ts     # fetch + cheerio, POST pagination
       pdf-downloader.ts  # PDF GET with retries + random backoff
@@ -53,6 +54,7 @@ Used mainly for **Docker / Synology** deployment (see `.env.example`). The CLI l
 | `DOCKER_USER` | Container user `UID:GID` (default Synology-oriented) |
 | `CSV_PATH` | CSV export path when verbose/DEBUG (often `/data/free_float.csv`; default: sibling of `DB_PATH`) |
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
+| `DB_CHANGED_PATH` | Stamp file written when SQLite is mutated (default: `db_changed.txt` next to `DB_PATH`) |
 | `PDF_DIR` | Optional PDF directory (default: sibling `pdfs/` of `DB_PATH`) |
 | `VECTORS_DIR` | Arrow vector export directory (default: sibling `vectors/` of `DB_PATH`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |
@@ -84,10 +86,12 @@ node packages/cli/dist/index.js extract --db ./data/free_float.db
 node packages/cli/dist/index.js vectors --db ./data/free_float.db
 node packages/cli/dist/index.js scrape --db ./data/free_float.db
 node packages/cli/dist/index.js scrape --verbose --db ./data/free_float.db   # also writes CSV
+node packages/cli/dist/index.js decompress --db ./data/free_float.db
+node packages/cli/dist/index.js compress --db ./data/free_float.db
 node packages/cli/dist/index.js --help
 ```
 
-Common flags: `--verbose`, `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`, `--vectors-dir PATH`, `--csv PATH` (verbose only).
+Common flags: `--verbose`, `--no-pagination`, `--max-pages N`, `--no-early-stopping`, `--early-stopping-threshold N`, `--timeout SEC`, `--download-retries N`, `--download-retry-min SEC`, `--download-retry-max SEC`, `--clear-failed-downloads`, `--clear-failed-extracts`, `--pdf-dir PATH`, `--vectors-dir PATH`, `--db-changed PATH`, `--csv PATH` (verbose only).
 
 ### Quality & tests
 
@@ -127,11 +131,13 @@ Compose `command` includes `scrape,download,extract,vectors` plus scrape limits 
 - **Fixtures**: `tests/fixtures/csd_home.html`, `FREE_FLOAT_*.pdf`, `FREE_FLOAT_20260723.md` — keep scraper/extractor tests offline; do not replace with live site calls in unit tests.
 - **Coverage**: `npm run test:coverage` covers `packages/core/src` and `packages/cli/src`.
 
-When adding features, extend the matching test file (`web-scraper.test.ts`, `database-manager.test.ts`, `app.test.ts`, `pipeline.test.ts`, `pdf-downloader.test.ts`, `pdf-extractor.test.ts`, `early-stopping.test.ts`, `vector-exporter.test.ts`).
+When adding features, extend the matching test file (`web-scraper.test.ts`, `database-manager.test.ts`, `app.test.ts`, `pipeline.test.ts`, `pdf-downloader.test.ts`, `pdf-extractor.test.ts`, `early-stopping.test.ts`, `vector-exporter.test.ts`, `db-archive.test.ts`).
 
 ## Architecture notes for changes
 
-- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract,vectors`; register future steps there and in `FreeFloatScraperApp.run`.
+- **Pipeline**: `packages/core/src/pipeline.ts` parses `scrape,download,extract,vectors` (default) plus `decompress` / `compress`; register future steps there and in `FreeFloatScraperApp.run`. GitHub Actions decompresses `data/free_float.db.gz` before the pipeline and compresses after. The uncompressed `.db` is gitignored; git stores the gzip archive plus `data/db_changed.txt`.
+- **DB archive**: `db-archive.ts` gzip-streams `{dbPath}.gz` with deterministic `mtime: 0`. `decompress` restores the SQLite file; `compress` does not delete it.
+- **DB change stamp**: After mutating scrape/download/extract SQLite writes, the app writes one ISO 8601 UTC timestamp line to `db_changed.txt` (next to `--db`, or `--db-changed` / `DB_CHANGED_PATH`). Daily scrape commits only when that file changes.
 - **Scraper**: `WebScraper` — `fetch` + cheerio; POST pagination targets JSF form `formFF`. Preserve session/cookies and existing URL/date regex semantics unless requirements change.
 - **Downloader**: `PdfDownloader` — retries with random backoff; writes `{date}.pdf` under `pdfDir`; failed URLs marked in `pdf_content` and skipped until `--clear-failed-downloads`.
 - **Extractor**: `PdfExtractor` — pdfjs-dist text parse; ISIN-anchored rows; issuer names versioned in `issuer` by `(stock_issue_id, free_float_id)`.
@@ -139,14 +145,14 @@ When adding features, extend the matching test file (`web-scraper.test.ts`, `dat
 - **Web client**: Isolated `web/` Angular 22 + Cordova-browser project (not in npm workspaces). `hooks/before_prepare/build_angular.js` runs `npm run build`. GitHub Pages publishes `web/www` via `.github/workflows/pages.yml` when `web/**` changes.
 - **DB**: `free_float` (date unique), `pdf_content` (download/extract metadata; PDF bytes on disk at `{pdfDir}/{date}.pdf`), `stock_issue` (isin unique, surrogate PK), `issuer`, `stock_issue_daily`.
 - **CSV**: Optional export in verbose/DEBUG mode only. Header `date,url`; append-only for new records during scrape. SQLite is the source of truth; CSV is not read back by the pipeline. Enable via `--verbose`, `--log-level DEBUG`, `LOG_LEVEL=DEBUG`, or `exportCsv: true` in the API.
-- **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, etc.).
+- **Style**: TypeScript strict mode; domain exceptions in `errors.ts` (`WebScraperError`, `PdfDownloaderError`, `PdfExtractorError`, `DbArchiveError`, etc.).
 
 ## Don't touch (without explicit intent)
 
 | Area | Why |
 |------|-----|
 | `.env`, secrets, real NAS paths | Local/production credentials and paths |
-| `data/*.db`, `data/*.csv` | User/runtime data |
+| `data/*.db`, `data/*.csv` | User/runtime data (git tracks `data/free_float.db.gz` and `data/db_changed.txt` instead) |
 | `coverage/`, `htmlcov/`, `build/`, `*.log` | Generated artifacts (`make clean` removes many) |
 | `tests/fixtures/**` | Breaking HTML/PDF/MD fixtures breaks offline tests |
 | Live CSD-BG in automated tests | Flaky, rate limits, ToS; use mocks/fixtures |

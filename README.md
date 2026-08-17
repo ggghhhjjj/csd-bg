@@ -10,7 +10,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 
 - **Web scraping** — Extract Free Float PDF links from the CSD-BG statistics page
 - **POST-based pagination** — Scrape all pages via JSF AJAX POST (no browser)
-- **Step pipeline** — `scrape`, `download`, `extract` with early stopping on duplicates
+- **Step pipeline** — `decompress`, `scrape`, `download`, `extract`, `vectors`, `compress` with early stopping on duplicates
 - **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
 - **GitHub Actions** — Daily scheduled scrape with data committed to `main` via Git LFS
@@ -112,10 +112,12 @@ npm run csd-bg -- [steps] --db <path> [options]
 
 | Step | Description |
 |------|-------------|
+| `decompress` | Restore `data/free_float.db` from the gzip archive (`{db}.gz`) |
 | `scrape` | Discover PDF links, write SQLite (CSV in verbose mode only) |
 | `download` | Fetch pending PDFs into `data/pdfs/{date}.pdf` |
 | `extract` | Parse PDFs into `stock_issue` / `issuer` / `stock_issue_daily` |
 | `vectors` | Export Arrow vectors + catalog for offline charting (`data/vectors/`) |
+| `compress` | Gzip `data/free_float.db` to `{db}.gz` for git (does not delete the uncompressed file) |
 
 **Common options**:
 
@@ -137,6 +139,7 @@ npm run csd-bg -- [steps] --db <path> [options]
 | `--clear-failed-extracts` | Retry previously failed extractions |
 | `--pdf-dir <path>` | PDF storage directory (default: sibling `pdfs/` of `--db`) |
 | `--vectors-dir <path>` | Arrow vector export directory (default: sibling `vectors/` of `--db`) |
+| `--db-changed <path>` | Stamp file written when SQLite is mutated (default: `db_changed.txt` next to `--db`, or `DB_CHANGED_PATH` env) |
 
 **Environment**: copy `.env.example` → `.env` and set `CSD_BG_STATISTICS_URL` (required for scrape). Optional `LOG_LEVEL` sets default verbosity. Loaded automatically via `dotenv`.
 
@@ -161,6 +164,12 @@ node packages/cli/dist/index.js scrape \
 node packages/cli/dist/index.js download --db ./data/free_float.db
 node packages/cli/dist/index.js extract --db ./data/free_float.db
 node packages/cli/dist/index.js vectors --db ./data/free_float.db
+
+# Restore git-tracked gzip archive to a local SQLite file
+node packages/cli/dist/index.js decompress --db ./data/free_float.db
+
+# Compress local SQLite for git (writes data/free_float.db.gz)
+node packages/cli/dist/index.js compress --db ./data/free_float.db
 
 # Full historical scrape (no early stop)
 node packages/cli/dist/index.js scrape \
@@ -356,7 +365,7 @@ Do not call the live CSD-BG site from automated tests.
 
 ### GitHub Actions (production)
 
-The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow scrapes, downloads, and extracts, then commits `data/free_float.db` and new PDFs to `main` using **Git LFS**.
+The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow decompresses the git-tracked gzip archive, scrapes/downloads/extracts, then compresses SQLite and commits `data/free_float.db.gz`, `data/db_changed.txt`, and new PDFs to `main` using **Git LFS**. The uncompressed `data/free_float.db` is gitignored.
 
 #### One-time setup
 
@@ -366,15 +375,15 @@ The recommended production setup runs on **GitHub-hosted Actions** daily at **19
 
 3. **Watch for failures** — On GitHub.com, open the repo → **Watch** → **Custom** → enable **Actions** (or **All activity**). GitHub emails you when a scheduled run fails, with a link to the run.
 
-4. **Git LFS** — `data/free_float.db` and `data/pdfs/*.pdf` are LFS objects ([`.gitattributes`](.gitattributes)). Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
+4. **Git LFS** — `data/free_float.db.gz` and `data/pdfs/*.pdf` are LFS objects ([`.gitattributes`](.gitattributes)). The uncompressed SQLite file is not stored in git. Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
 
 #### What the workflow does
 
 | Phase | Behavior |
 |-------|----------|
 | Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/` from local LFS objects (remote fetch only for OIDs not in cache). |
-| Pipeline | `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10` |
-| Commit | Push only if `data/free_float.db` changed (includes new PDFs in the same commit) |
+| Pipeline | Decompress `data/free_float.db.gz`, then `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10`, then compress |
+| Commit | Push only if `data/db_changed.txt` changed (includes compressed DB, new PDFs, and vectors in the same commit) |
 | Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
 | Cache | Saved only after a fully successful run |
 
@@ -415,6 +424,7 @@ Same Docker image — push to ECR/ACR and run as a scheduled task (EventBridge, 
 | `DOCKER_USER` | Container `UID:GID` (Synology) |
 | `CSV_PATH` | CSV export path when verbose (often `/data/free_float.csv`; default: sibling of `DB_PATH`) |
 | `DB_PATH` | Production DB path (often `/data/free_float.db`) |
+| `DB_CHANGED_PATH` | Stamp file written when SQLite is mutated (default: `db_changed.txt` next to `DB_PATH`) |
 | `PDF_DIR` | Optional PDF directory (default: `{dirname(DB_PATH)}/pdfs`) |
 | `LOG_LEVEL` | Minimum log level: `ERROR`, `WARN`, `INFO`, `DEBUG` (default: `INFO`) |
 | `TZ` | Timezone (e.g. `Europe/Sofia`) |

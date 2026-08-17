@@ -44,6 +44,17 @@ describe("settings", () => {
     expect(resolvePdfDir("/explicit/pdfs", "/data/free_float.db")).toBe("/explicit/pdfs");
     delete process.env[PDF_DIR_ENV];
   });
+
+  it("resolves db-changed stamp path from db path or env", async () => {
+    const { resolveDbChangedPath, DB_CHANGED_PATH_ENV } = await import("@csd-bg/core");
+    expect(resolveDbChangedPath(undefined, "/data/free_float.db")).toBe("/data/db_changed.txt");
+    process.env[DB_CHANGED_PATH_ENV] = "/custom/stamp.txt";
+    expect(resolveDbChangedPath(undefined, "/data/free_float.db")).toBe("/custom/stamp.txt");
+    expect(resolveDbChangedPath("/explicit/stamp.txt", "/data/free_float.db")).toBe(
+      "/explicit/stamp.txt",
+    );
+    delete process.env[DB_CHANGED_PATH_ENV];
+  });
 });
 
 describe("WebScraper", () => {

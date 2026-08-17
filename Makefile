@@ -33,6 +33,13 @@ define print_run_header
 	@echo ""
 endef
 
+define decompress_db_if_missing
+	@if [ ! -f $(DATA_DIR)/free_float.db ] && [ -f $(DATA_DIR)/free_float.db.gz ]; then \
+		echo "No $(DATA_DIR)/free_float.db; decompressing $(DATA_DIR)/free_float.db.gz"; \
+		node packages/cli/dist/index.js decompress --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log; \
+	fi
+endef
+
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
@@ -86,6 +93,7 @@ clean-data: ## Clean up data files (CSV and DB)
 run: build ## Run scrape+download+extract locally (VERBOSE=1; MAX_PAGES=5 default for incremental sync)
 	@mkdir -p $(DATA_DIR)
 	$(print_run_header)
+	$(decompress_db_if_missing)
 	node packages/cli/dist/index.js scrape,download,extract,vectors $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log
 
 run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1; same pagination limits as run)
@@ -93,6 +101,7 @@ run-timeout: build ## Run scrape+download+extract with custom timeout (VERBOSE=1
 	$(print_run_header)
 	@echo "  TIMEOUT=60 seconds (--timeout)"
 	@echo ""
+	$(decompress_db_if_missing)
 	node packages/cli/dist/index.js scrape,download,extract,vectors $(RUN_VERBOSE) $(RUN_PAGINATION) --db $(DATA_DIR)/free_float.db --log $(DATA_DIR)/app.log --timeout 60
 
 docker-build: ## Build Docker image

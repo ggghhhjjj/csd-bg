@@ -26,9 +26,11 @@ Quick start
   ./run.sh --max-pages 20           Run with extra CLI options (see below)
 
 Data files (default: ./data/)
-  free_float.csv   Scraped date + PDF URL rows (append-only)
-  free_float.db    SQLite database (metadata, PDF blobs, extracted metrics)
-  app.log          Application log file
+  free_float.csv      Scraped date + PDF URL rows (append-only)
+  free_float.db       SQLite database (local; gitignored)
+  free_float.db.gz    Gzip archive of the database (restored automatically if .db is missing)
+  db_changed.txt      Stamp written when SQLite is mutated
+  app.log             Application log file
 
 Configuration
 -------------
@@ -130,6 +132,13 @@ else
 fi
 
 mkdir -p "$DATA_DIR"
+
+DB_PATH="$DATA_DIR/free_float.db"
+DB_GZ="$DATA_DIR/free_float.db.gz"
+if [[ ! -f "$DB_PATH" && -f "$DB_GZ" ]]; then
+  echo "No $DB_PATH; decompressing $DB_GZ"
+  node "$CLI_ENTRY" decompress --db "$DB_PATH" --log "$DATA_DIR/app.log"
+fi
 
 if [[ ! -f .env ]]; then
   if [[ -f .env.example ]]; then
