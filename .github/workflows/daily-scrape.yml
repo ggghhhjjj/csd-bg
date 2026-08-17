@@ -102,13 +102,23 @@ jobs:
           git lfs install --local
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/free_float.db.gz data/vectors/ data/db_changed.txt
+          git add data/free_float.db.gz data/vectors/
+          if [ ! -f data/db_changed.txt ]; then
+            echo "No database changes; skipping commit"
+            exit 0
+          fi
+          git add data/db_changed.txt
           if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes; skipping commit"
             exit 0
           fi
           git pull --rebase --autostash origin main
-          git add data/free_float.db.gz data/vectors/ data/db_changed.txt
+          git add data/free_float.db.gz data/vectors/
+          if [ ! -f data/db_changed.txt ]; then
+            echo "No database changes after rebase; skipping commit"
+            exit 0
+          fi
+          git add data/db_changed.txt
           if git diff --staged --quiet -- data/db_changed.txt; then
             echo "No database changes after rebase; skipping commit"
             exit 0
