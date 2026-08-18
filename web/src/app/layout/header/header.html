@@ -9,6 +9,14 @@
   <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
   <div class="header__actions">
     <button class="header__action" type="button" (click)="switchLocale()">{{ i18n.text('header.locale') }}</button>
+    <button
+      class="header__action"
+      type="button"
+      (click)="share()"
+      [attr.aria-label]="i18n.text('header.share')"
+    >
+      <span aria-live="polite">{{ shareCopied() ? i18n.text('header.shareCopied') : i18n.text('header.share') }}</span>
+    </button>
     <button class="header__action" type="button" (click)="refresh()" [disabled]="store.loading()">
       {{ i18n.text('header.refresh') }}
     </button>
