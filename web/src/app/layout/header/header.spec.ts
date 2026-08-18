@@ -27,22 +27,47 @@ describe('Header', () => {
     TestBed.resetTestingModule();
   });
 
-  it('refresh calls VectorsStore.reloadApp', async () => {
+  it('refresh is in the overflow menu and calls VectorsStore.reloadApp', async () => {
     const reloadApp = vi.fn();
     await configureHeader({ reloadApp, loading: signal(false) });
 
     const fixture = TestBed.createComponent(Header);
     fixture.detectChanges();
 
-    const label = TestBed.inject(LocaleService).text('header.refresh');
-    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
-    const refresh = buttons.find((button) => button.textContent?.includes(label));
+    const i18n = TestBed.inject(LocaleService);
+    const refreshLabel = i18n.text('header.refresh');
+    const topLevel = [...fixture.nativeElement.querySelectorAll('.header__actions > button')] as HTMLButtonElement[];
+    expect(topLevel.some((button) => button.textContent?.includes(refreshLabel))).toBe(false);
+
+    findMenuButton(fixture.nativeElement, i18n).click();
+    fixture.detectChanges();
+
+    const refresh = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')].find((button) =>
+      button.textContent?.includes(refreshLabel),
+    ) as HTMLButtonElement | undefined;
     expect(refresh).toBeTruthy();
     refresh?.click();
     expect(reloadApp).toHaveBeenCalledOnce();
   });
 
-  it('renders a labeled share button', async () => {
+  it('shows a home icon on the issuer view that navigates to the list', async () => {
+    await configureHeader();
+
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigateByUrl');
+    await router.navigateByUrl('/issuer/BG1100000001');
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    const home = findLabeledButton(fixture.nativeElement, i18n.text('header.home'));
+    expect(home.querySelector('svg')).toBeTruthy();
+    home.click();
+    expect(navigateSpy).toHaveBeenCalledWith('/');
+  });
+
+  it('renders a labeled share icon button', async () => {
     await configureHeader();
 
     const fixture = TestBed.createComponent(Header);
@@ -50,7 +75,8 @@ describe('Header', () => {
 
     const i18n = TestBed.inject(LocaleService);
     const share = findShareButton(fixture.nativeElement, i18n);
-    expect(share.textContent).toContain(i18n.text('header.share'));
+    expect(share.querySelector('svg')).toBeTruthy();
+    expect(share.textContent?.trim()).toBe('');
   });
 
   it('shares the issuer view via navigator.share', async () => {
@@ -85,13 +111,17 @@ describe('Header', () => {
     fixture.detectChanges();
 
     const i18n = TestBed.inject(LocaleService);
-    findShareButton(fixture.nativeElement, i18n).click();
+    const share = findShareButton(fixture.nativeElement, i18n);
+    share.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText).toHaveBeenCalledWith(window.location.href);
-    expect(findShareButton(fixture.nativeElement, i18n).textContent).toContain(i18n.text('header.shareCopied'));
+    expect(share.getAttribute('aria-label')).toBe(i18n.text('header.share'));
+    expect(fixture.nativeElement.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      i18n.text('header.shareCopied'),
+    );
   });
 
   it('does not copy when the user cancels the share sheet', async () => {
@@ -139,11 +169,18 @@ async function configureHeader(
 }
 
 function findShareButton(root: HTMLElement, i18n: LocaleService): HTMLButtonElement {
-  const label = i18n.text('header.share');
+  return findLabeledButton(root, i18n.text('header.share'));
+}
+
+function findMenuButton(root: HTMLElement, i18n: LocaleService): HTMLButtonElement {
+  return findLabeledButton(root, i18n.text('header.menu'));
+}
+
+function findLabeledButton(root: HTMLElement, label: string): HTMLButtonElement {
   const buttons = [...root.querySelectorAll('button')] as HTMLButtonElement[];
-  const share = buttons.find((button) => button.getAttribute('aria-label') === label);
-  expect(share).toBeTruthy();
-  return share!;
+  const match = buttons.find((button) => button.getAttribute('aria-label') === label);
+  expect(match).toBeTruthy();
+  return match!;
 }
 
 function stubNavigatorFunction(name: 'share', value: ((data?: ShareData) => Promise<void>) | undefined): void {

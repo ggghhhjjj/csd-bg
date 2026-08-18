@@ -1,5 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
-import { Location } from '@angular/common';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
@@ -17,14 +16,14 @@ const COPIED_MS = 2000;
 })
 export class Header {
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
   protected readonly store = inject(VectorsStore);
   protected readonly i18n = inject(LocaleService);
 
   protected readonly shareCopied = signal(false);
+  protected readonly menuOpen = signal(false);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly showBack = toSignal(
+  protected readonly showHome = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
       map((event) => issuerIsinFromUrl(event.urlAfterRedirects) !== null),
@@ -33,11 +32,7 @@ export class Header {
     { initialValue: false },
   );
 
-  protected goBack(): void {
-    if (window.history.length > 1) {
-      this.location.back();
-      return;
-    }
+  protected goHome(): void {
     void this.router.navigateByUrl('/');
   }
 
@@ -45,8 +40,24 @@ export class Header {
     this.i18n.toggle();
   }
 
+  protected toggleMenu(event: Event): void {
+    event.stopPropagation();
+    this.menuOpen.update((open) => !open);
+  }
+
   protected refresh(): void {
+    this.menuOpen.set(false);
     void this.store.reloadApp();
+  }
+
+  @HostListener('document:click')
+  protected closeMenu(): void {
+    this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeMenuOnEscape(): void {
+    this.menuOpen.set(false);
   }
 
   protected async share(): Promise<void> {
