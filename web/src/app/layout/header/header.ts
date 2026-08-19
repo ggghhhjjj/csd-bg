@@ -1,13 +1,21 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { VectorsStore } from '../../core/data/vectors.store';
+import type { AppLocale } from '../../core/i18n/locale-url';
 import { LocaleService } from '../../core/i18n/locale.service';
 import { buildSharePayload, isShareAbortError, issuerIsinFromUrl, type ShareIssuer } from './share-payload';
 
 const COPIED_MS = 2000;
+
+export function formatCachedOnLabel(isoDate: string, locale: AppLocale): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const tag = locale === 'bg' ? 'bg-BG' : 'en-GB';
+  return new Intl.DateTimeFormat(tag, { day: '2-digit', month: '2-digit' }).format(date);
+}
 
 @Component({
   selector: 'app-header',
@@ -22,6 +30,22 @@ export class Header {
   protected readonly shareCopied = signal(false);
   protected readonly menuOpen = signal(false);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected readonly cachedOnLabel = computed(() => {
+    const iso = this.store.cachedOn();
+    if (!iso) {
+      return null;
+    }
+    return formatCachedOnLabel(iso, this.i18n.locale());
+  });
+
+  protected readonly cachedOnAria = computed(() => {
+    const label = this.cachedOnLabel();
+    if (!label) {
+      return null;
+    }
+    return this.i18n.text('header.cachedOn', { date: label });
+  });
 
   protected readonly showHome = toSignal(
     this.router.events.pipe(

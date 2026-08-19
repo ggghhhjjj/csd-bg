@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { VectorsStore } from '../../core/data/vectors.store';
 import { LocaleService, LOCALE_STORAGE_KEY } from '../../core/i18n/locale.service';
-import { Header } from './header';
+import { formatCachedOnLabel, Header } from './header';
 
 @Component({ template: '', standalone: true })
 class DummyPage {}
@@ -124,6 +124,30 @@ describe('Header', () => {
     );
   });
 
+  it('shows a compact cache date under the title', async () => {
+    await configureHeader({ cachedOn: signal('2026-08-19') });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    const label = formatCachedOnLabel('2026-08-19', i18n.locale());
+    const subtitle = fixture.nativeElement.querySelector('.header__cached-on') as HTMLElement | null;
+    expect(subtitle).toBeTruthy();
+    expect(subtitle?.textContent?.trim()).toBe(label);
+    expect(label).not.toMatch(/2026/);
+    expect(subtitle?.getAttribute('aria-label')).toBe(i18n.text('header.cachedOn', { date: label }));
+  });
+
+  it('hides the cache date when VectorsStore has not loaded', async () => {
+    await configureHeader({ cachedOn: signal(null) });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.header__cached-on')).toBeNull();
+  });
+
   it('does not copy when the user cancels the share sheet', async () => {
     const abort = new Error('Share canceled');
     abort.name = 'AbortError';
@@ -145,7 +169,11 @@ describe('Header', () => {
 });
 
 async function configureHeader(
-  store: { reloadApp?: () => void; loading?: ReturnType<typeof signal<boolean>> } = {},
+  store: {
+    reloadApp?: () => void;
+    loading?: ReturnType<typeof signal<boolean>>;
+    cachedOn?: ReturnType<typeof signal<string | null>>;
+  } = {},
 ): Promise<void> {
   const issuers = [SOPHARMA];
   await TestBed.configureTestingModule({
@@ -160,6 +188,7 @@ async function configureHeader(
         useValue: {
           reloadApp: store.reloadApp ?? vi.fn(),
           loading: store.loading ?? signal(false),
+          cachedOn: store.cachedOn ?? signal(null),
           dataset: signal({ issuers }),
           issuerIndexByIsin: (isin: string) => issuers.findIndex((issuer) => issuer.isin === isin),
         },

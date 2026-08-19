@@ -40,6 +40,7 @@ export class VectorsStore {
   readonly loading = signal(false);
   readonly error = signal<StoreError | null>(null);
   readonly generatedAt = signal<string | null>(null);
+  readonly cachedOn = signal<string | null>(null);
   readonly showPercentChange = signal(true);
 
   private config: VectorsConfig | null = null;
@@ -55,7 +56,9 @@ export class VectorsStore {
       const snapshot = await this.fetchDataset(this.config);
       this.dataset.set(snapshot);
       this.generatedAt.set(snapshot.generatedAt);
-      localStorage.setItem(CACHE_DATE_KEY, localIsoDate());
+      const cachedOn = localIsoDate();
+      localStorage.setItem(CACHE_DATE_KEY, cachedOn);
+      this.cachedOn.set(cachedOn);
       this.startDateWatch();
     } catch (error) {
       this.error.set(toStoreError(error));
@@ -113,6 +116,7 @@ export class VectorsStore {
   private async invalidateCache(): Promise<void> {
     await caches.delete(CACHE_NAME);
     localStorage.removeItem(CACHE_DATE_KEY);
+    this.cachedOn.set(null);
   }
 
   private async readConfig(): Promise<VectorsConfig> {

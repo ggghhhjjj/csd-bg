@@ -110,11 +110,13 @@ describe('VectorsStore', () => {
     const store = new VectorsStore();
     await store.load();
     expect(localStorage.getItem(CACHE_DATE_KEY)).toBe(localIsoDate());
+    expect(store.cachedOn()).toBe(localIsoDate());
     expect(vectorFetchCount()).toBe(4);
 
     await store.load();
     expect(vectorFetchCount()).toBe(4);
     expect(store.dataset()?.generatedAt).toBe(DATASET.generatedAt);
+    expect(store.cachedOn()).toBe(localIsoDate());
   });
 
   it('missing stamp bypasses cache and refetches', async () => {
@@ -145,6 +147,7 @@ describe('VectorsStore', () => {
     await store.reloadApp();
     expect(cachesApi.delete).toHaveBeenCalledWith(CACHE_NAME);
     expect(localStorage.getItem(CACHE_DATE_KEY)).toBeNull();
+    expect(store.cachedOn()).toBeNull();
     expect(reloadSpy).toHaveBeenCalledOnce();
   });
 

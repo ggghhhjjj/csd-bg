@@ -15,7 +15,12 @@
       </button>
     }
   </div>
-  <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
+  <div class="header__brand">
+    <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
+    @if (cachedOnLabel()) {
+      <p class="header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+    }
+  </div>
   <div class="header__actions">
     <button class="header__action" type="button" (click)="switchLocale()">{{ i18n.text('header.locale') }}</button>
     <button
