@@ -16,6 +16,7 @@ import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedData
 import { VectorsStore } from '../core/data/vectors.store';
 import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
+import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from './axis-tooltip-position';
 import { ComparePointerSession } from './compare-pointer-session';
 
 const METRIC_COLORS: Record<MetricId, string> = {
@@ -55,6 +56,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private viewStart = '';
   private viewEnd = '';
   private applyingPreset = false;
+  private tooltipHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly visible = signal<Record<MetricId, boolean>>({
     total_shares: true,
@@ -126,6 +128,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearTooltipHideTimer();
     this.unbindInteractions();
     this.resizeObserver?.disconnect();
     this.chart?.dispose();
@@ -188,6 +191,16 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'line' },
+          confine: true,
+          enterable: false,
+          hideDelay: 0,
+          position: (
+            point: number[],
+            _params: unknown,
+            _el: unknown,
+            _rect: unknown,
+            size: AxisTooltipSize,
+          ) => axisTooltipPosition(point, size),
         },
         grid: { left: metrics.length >= 3 ? 88 : 56, right: metrics.length >= 2 ? 56 : 24, top: 24, bottom: 110 },
         dataZoom: [
@@ -249,11 +262,35 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     if (range) {
       this.finishCompare(range.startIndex, range.endIndex);
     }
+    if (!this.compare()) {
+      this.scheduleTooltipHide();
+    }
   };
 
   private readonly onPointerCancel = (event: PointerEvent): void => {
     this.compareSession.cancel(event.pointerId);
+    this.hideTooltip();
   };
+
+  private hideTooltip(): void {
+    this.clearTooltipHideTimer();
+    this.chart?.dispatchAction({ type: 'hideTip' });
+  }
+
+  private scheduleTooltipHide(): void {
+    this.clearTooltipHideTimer();
+    this.tooltipHideTimer = setTimeout(() => {
+      this.tooltipHideTimer = null;
+      this.chart?.dispatchAction({ type: 'hideTip' });
+    }, AXIS_TOOLTIP_HIDE_MS);
+  }
+
+  private clearTooltipHideTimer(): void {
+    if (this.tooltipHideTimer !== null) {
+      clearTimeout(this.tooltipHideTimer);
+      this.tooltipHideTimer = null;
+    }
+  }
 
   private bindDataZoom(): void {
     this.chart?.on('datazoom', () => {
@@ -297,6 +334,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     if (to - from < 1) {
       return;
     }
+    this.hideTooltip();
     const dates = this.dataset().dates;
     const issuerIndex = this.issuerIndex();
     this.compare.set({
