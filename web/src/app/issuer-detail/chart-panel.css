@@ -47,7 +47,8 @@
 .chart-panel__canvas {
   width: 100%;
   height: 26rem;
-  touch-action: none;
+  /* Vertical swipe scrolls the page; horizontal drag stays with compare / dataZoom. */
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

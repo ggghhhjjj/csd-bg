@@ -17,6 +17,7 @@ import { VectorsStore } from '../core/data/vectors.store';
 import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
 import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from './axis-tooltip-position';
+import { axisIndexFromChartEvent } from './axis-tip-index';
 import { ComparePointerSession } from './compare-pointer-session';
 
 const METRIC_COLORS: Record<MetricId, string> = {
@@ -57,6 +58,9 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private viewEnd = '';
   private applyingPreset = false;
   private tooltipHideTimer: ReturnType<typeof setTimeout> | null = null;
+  private axisTipStartIndex: number | null = null;
+  private axisTipLastIndex: number | null = null;
+  private awaitingIdleHide = false;
 
   protected readonly visible = signal<Record<MetricId, boolean>>({
     total_shares: true,
@@ -116,6 +120,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     this.chart = echarts.init(this.host().nativeElement);
     this.bindInteractions();
     this.bindDataZoom();
+    this.bindAxisTipTracking();
     const preset = this.preset();
     if (preset) {
       this.applyingPreset = true;
@@ -129,6 +134,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearTooltipHideTimer();
+    this.unbindAxisTipTracking();
     this.unbindInteractions();
     this.resizeObserver?.disconnect();
     this.chart?.dispose();
@@ -253,12 +259,39 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     this.chartHostEl = null;
   }
 
+  private bindAxisTipTracking(): void {
+    this.chart?.on('showTip', this.onAxisTipEvent);
+    this.chart?.on('updateAxisPointer', this.onAxisTipEvent);
+  }
+
+  private unbindAxisTipTracking(): void {
+    this.chart?.off('showTip', this.onAxisTipEvent);
+    this.chart?.off('updateAxisPointer', this.onAxisTipEvent);
+  }
+
+  private readonly onAxisTipEvent = (params: unknown): void => {
+    const index = axisIndexFromChartEvent(params, this.dataset().dates);
+    if (index === null) {
+      return;
+    }
+    this.axisTipLastIndex = index;
+    if (this.awaitingIdleHide) {
+      this.scheduleTooltipHide();
+    }
+  };
+
   private readonly onPointerDown = (event: PointerEvent): void => {
-    this.compareSession.start(event.pointerId, this.indexFromClientX(event.clientX));
+    const startIndex = this.indexFromClientX(event.clientX);
+    this.awaitingIdleHide = false;
+    this.clearTooltipHideTimer();
+    this.axisTipStartIndex = startIndex;
+    this.axisTipLastIndex = startIndex;
+    this.compareSession.start(event.pointerId, startIndex);
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
-    const range = this.compareSession.finish(event.pointerId, this.indexFromClientX(event.clientX));
+    const endIndex = this.indexFromClientX(event.clientX);
+    const range = this.compareSession.finish(event.pointerId, endIndex);
     if (range) {
       this.finishCompare(range.startIndex, range.endIndex);
     }
@@ -269,20 +302,34 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   private readonly onPointerCancel = (event: PointerEvent): void => {
     this.compareSession.cancel(event.pointerId);
-    this.hideTooltip();
+    this.awaitingIdleHide = true;
+    this.scheduleTooltipHide();
   };
 
   private hideTooltip(): void {
+    this.awaitingIdleHide = false;
     this.clearTooltipHideTimer();
     this.chart?.dispatchAction({ type: 'hideTip' });
   }
 
   private scheduleTooltipHide(): void {
     this.clearTooltipHideTimer();
+    const compareOnHide = this.awaitingIdleHide;
     this.tooltipHideTimer = setTimeout(() => {
       this.tooltipHideTimer = null;
+      this.awaitingIdleHide = false;
       this.chart?.dispatchAction({ type: 'hideTip' });
+      if (compareOnHide) {
+        this.finishCompareFromAxisTip();
+      }
     }, AXIS_TOOLTIP_HIDE_MS);
+  }
+
+  private finishCompareFromAxisTip(): void {
+    if (this.axisTipStartIndex === null || this.axisTipLastIndex === null) {
+      return;
+    }
+    this.finishCompare(this.axisTipStartIndex, this.axisTipLastIndex);
   }
 
   private clearTooltipHideTimer(): void {
