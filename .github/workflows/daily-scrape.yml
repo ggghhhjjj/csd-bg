@@ -23,7 +23,6 @@ jobs:
         id: checkout
         uses: actions/checkout@v5
         with:
-          lfs: false
           fetch-depth: 1
 
       - name: Restore LFS object cache
