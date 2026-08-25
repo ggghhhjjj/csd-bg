@@ -1,0 +1,63 @@
+{
+  "fields": [
+    {
+      "name": "total_shares",
+      "type": {
+        "listSize": 1134,
+        "children": [
+          {
+            "name": "item",
+            "type": {
+              "isSigned": true,
+              "bitWidth": 32
+            },
+            "nullable": true,
+            "metadata": {}
+          }
+        ]
+      },
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "free_float",
+      "type": {
+        "listSize": 1134,
+        "children": [
+          {
+            "name": "item",
+            "type": {
+              "isSigned": true,
+              "bitWidth": 32
+            },
+            "nullable": true,
+            "metadata": {}
+          }
+        ]
+      },
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "shareholders",
+      "type": {
+        "listSize": 1134,
+        "children": [
+          {
+            "name": "item",
+            "type": {
+              "isSigned": true,
+              "bitWidth": 32
+            },
+            "nullable": true,
+            "metadata": {}
+          }
+        ]
+      },
+      "nullable": false,
+      "metadata": {}
+    }
+  ],
+  "metadata": {},
+  "dictionaries": {}
+}

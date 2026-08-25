@@ -1,0 +1,17 @@
+{
+  "name": "CSD Free Float",
+  "short_name": "CSD FF",
+  "description": "CSD-BG Free Float analytics",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "bg",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ]
+}

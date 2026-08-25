@@ -1,0 +1,31 @@
+{
+  "name": "@csd-bg/core",
+  "version": "2.0.0",
+  "description": "CSD-BG Free Float scraper core library",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "apache-arrow": "^21.2.0",
+    "better-sqlite3": "^11.7.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^4.5.1",
+    "lz4js": "^0.2.0",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/pdf-parse": "^1.1.4"
+  }
+}

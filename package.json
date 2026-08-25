@@ -1,0 +1,26 @@
+{
+  "name": "csd-bg",
+  "private": true,
+  "version": "2.0.0",
+  "description": "CSD-BG Free Float Scraper — Node.js monorepo",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @csd-bg/core && npm run build -w @csd-bg/cli && npm run build -w csd-bg-vscode",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "npm run build -w @csd-bg/core && npm run build -w @csd-bg/cli",
+    "csd-bg": "node packages/cli/dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

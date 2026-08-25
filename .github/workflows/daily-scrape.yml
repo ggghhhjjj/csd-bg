@@ -1,0 +1,180 @@
+name: Daily Scrape
+
+on:
+  schedule:
+    - cron: "50 23 * * 1-5"
+      timezone: "Europe/Sofia"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    name: Scrape, download, extract, and push data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        id: checkout
+        uses: actions/checkout@v5
+        with:
+          lfs: false
+          fetch-depth: 1
+
+      - name: Restore LFS object cache
+        id: lfs-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: .git/lfs
+          key: csd-bg-lfs-${{ github.run_id }}
+          restore-keys: csd-bg-lfs-
+
+      - name: Git LFS pull
+        run: |
+          git lfs install --local
+          git lfs pull --include="data/free_float.db.gz,data/vectors/*"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Verify CSD_BG_STATISTICS_URL secret
+        env:
+          STATISTICS_URL: ${{ secrets.CSD_BG_STATISTICS_URL }}
+        run: |
+          if [ -z "$STATISTICS_URL" ]; then
+            echo "::error::CSD_BG_STATISTICS_URL repository secret is not configured (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+
+      - name: Decompress database
+        id: decompress
+        run: |
+          node packages/cli/dist/index.js decompress \
+            --db ./data/free_float.db \
+            --log ./data/app.log
+
+      - name: Run pipeline
+        id: pipeline
+        continue-on-error: true
+        env:
+          CSD_BG_STATISTICS_URL: ${{ secrets.CSD_BG_STATISTICS_URL }}
+          TZ: Europe/Sofia
+          LOG_LEVEL: INFO
+        run: |
+          set +e
+          node packages/cli/dist/index.js scrape,download,extract,vectors \
+            --db ./data/free_float.db \
+            --db-changed ./data/db_changed.txt \
+            --pdf-dir ./data/pdfs \
+            --vectors-dir ./data/vectors \
+            --log ./data/app.log \
+            --max-pages 5 \
+            --early-stopping-threshold 10 \
+            --timeout 30
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Compress database
+        id: compress
+        run: |
+          node packages/cli/dist/index.js compress \
+            --db ./data/free_float.db \
+            --log ./data/app.log
+
+      - name: Commit data if database changed
+        id: push
+        run: |
+          git lfs install --local
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/free_float.db.gz data/vectors/
+          if [ ! -f data/db_changed.txt ]; then
+            echo "No database changes; skipping commit"
+            exit 0
+          fi
+          git add data/db_changed.txt
+          if git diff --staged --quiet -- data/db_changed.txt; then
+            echo "No database changes; skipping commit"
+            exit 0
+          fi
+          git pull --rebase --autostash origin main
+          git add data/free_float.db.gz data/vectors/
+          if [ ! -f data/db_changed.txt ]; then
+            echo "No database changes after rebase; skipping commit"
+            exit 0
+          fi
+          git add data/db_changed.txt
+          if git diff --staged --quiet -- data/db_changed.txt; then
+            echo "No database changes after rebase; skipping commit"
+            exit 0
+          fi
+          git commit -m "chore(data): daily scrape $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Fail job if pipeline failed
+        if: steps.pipeline.outputs.exit_code != '0'
+        run: exit 1
+
+      - name: Save LFS object cache
+        if: success()
+        uses: actions/cache/save@v5
+        with:
+          path: .git/lfs
+          key: csd-bg-lfs-${{ github.run_id }}
+
+      - name: Upload app.log on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-log-${{ github.run_id }}
+          path: data/app.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Write failure summary
+        if: failure()
+        env:
+          CHECKOUT_OUT: ${{ steps.checkout.outcome }}
+          DECOMPRESS_OUT: ${{ steps.decompress.outcome }}
+          PIPELINE_OUT: ${{ steps.pipeline.outcome }}
+          COMPRESS_OUT: ${{ steps.compress.outcome }}
+          PUSH_OUT: ${{ steps.push.outcome }}
+        run: |
+          {
+            echo "## Daily scrape failed"
+            echo ""
+            echo "| Step | Outcome |"
+            echo "|------|---------|"
+            echo "| checkout | ${CHECKOUT_OUT:-skipped} |"
+            echo "| decompress | ${DECOMPRESS_OUT:-skipped} |"
+            echo "| pipeline | ${PIPELINE_OUT:-skipped} |"
+            echo "| compress | ${COMPRESS_OUT:-skipped} |"
+            echo "| commit/push | ${PUSH_OUT:-skipped} |"
+            echo ""
+            if [[ "${CHECKOUT_OUT:-}" == "failure" || "${PUSH_OUT:-}" == "failure" ]]; then
+              echo "### Git LFS quota suspected"
+              echo "Checkout or push failed — storage or bandwidth limits may be exceeded."
+              echo "Check **Settings → Billing → Git LFS** on GitHub.com."
+              echo "See the failed step log in this run for the exact Git LFS error."
+              echo ""
+            fi
+            echo "### app.log (last 200 lines)"
+            echo '```'
+            tail -n 200 data/app.log 2>/dev/null || echo "(no app.log — failure likely before pipeline ran)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

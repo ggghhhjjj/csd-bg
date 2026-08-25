@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  csd-bg-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_UID: 1031
+        APP_GID: 65538
+    image: csd-bg-scraper:latest
+    container_name: csd-bg-scraper
+    
+    # Run as appuser:apps (UID:GID)
+    user: "${DOCKER_USER:-1031:65538}"
+    
+    # Volume mapping for data persistence
+    volumes:
+      - ${DATA_HOST_PATH:-/volume1/homes/dandelion/docker/csd-bg}:/data
+    
+    # Node.js scraper (packages/cli entrypoint)
+    # Synology: docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
+    command: ["scrape,download,extract,vectors", "--db", "/data/free_float.db", "--pdf-dir", "/data/pdfs", "--log", "/data/app.log", "--timeout", "30", "--early-stopping-threshold", "5", "--max-pages", "2"]
+    
+    # Environment variables (if needed)
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Sofia
+    
+    # No restart policy for one-shot batch application
+    restart: "no"
+    
+    # Resource limits (adjust based on your needs)
+    # NOTE: CPU limits with cpus parameter are not supported on Synology
+    # due to kernel limitations (no CU CFS scheduler support)
+    # Memory limits should work fine
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    
+    # Network mode (optional)
+    network_mode: bridge
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

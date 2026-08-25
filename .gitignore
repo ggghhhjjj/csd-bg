@@ -1,0 +1,81 @@
+# Node.js
+node_modules/
+packages/*/dist/
+coverage/
+
+# Build artifacts
+build/
+
+# Python (legacy)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments (legacy)
+venv/
+.venv
+
+# PyCharm / IntelliJ
+.idea/
+
+# VS Code
+.vscode/
+
+# Testing
+.coverage
+htmlcov/
+coverage.xml
+
+# Keep test fixtures
+!tests/fixtures/
+!tests/fixtures/*.html
+!tests/fixtures/*.pdf
+!tests/fixtures/*.md
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# CSV files
+*.csv
+
+# Log files
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Data directory — ignore everything except whitelisted paths.
+# Downloaded PDFs in data/pdfs/ stay local; scrape URLs live in SQLite.
+data/*
+!data/vectors/
+!data/vectors/*
+!data/free_float.db.gz
+!data/db_changed.txt
+output/
+
+# Web client (Cordova/Angular) generated output
+web/node_modules/
+web/www/
+web/platforms/
+web/plugins/
+web/.angular/
+
+
+# Docker
+.dockerignore
+
+# Temporary files
+tmp/
+temp/

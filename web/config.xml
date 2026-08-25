@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="bg.csd.freefloat" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>CSD Free Float</name>
+    <description>CSD-BG Free Float analytics client</description>
+    <author email="dev@local" href="https://github.com/ggghhhjjj/csd-bg">CSD-BG</author>
+    <content src="index.html" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <access origin="*" />
+    <hook src="hooks/before_prepare/build_angular.js" type="before_prepare" />
+</widget>

@@ -1,0 +1,20 @@
+<table class="data-table">
+  <thead class="data-table__head">
+    <tr>
+      <th class="data-table__heading">{{ i18n.text('table.date') }}</th>
+      <th class="data-table__heading">{{ i18n.text('metric.totalShares') }}</th>
+      <th class="data-table__heading">{{ i18n.text('metric.freeFloat') }}</th>
+      <th class="data-table__heading">{{ i18n.text('metric.shareholders') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (row of rows(); track row.date) {
+      <tr class="data-table__row">
+        <td class="data-table__cell" [attr.data-label]="i18n.text('table.date')">{{ row.date }}</td>
+        <td class="data-table__cell" [attr.data-label]="i18n.text('metric.totalShares')">{{ row.values.total_shares }}</td>
+        <td class="data-table__cell" [attr.data-label]="i18n.text('metric.freeFloat')">{{ row.values.free_float }}</td>
+        <td class="data-table__cell" [attr.data-label]="i18n.text('metric.shareholders')">{{ row.values.shareholders }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
