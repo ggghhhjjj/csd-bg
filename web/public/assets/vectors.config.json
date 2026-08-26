@@ -1,6 +1,6 @@
 {
   "manifestUrl": "https://raw.githubusercontent.com/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/manifest.json",
   "catalogUrl": "https://raw.githubusercontent.com/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/catalog.json",
-  "datesUrl": "https://media.githubusercontent.com/media/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/dates.arrow",
-  "seriesUrl": "https://media.githubusercontent.com/media/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/free_float_vectors.arrow"
+  "datesUrl": "https://raw.githubusercontent.com/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/dates.arrow",
+  "seriesUrl": "https://raw.githubusercontent.com/ggghhhjjj/csd-bg/refs/heads/main/data/vectors/free_float_vectors.arrow"
 }
