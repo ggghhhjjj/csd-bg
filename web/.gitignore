@@ -3,6 +3,7 @@
 # Compiled output
 /dist
 /www
+/public/intro
 /tmp
 /out-tsc
 /bazel-out

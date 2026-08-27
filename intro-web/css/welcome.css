@@ -1,0 +1,133 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #020617;
+  color: #e2e8f0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.welcome {
+  padding: 1rem;
+}
+
+.welcome__main {
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.welcome__header {
+  margin-bottom: 1.5rem;
+}
+
+.welcome__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.welcome__title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 4vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f8fafc;
+}
+
+.welcome__lead {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.welcome__section {
+  margin-bottom: 1.5rem;
+}
+
+.welcome__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.welcome__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.welcome__step {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+}
+
+.welcome__step-num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.welcome__step-body {
+  min-width: 0;
+}
+
+.welcome__step-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.welcome__step-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+.welcome__footer {
+  padding-top: 0.5rem;
+  border-top: 1px solid #1e293b;
+}
+
+.welcome__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+@media (min-width: 480px) {
+  .welcome {
+    padding: 1.25rem 1.5rem;
+  }
+}

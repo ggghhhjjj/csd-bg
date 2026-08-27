@@ -8,6 +8,7 @@ const BG = {
   'header.title': 'Свободен флот',
   'header.home': 'Начало',
   'header.refresh': 'Опресни',
+  'header.help': 'Помощ',
   'header.locale': 'EN',
   'header.share': 'Сподели',
   'header.shareCopied': 'Копирано',
@@ -36,6 +37,12 @@ const BG = {
   'compare.close': 'Затвори',
   'table.date': 'Дата',
   'issuer.missing': 'Емитентът не е намерен.',
+  'error.introConfigMissing': 'Липсва конфигурация за въведение.',
+  'error.introConfigInvalid': 'Невалидна конфигурация за въведение.',
+  'intro.dialogLabel': 'Ръководство за приложението',
+  'intro.dialogTitle': 'Ръководство',
+  'intro.frameTitle': 'Съдържание на ръководството',
+  'intro.close': 'Затвори',
 } as const;
 
 export type TranslationKey = keyof typeof BG;
@@ -50,6 +57,7 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'header.title': 'Free Float',
     'header.home': 'Home',
     'header.refresh': 'Refresh',
+    'header.help': 'Help',
     'header.locale': 'BG',
     'header.share': 'Share',
     'header.shareCopied': 'Copied',
@@ -78,6 +86,12 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'compare.close': 'Close',
     'table.date': 'Date',
     'issuer.missing': 'Issuer not found.',
+    'error.introConfigMissing': 'Introduction configuration is missing.',
+    'error.introConfigInvalid': 'Invalid introduction configuration.',
+    'intro.dialogLabel': 'Application guide',
+    'intro.dialogTitle': 'Guide',
+    'intro.frameTitle': 'Guide content',
+    'intro.close': 'Close',
   },
 };
 
