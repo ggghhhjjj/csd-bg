@@ -16,4 +16,6 @@ Language is not part of the URL. Old `/en/` and `/bg/` Pages bookmarks 404.
 
 Dataset URLs are in [`public/assets/vectors.config.json`](public/assets/vectors.config.json). Changing them is an application change, not a weekday scrape.
 
+Introduction HTML lives in [`../intro-web/`](../intro-web/) and is copied to `public/intro/` before serve/build (`npm run copy-intro`). Bump `contentVersion` in [`public/assets/intro.config.json`](public/assets/intro.config.json) when intro content changes.
+
 Do not copy `data/vectors` into `www/`.

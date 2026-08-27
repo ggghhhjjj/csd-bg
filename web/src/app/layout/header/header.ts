@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { VectorsStore } from '../../core/data/vectors.store';
+import { IntroService } from '../../core/intro/intro.service';
 import type { AppLocale } from '../../core/i18n/locale-url';
 import { LocaleService } from '../../core/i18n/locale.service';
 import { buildSharePayload, isShareAbortError, issuerIsinFromUrl, type ShareIssuer } from './share-payload';
@@ -25,6 +26,7 @@ export function formatCachedOnLabel(isoDate: string, locale: AppLocale): string 
 export class Header {
   private readonly router = inject(Router);
   protected readonly store = inject(VectorsStore);
+  protected readonly intro = inject(IntroService);
   protected readonly i18n = inject(LocaleService);
 
   protected readonly shareCopied = signal(false);
@@ -72,6 +74,11 @@ export class Header {
   protected refresh(): void {
     this.menuOpen.set(false);
     void this.store.reloadApp();
+  }
+
+  protected openIntro(): void {
+    this.menuOpen.set(false);
+    void this.intro.openFromMenu(this.i18n.locale());
   }
 
   @HostListener('document:click')

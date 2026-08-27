@@ -4,6 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { VectorsStore } from '../../core/data/vectors.store';
+import { IntroService } from '../../core/intro/intro.service';
 import { LocaleService, LOCALE_STORAGE_KEY } from '../../core/i18n/locale.service';
 import { formatCachedOnLabel, Header } from './header';
 
@@ -25,6 +26,26 @@ describe('Header', () => {
     restoreDescriptor(navigator, 'share', originalShare);
     restoreDescriptor(navigator, 'clipboard', originalClipboard);
     TestBed.resetTestingModule();
+  });
+
+  it('help is in the overflow menu and opens the intro dialog', async () => {
+    const openFromMenu = vi.fn();
+    await configureHeader({ openFromMenu });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    findMenuButton(fixture.nativeElement, i18n).click();
+    fixture.detectChanges();
+
+    const helpLabel = i18n.text('header.help');
+    const help = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')].find((button) =>
+      button.textContent?.includes(helpLabel),
+    ) as HTMLButtonElement | undefined;
+    expect(help).toBeTruthy();
+    help?.click();
+    expect(openFromMenu).toHaveBeenCalledOnce();
   });
 
   it('refresh is in the overflow menu and calls VectorsStore.reloadApp', async () => {
@@ -173,6 +194,7 @@ async function configureHeader(
     reloadApp?: () => void;
     loading?: ReturnType<typeof signal<boolean>>;
     cachedOn?: ReturnType<typeof signal<string | null>>;
+    openFromMenu?: (locale: string) => void;
   } = {},
 ): Promise<void> {
   const issuers = [SOPHARMA];
@@ -191,6 +213,12 @@ async function configureHeader(
           cachedOn: store.cachedOn ?? signal(null),
           dataset: signal({ issuers }),
           issuerIndexByIsin: (isin: string) => issuers.findIndex((issuer) => issuer.isin === isin),
+        },
+      },
+      {
+        provide: IntroService,
+        useValue: {
+          openFromMenu: store.openFromMenu ?? vi.fn(),
         },
       },
     ],
