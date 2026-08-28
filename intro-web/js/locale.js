@@ -10,7 +10,7 @@
       step2Title: 'Отворете детайли и графика',
       step2Text: 'Изберете ред, за да видите таблица с показатели и интерактивна графика във времето.',
       step3Title: 'Опреснявайте данните',
-      step3Text: 'Използвайте „Опресни“ от менюто, когато искате най-новите публикации от CSD-BG.',
+      step3Text: 'Използвайте „Опресни данните“ от менюто, когато искате най-новите публикации от CSD-BG.',
       hint: 'Можете да отворите отново това ръководство от менюто „Помощ“.',
     },
     en: {
@@ -23,7 +23,7 @@
       step2Title: 'Open details and chart',
       step2Text: 'Select a row to view a metrics table and an interactive time-series chart.',
       step3Title: 'Refresh the data',
-      step3Text: 'Use Refresh in the menu when you want the latest publications from CSD-BG.',
+      step3Text: 'Use Refresh data in the menu when you want the latest publications from CSD-BG.',
       hint: 'You can open this guide again from the Help menu item.',
     },
   };
