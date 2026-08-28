@@ -72,7 +72,7 @@ export class Header {
 
   protected readonly fetchIndicatorPhase = computed(() => this.store.fetchPhase());
 
-  protected readonly refreshDisabled = computed(() => {
+  protected readonly menuActionDisabled = computed(() => {
     const phase = this.store.fetchPhase();
     return phase === 'processing' || phase === 'countdown';
   });
@@ -99,9 +99,14 @@ export class Header {
     this.menuOpen.update((open) => !open);
   }
 
-  protected refresh(): void {
+  protected refreshData(): void {
     this.menuOpen.set(false);
     void this.store.runUpdateTransaction({ invalidateCache: true });
+  }
+
+  protected upgradeApp(): void {
+    this.menuOpen.set(false);
+    void this.store.reloadApp();
   }
 
   protected openIntro(): void {

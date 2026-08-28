@@ -48,7 +48,7 @@ describe('Header', () => {
     expect(openFromMenu).toHaveBeenCalledOnce();
   });
 
-  it('refresh is in the overflow menu and calls VectorsStore.runUpdateTransaction', async () => {
+  it('refresh data is in the overflow menu and calls VectorsStore.runUpdateTransaction', async () => {
     const runUpdateTransaction = vi.fn();
     await configureHeader({ runUpdateTransaction, fetchPhase: signal('idle') });
 
@@ -56,20 +56,57 @@ describe('Header', () => {
     fixture.detectChanges();
 
     const i18n = TestBed.inject(LocaleService);
-    const refreshLabel = i18n.text('header.refresh');
+    const refreshDataLabel = i18n.text('header.refreshData');
     const topLevel = [...fixture.nativeElement.querySelectorAll('.header__actions > button')] as HTMLButtonElement[];
-    expect(topLevel.some((button) => button.textContent?.includes(refreshLabel))).toBe(false);
+    expect(topLevel.some((button) => button.textContent?.includes(refreshDataLabel))).toBe(false);
 
     findMenuButton(fixture.nativeElement, i18n).click();
     fixture.detectChanges();
 
-    const refresh = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')].find((button) =>
-      button.textContent?.includes(refreshLabel),
+    const refreshData = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')].find((button) =>
+      button.textContent?.includes(refreshDataLabel),
     ) as HTMLButtonElement | undefined;
-    expect(refresh).toBeTruthy();
-    refresh?.click();
+    expect(refreshData).toBeTruthy();
+    refreshData?.click();
     expect(runUpdateTransaction).toHaveBeenCalledOnce();
     expect(runUpdateTransaction).toHaveBeenCalledWith({ invalidateCache: true });
+  });
+
+  it('upgrade application is in the overflow menu and calls VectorsStore.reloadApp', async () => {
+    const reloadApp = vi.fn();
+    await configureHeader({ reloadApp, fetchPhase: signal('idle') });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    findMenuButton(fixture.nativeElement, i18n).click();
+    fixture.detectChanges();
+
+    const upgradeLabel = i18n.text('header.upgradeApp');
+    const upgrade = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')].find((button) =>
+      button.textContent?.includes(upgradeLabel),
+    ) as HTMLButtonElement | undefined;
+    expect(upgrade).toBeTruthy();
+    upgrade?.click();
+    expect(reloadApp).toHaveBeenCalledOnce();
+  });
+
+  it('disables menu actions while a vector transaction is active', async () => {
+    await configureHeader({ fetchPhase: signal('processing') });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    findMenuButton(fixture.nativeElement, i18n).click();
+    fixture.detectChanges();
+
+    const menuItems = [...fixture.nativeElement.querySelectorAll('[role="menuitem"]')] as HTMLButtonElement[];
+    const refreshData = menuItems.find((button) => button.textContent?.includes(i18n.text('header.refreshData')));
+    const upgradeApp = menuItems.find((button) => button.textContent?.includes(i18n.text('header.upgradeApp')));
+    expect(refreshData?.disabled).toBe(true);
+    expect(upgradeApp?.disabled).toBe(true);
   });
 
   it('shows a home icon on the issuer view that navigates to the list', async () => {
@@ -222,6 +259,7 @@ describe('Header', () => {
 async function configureHeader(
   store: {
     runUpdateTransaction?: (options?: { invalidateCache?: boolean }) => void;
+    reloadApp?: () => void;
     fetchPhase?: ReturnType<typeof signal<string>>;
     countdownSec?: ReturnType<typeof signal<number | null>>;
     cachedOn?: ReturnType<typeof signal<string | null>>;
@@ -240,6 +278,7 @@ async function configureHeader(
         provide: VectorsStore,
         useValue: {
           runUpdateTransaction: store.runUpdateTransaction ?? vi.fn(),
+          reloadApp: store.reloadApp ?? vi.fn(),
           fetchPhase: store.fetchPhase ?? signal('idle'),
           countdownSec: store.countdownSec ?? signal<number | null>(null),
           cachedOn: store.cachedOn ?? signal(null),
