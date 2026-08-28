@@ -229,8 +229,8 @@ export class VectorsStore {
     const snapshot = await this.parseInWorker({
       manifestText,
       catalogText,
-      datesBuffer: dates.buffer,
-      seriesBuffer: series.buffer,
+      datesBuffer: dates.buffer.slice(0),
+      seriesBuffer: series.buffer.slice(0),
     });
 
     return {
