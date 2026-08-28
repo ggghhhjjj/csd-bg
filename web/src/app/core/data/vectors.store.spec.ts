@@ -7,6 +7,7 @@ import {
   CACHE_NAME,
   localIsoDate,
   msUntilNextLocalMidnight,
+  VECTORS_RETRY_DELAY_SEC,
   VectorsStore,
 } from './vectors.store';
 
@@ -30,11 +31,17 @@ const DATASET: ParsedDataset = {
 };
 
 class FakeWorker {
+  static failNext = false;
+
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
 
   postMessage(): void {
     queueMicrotask(() => {
+      if (FakeWorker.failNext) {
+        this.onmessage?.({ data: { error: 'Missing date column' } } as MessageEvent);
+        return;
+      }
       this.onmessage?.({ data: DATASET } as MessageEvent);
     });
   }
@@ -76,6 +83,7 @@ describe('VectorsStore', () => {
   let reloadSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    FakeWorker.failNext = false;
     cacheEntries.clear();
     cache.match.mockClear();
     cache.put.mockClear();
@@ -85,6 +93,7 @@ describe('VectorsStore', () => {
     localStorage.removeItem(CACHE_DATE_KEY);
     vi.stubGlobal('caches', cachesApi);
     vi.stubGlobal('Worker', FakeWorker);
+    vi.useFakeTimers();
 
     fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -101,6 +110,7 @@ describe('VectorsStore', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     reloadSpy.mockRestore();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -117,6 +127,7 @@ describe('VectorsStore', () => {
     expect(vectorFetchCount()).toBe(4);
     expect(store.dataset()?.generatedAt).toBe(DATASET.generatedAt);
     expect(store.cachedOn()).toBe(localIsoDate());
+    expect(store.fetchPhase()).toBe('success');
   });
 
   it('missing stamp bypasses cache and refetches', async () => {
@@ -151,15 +162,16 @@ describe('VectorsStore', () => {
     expect(reloadSpy).toHaveBeenCalledOnce();
   });
 
-  it('visibility on a new date triggers reload', async () => {
+  it('visibility on a new date triggers an in-app update transaction', async () => {
     const store = new VectorsStore();
     await store.load();
     localStorage.setItem(CACHE_DATE_KEY, '2000-01-01');
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
     document.dispatchEvent(new Event('visibilitychange'));
     await vi.waitFor(() => {
-      expect(reloadSpy).toHaveBeenCalledOnce();
+      expect(vectorFetchCount()).toBeGreaterThan(4);
     });
+    expect(reloadSpy).not.toHaveBeenCalled();
   });
 
   it('visibility on the same date does not reload', async () => {
@@ -170,6 +182,124 @@ describe('VectorsStore', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(reloadSpy).not.toHaveBeenCalled();
+    expect(vectorFetchCount()).toBe(4);
+  });
+
+  it('failed fetch leaves prior dataset unchanged', async () => {
+    const store = new VectorsStore();
+    await store.load();
+    const previous = store.dataset();
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'assets/vectors.config.json') {
+        return jsonResponse(CONFIG);
+      }
+      if (url.endsWith('series.arrow')) {
+        return new Response('fail', { status: 503 });
+      }
+      if (url.endsWith('.json')) {
+        return jsonResponse({});
+      }
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    });
+
+    await store.runUpdateTransaction({ invalidateCache: true });
+    expect(store.dataset()).toBe(previous);
+    expect(store.fetchPhase()).toBe('failed');
+    expect(store.fetchDialogOpen()).toBe(true);
+    expect(store.lastFetchError()?.key).toBe('error.fetchFailed');
+  });
+
+  it('failed fetch does not write newly fetched bytes to the cache', async () => {
+    const store = new VectorsStore();
+    cache.put.mockClear();
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'assets/vectors.config.json') {
+        return jsonResponse(CONFIG);
+      }
+      if (url.endsWith('series.arrow')) {
+        return new Response('fail', { status: 503 });
+      }
+      if (url.endsWith('.json')) {
+        return jsonResponse({});
+      }
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    });
+
+    await store.load();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it('successful transaction writes all cache entries', async () => {
+    const store = new VectorsStore();
+    await store.load();
+    expect(cache.put).toHaveBeenCalledTimes(4);
+    expect([...cacheEntries.keys()].sort()).toEqual(
+      [CONFIG.manifestUrl, CONFIG.catalogUrl, CONFIG.datesUrl, CONFIG.seriesUrl].sort(),
+    );
+  });
+
+  it('parse failure marks the transaction as corrupt data', async () => {
+    const store = new VectorsStore();
+    FakeWorker.failNext = true;
+    await store.load();
+    expect(store.fetchPhase()).toBe('failed');
+    expect(store.lastFetchError()?.key).toBe('error.dataCorrupt');
+    expect(store.dataset()).toBeNull();
+  });
+
+  it('retryFetch runs countdown then starts processing', async () => {
+    const store = new VectorsStore();
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'assets/vectors.config.json') {
+        return jsonResponse(CONFIG);
+      }
+      return new Response('fail', { status: 503 });
+    });
+
+    await store.load();
+    store.retryFetch();
+    expect(store.fetchDialogOpen()).toBe(false);
+    expect(store.fetchPhase()).toBe('countdown');
+    expect(store.countdownSec()).toBe(VECTORS_RETRY_DELAY_SEC);
+
+    for (let step = VECTORS_RETRY_DELAY_SEC; step > 0; step -= 1) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+
+    await vi.waitFor(() => {
+      expect(store.fetchPhase()).toBe('failed');
+    });
+  });
+
+  it('continueWithOldData closes the dialog and returns to idle', async () => {
+    const store = new VectorsStore();
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'assets/vectors.config.json') {
+        return jsonResponse(CONFIG);
+      }
+      return new Response('fail', { status: 503 });
+    });
+
+    await store.load();
+    expect(store.fetchDialogOpen()).toBe(true);
+    store.continueWithOldData();
+    expect(store.fetchDialogOpen()).toBe(false);
+    expect(store.fetchPhase()).toBe('idle');
+    expect(store.dataset()).toBeNull();
+  });
+
+  it('hides the success indicator after the configured delay', async () => {
+    const store = new VectorsStore();
+    await store.load();
+    expect(store.fetchPhase()).toBe('success');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(store.fetchPhase()).toBe('idle');
   });
 
   function vectorFetchCount(): number {

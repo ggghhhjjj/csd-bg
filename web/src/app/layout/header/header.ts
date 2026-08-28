@@ -49,6 +49,34 @@ export class Header {
     return this.i18n.text('header.cachedOn', { date: label });
   });
 
+  protected readonly fetchIndicatorVisible = computed(() => this.store.fetchPhase() !== 'idle');
+
+  protected readonly fetchIndicatorClass = computed(() => {
+    const phase = this.store.fetchPhase();
+    return `header__fetch-indicator header__fetch-indicator--${phase}`;
+  });
+
+  protected readonly fetchIndicatorText = computed(() => {
+    const phase = this.store.fetchPhase();
+    if (phase === 'countdown') {
+      return this.i18n.text('vectorsFetch.countdown', { seconds: String(this.store.countdownSec() ?? 0) });
+    }
+    if (phase === 'processing') {
+      return this.i18n.text('vectorsFetch.processing');
+    }
+    if (phase === 'success') {
+      return this.i18n.text('vectorsFetch.success');
+    }
+    return null;
+  });
+
+  protected readonly fetchIndicatorPhase = computed(() => this.store.fetchPhase());
+
+  protected readonly refreshDisabled = computed(() => {
+    const phase = this.store.fetchPhase();
+    return phase === 'processing' || phase === 'countdown';
+  });
+
   protected readonly showHome = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -73,7 +101,7 @@ export class Header {
 
   protected refresh(): void {
     this.menuOpen.set(false);
-    void this.store.reloadApp();
+    void this.store.runUpdateTransaction({ invalidateCache: true });
   }
 
   protected openIntro(): void {

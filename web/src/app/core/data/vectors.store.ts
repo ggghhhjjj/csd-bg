@@ -9,8 +9,12 @@ export type StoreError = {
   params?: Record<string, string>;
 };
 
+export type FetchPhase = 'idle' | 'countdown' | 'processing' | 'failed' | 'success';
+
 export const CACHE_NAME = 'csd-vectors-v1';
 export const CACHE_DATE_KEY = 'csd-vectors-cached-on';
+export const VECTORS_RETRY_DELAY_SEC = 5;
+export const VECTORS_SUCCESS_HIDE_SEC = 5;
 const CONFIG_URL = 'assets/vectors.config.json';
 
 let visibilityHandler: (() => void) | null = null;
@@ -34,6 +38,11 @@ export const appReloader = {
   },
 };
 
+type CacheEntry = {
+  url: string;
+  buffer: ArrayBuffer;
+};
+
 @Injectable({ providedIn: 'root' })
 export class VectorsStore {
   readonly dataset = signal<ParsedDataset | null>(null);
@@ -42,29 +51,66 @@ export class VectorsStore {
   readonly generatedAt = signal<string | null>(null);
   readonly cachedOn = signal<string | null>(null);
   readonly showPercentChange = signal(true);
+  readonly fetchPhase = signal<FetchPhase>('idle');
+  readonly countdownSec = signal<number | null>(null);
+  readonly fetchDialogOpen = signal(false);
+  readonly lastFetchError = signal<StoreError | null>(null);
 
   private config: VectorsConfig | null = null;
+  private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  private successHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   async load(): Promise<void> {
+    await this.runUpdateTransaction();
+  }
+
+  async runUpdateTransaction(options: { invalidateCache?: boolean } = {}): Promise<void> {
+    const phase = this.fetchPhase();
+    if (phase === 'processing' || phase === 'countdown') {
+      return;
+    }
+
+    this.clearSuccessHide();
+    this.fetchPhase.set('processing');
     this.loading.set(true);
     this.error.set(null);
+    this.lastFetchError.set(null);
+
     try {
-      this.config = await this.readConfig();
-      if (localStorage.getItem(CACHE_DATE_KEY) !== localIsoDate()) {
+      if (options.invalidateCache || localStorage.getItem(CACHE_DATE_KEY) !== localIsoDate()) {
         await this.invalidateCache();
       }
-      const snapshot = await this.fetchDataset(this.config);
+      this.config = await this.readConfig();
+      const { snapshot, cacheEntries } = await this.fetchDatasetToMemory(this.config);
+      await this.commitCache(cacheEntries);
       this.dataset.set(snapshot);
       this.generatedAt.set(snapshot.generatedAt);
       const cachedOn = localIsoDate();
       localStorage.setItem(CACHE_DATE_KEY, cachedOn);
       this.cachedOn.set(cachedOn);
       this.startDateWatch();
+      this.fetchPhase.set('success');
+      this.scheduleSuccessHide();
     } catch (error) {
-      this.error.set(toStoreError(error));
+      const storeError = toStoreError(error);
+      this.error.set(storeError);
+      this.lastFetchError.set(storeError);
+      this.fetchPhase.set('failed');
+      this.fetchDialogOpen.set(true);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  retryFetch(): void {
+    this.fetchDialogOpen.set(false);
+    this.startCountdown();
+  }
+
+  continueWithOldData(): void {
+    this.fetchDialogOpen.set(false);
+    this.clearCountdown();
+    this.fetchPhase.set('idle');
   }
 
   async reloadApp(): Promise<void> {
@@ -82,6 +128,44 @@ export class VectorsStore {
       return -1;
     }
     return dataset.issuers.findIndex((issuer) => issuer.isin === isin);
+  }
+
+  private startCountdown(): void {
+    this.clearCountdown();
+    this.fetchPhase.set('countdown');
+    this.countdownSec.set(VECTORS_RETRY_DELAY_SEC);
+    this.countdownTimer = setInterval(() => {
+      const next = (this.countdownSec() ?? 0) - 1;
+      if (next <= 0) {
+        this.clearCountdown();
+        this.fetchPhase.set('idle');
+        void this.runUpdateTransaction();
+        return;
+      }
+      this.countdownSec.set(next);
+    }, 1000);
+  }
+
+  private clearCountdown(): void {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.countdownSec.set(null);
+  }
+
+  private scheduleSuccessHide(): void {
+    this.successHideTimer = setTimeout(() => {
+      this.fetchPhase.set('idle');
+      this.successHideTimer = null;
+    }, VECTORS_SUCCESS_HIDE_SEC * 1000);
+  }
+
+  private clearSuccessHide(): void {
+    if (this.successHideTimer) {
+      clearTimeout(this.successHideTimer);
+      this.successHideTimer = null;
+    }
   }
 
   private startDateWatch(): void {
@@ -104,13 +188,14 @@ export class VectorsStore {
   }
 
   private async reloadIfDateChanged(): Promise<void> {
-    if (this.loading()) {
+    const phase = this.fetchPhase();
+    if (phase === 'processing' || phase === 'countdown') {
       return;
     }
     if (localStorage.getItem(CACHE_DATE_KEY) === localIsoDate()) {
       return;
     }
-    await this.reloadApp();
+    await this.runUpdateTransaction({ invalidateCache: true });
   }
 
   private async invalidateCache(): Promise<void> {
@@ -131,34 +216,55 @@ export class VectorsStore {
     return json;
   }
 
-  private async fetchDataset(config: VectorsConfig): Promise<ParsedDataset> {
-    const [manifestText, catalogText, datesBuffer, seriesBuffer] = await Promise.all([
-      this.readText(config.manifestUrl),
-      this.readText(config.catalogUrl),
-      this.readBuffer(config.datesUrl),
-      this.readBuffer(config.seriesUrl),
-    ]);
-    return this.parseInWorker({ manifestText, catalogText, datesBuffer, seriesBuffer });
+  private async fetchDatasetToMemory(
+    config: VectorsConfig,
+  ): Promise<{ snapshot: ParsedDataset; cacheEntries: CacheEntry[] }> {
+    const manifest = await this.fetchResource(config.manifestUrl);
+    const catalog = await this.fetchResource(config.catalogUrl);
+    const dates = await this.fetchResource(config.datesUrl);
+    const series = await this.fetchResource(config.seriesUrl);
+
+    const manifestText = new TextDecoder().decode(manifest.buffer);
+    const catalogText = new TextDecoder().decode(catalog.buffer);
+    const snapshot = await this.parseInWorker({
+      manifestText,
+      catalogText,
+      datesBuffer: dates.buffer,
+      seriesBuffer: series.buffer,
+    });
+
+    return {
+      snapshot,
+      cacheEntries: [manifest, catalog, dates, series],
+    };
   }
 
-  private async readText(url: string): Promise<string> {
-    const buffer = await this.readBuffer(url);
-    return new TextDecoder().decode(buffer);
-  }
-
-  private async readBuffer(url: string): Promise<ArrayBuffer> {
+  private async fetchResource(url: string): Promise<CacheEntry> {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(url);
     if (cached) {
-      return cached.arrayBuffer();
+      return { url, buffer: await cached.arrayBuffer() };
     }
+
     const response = await fetch(url, { redirect: 'follow', cache: 'no-store' });
     if (!response.ok) {
       throw new LocalizedError('error.fetchFailed', { url });
     }
-    const clone = response.clone();
-    await cache.put(url, clone);
-    return response.arrayBuffer();
+    return { url, buffer: await response.arrayBuffer() };
+  }
+
+  private async commitCache(entries: CacheEntry[]): Promise<void> {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.all(
+      entries.map(({ url, buffer }) =>
+        cache.put(
+          url,
+          new Response(buffer.slice(0), {
+            status: 200,
+          }),
+        ),
+      ),
+    );
   }
 
   private parseInWorker(request: WorkerRequest): Promise<ParsedDataset> {
@@ -167,14 +273,14 @@ export class VectorsStore {
       worker.onmessage = (event: MessageEvent<ParsedDataset | { error: string }>) => {
         worker.terminate();
         if (event.data && 'error' in event.data) {
-          reject(new Error(event.data.error));
+          reject(new LocalizedError('error.dataCorrupt', { detail: event.data.error }));
           return;
         }
         resolve(event.data as ParsedDataset);
       };
       worker.onerror = (event) => {
         worker.terminate();
-        reject(new Error(event.message || 'Worker failed'));
+        reject(new LocalizedError('error.dataCorrupt', { detail: event.message || 'Worker failed' }));
       };
       worker.postMessage(request, [request.datesBuffer, request.seriesBuffer]);
     });
@@ -186,7 +292,7 @@ function toStoreError(error: unknown): StoreError {
     return { key: error.key, params: error.params };
   }
   return {
-    key: 'error.fetchFailed',
-    params: { url: error instanceof Error ? error.message : String(error) },
+    key: 'error.dataCorrupt',
+    params: { detail: error instanceof Error ? error.message : String(error) },
   };
 }

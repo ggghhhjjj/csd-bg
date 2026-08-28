@@ -17,8 +17,28 @@
   </div>
   <div class="header__brand">
     <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
-    @if (cachedOnLabel()) {
-      <p class="header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+    @if (cachedOnLabel() || fetchIndicatorVisible()) {
+      <div class="header__meta">
+        @if (cachedOnLabel()) {
+          <p class="header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+        }
+        @if (fetchIndicatorVisible()) {
+          <span
+            [class]="fetchIndicatorClass()"
+            aria-live="polite"
+            [attr.aria-label]="fetchIndicatorText() ?? undefined"
+          >
+            @if (fetchIndicatorPhase() === 'countdown' || fetchIndicatorPhase() === 'success') {
+              {{ fetchIndicatorText() }}
+            } @else if (fetchIndicatorPhase() === 'processing') {
+              <span class="header__fetch-indicator-icon header__fetch-indicator-icon--spin" aria-hidden="true"></span>
+              <span>{{ fetchIndicatorText() }}</span>
+            } @else if (fetchIndicatorPhase() === 'failed') {
+              <span class="header__fetch-indicator-icon header__fetch-indicator-icon--sonar" aria-hidden="true"></span>
+            }
+          </span>
+        }
+      </div>
     }
   </div>
   <div class="header__actions">
@@ -76,7 +96,7 @@
               type="button"
               role="menuitem"
               (click)="refresh()"
-              [disabled]="store.loading()"
+              [disabled]="refreshDisabled()"
             >
               {{ i18n.text('header.refresh') }}
             </button>

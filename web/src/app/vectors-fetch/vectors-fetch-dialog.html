@@ -1,0 +1,22 @@
+@if (store.fetchDialogOpen()) {
+  <div class="vectors-fetch-dialog" role="dialog" aria-modal="true" [attr.aria-label]="i18n.text('vectorsFetch.dialogLabel')">
+    <div class="vectors-fetch-dialog__backdrop"></div>
+    <section class="vectors-fetch-dialog__panel">
+      <header class="vectors-fetch-dialog__header">
+        <h2 class="vectors-fetch-dialog__title">{{ i18n.text('vectorsFetch.dialogTitle') }}</h2>
+      </header>
+      <div class="vectors-fetch-dialog__body">
+        <p class="vectors-fetch-dialog__message">{{ errorMessage() }}</p>
+        <p class="vectors-fetch-dialog__hint">{{ i18n.text('vectorsFetch.dialogBody') }}</p>
+      </div>
+      <footer class="vectors-fetch-dialog__footer">
+        <button class="vectors-fetch-dialog__action" type="button" (click)="retry()">
+          {{ i18n.text('vectorsFetch.retry') }}
+        </button>
+        <button class="vectors-fetch-dialog__action vectors-fetch-dialog__action--secondary" type="button" (click)="continueWithOldData()">
+          {{ i18n.text('vectorsFetch.continueOld') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
