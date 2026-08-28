@@ -48,9 +48,9 @@ describe('Header', () => {
     expect(openFromMenu).toHaveBeenCalledOnce();
   });
 
-  it('refresh is in the overflow menu and calls VectorsStore.reloadApp', async () => {
-    const reloadApp = vi.fn();
-    await configureHeader({ reloadApp, loading: signal(false) });
+  it('refresh is in the overflow menu and calls VectorsStore.runUpdateTransaction', async () => {
+    const runUpdateTransaction = vi.fn();
+    await configureHeader({ runUpdateTransaction, fetchPhase: signal('idle') });
 
     const fixture = TestBed.createComponent(Header);
     fixture.detectChanges();
@@ -68,7 +68,8 @@ describe('Header', () => {
     ) as HTMLButtonElement | undefined;
     expect(refresh).toBeTruthy();
     refresh?.click();
-    expect(reloadApp).toHaveBeenCalledOnce();
+    expect(runUpdateTransaction).toHaveBeenCalledOnce();
+    expect(runUpdateTransaction).toHaveBeenCalledWith({ invalidateCache: true });
   });
 
   it('shows a home icon on the issuer view that navigates to the list', async () => {
@@ -169,6 +170,35 @@ describe('Header', () => {
     expect(fixture.nativeElement.querySelector('.header__cached-on')).toBeNull();
   });
 
+  it('shows the fetch indicator while a transaction is active', async () => {
+    await configureHeader({ fetchPhase: signal('processing') });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const indicator = fixture.nativeElement.querySelector('.header__fetch-indicator--processing');
+    expect(indicator).toBeTruthy();
+  });
+
+  it('hides the fetch indicator when idle', async () => {
+    await configureHeader({ fetchPhase: signal('idle') });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.header__fetch-indicator')).toBeNull();
+  });
+
+  it('shows countdown text in the fetch indicator', async () => {
+    await configureHeader({ fetchPhase: signal('countdown'), countdownSec: signal(3) });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const indicator = fixture.nativeElement.querySelector('.header__fetch-indicator--countdown') as HTMLElement | null;
+    expect(indicator?.textContent).toContain('3');
+  });
+
   it('does not copy when the user cancels the share sheet', async () => {
     const abort = new Error('Share canceled');
     abort.name = 'AbortError';
@@ -191,8 +221,9 @@ describe('Header', () => {
 
 async function configureHeader(
   store: {
-    reloadApp?: () => void;
-    loading?: ReturnType<typeof signal<boolean>>;
+    runUpdateTransaction?: (options?: { invalidateCache?: boolean }) => void;
+    fetchPhase?: ReturnType<typeof signal<string>>;
+    countdownSec?: ReturnType<typeof signal<number | null>>;
     cachedOn?: ReturnType<typeof signal<string | null>>;
     openFromMenu?: (locale: string) => void;
   } = {},
@@ -208,8 +239,9 @@ async function configureHeader(
       {
         provide: VectorsStore,
         useValue: {
-          reloadApp: store.reloadApp ?? vi.fn(),
-          loading: store.loading ?? signal(false),
+          runUpdateTransaction: store.runUpdateTransaction ?? vi.fn(),
+          fetchPhase: store.fetchPhase ?? signal('idle'),
+          countdownSec: store.countdownSec ?? signal<number | null>(null),
           cachedOn: store.cachedOn ?? signal(null),
           dataset: signal({ issuers }),
           issuerIndexByIsin: (isin: string) => issuers.findIndex((issuer) => issuer.isin === isin),
