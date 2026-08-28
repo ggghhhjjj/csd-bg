@@ -36,7 +36,12 @@ class FakeWorker {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
 
-  postMessage(): void {
+  postMessage(_data: unknown, transfer?: Transferable[]): void {
+    if (transfer) {
+      for (const item of transfer) {
+        detachArrayBuffer(item);
+      }
+    }
     queueMicrotask(() => {
       if (FakeWorker.failNext) {
         this.onmessage?.({ data: { error: 'Missing date column' } } as MessageEvent);
@@ -242,6 +247,14 @@ describe('VectorsStore', () => {
     );
   });
 
+  it('commitCache succeeds after worker transfer detaches parse buffers', async () => {
+    const store = new VectorsStore();
+    await store.runUpdateTransaction({ invalidateCache: true });
+    expect(store.fetchPhase()).toBe('success');
+    expect(store.dataset()?.generatedAt).toBe(DATASET.generatedAt);
+    expect(cache.put).toHaveBeenCalledTimes(4);
+  });
+
   it('parse failure marks the transaction as corrupt data', async () => {
     const store = new VectorsStore();
     FakeWorker.failNext = true;
@@ -312,4 +325,12 @@ function jsonResponse(body: unknown): Response {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function detachArrayBuffer(value: Transferable): void {
+  if (!(value instanceof ArrayBuffer)) {
+    return;
+  }
+  const transfer = (value as ArrayBuffer & { transfer?: () => ArrayBuffer }).transfer;
+  transfer?.call(value);
 }
