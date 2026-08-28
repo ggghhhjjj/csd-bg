@@ -1,4 +1,14 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
 .issuer-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
   padding-top: 1rem;
   padding-right: calc(1rem + env(safe-area-inset-right, 0px));
   padding-bottom: 1rem;
@@ -6,11 +16,13 @@
 }
 
 .issuer-list__heading {
+  flex-shrink: 0;
   margin: 0 0 0.75rem;
   font-size: 1.05rem;
 }
 
 .issuer-list__search {
+  flex-shrink: 0;
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -26,6 +38,13 @@
 
 .issuer-list__search::placeholder {
   color: #94a3b8;
+}
+
+.issuer-list__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .issuer-list__empty {

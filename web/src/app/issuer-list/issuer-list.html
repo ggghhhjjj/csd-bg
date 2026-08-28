@@ -8,18 +8,20 @@
     [attr.placeholder]="i18n.text('issuers.search')"
     [attr.aria-label]="i18n.text('issuers.search')"
   />
-  @if (issuers().length) {
-    <ul class="issuer-list__items">
-      @for (issuer of issuers(); track issuer.isin) {
-        <li class="issuer-list__item">
-          <a class="issuer-list__link" [routerLink]="['/issuer', issuer.isin]">
-            <span class="issuer-list__name">{{ issuer.name }}</span>
-            <span class="issuer-list__isin">{{ issuer.isin }}</span>
-          </a>
-        </li>
-      }
-    </ul>
-  } @else {
-    <p class="issuer-list__empty">{{ i18n.text('issuers.empty') }}</p>
-  }
+  <div class="issuer-list__scroll">
+    @if (issuers().length) {
+      <ul class="issuer-list__items">
+        @for (issuer of issuers(); track issuer.isin) {
+          <li class="issuer-list__item">
+            <a class="issuer-list__link" [routerLink]="['/issuer', issuer.isin]">
+              <span class="issuer-list__name">{{ issuer.name }}</span>
+              <span class="issuer-list__isin">{{ issuer.isin }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="issuer-list__empty">{{ i18n.text('issuers.empty') }}</p>
+    }
+  </div>
 </section>
