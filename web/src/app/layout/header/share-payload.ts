@@ -1,6 +1,5 @@
 export type SharePayload = {
   title: string;
-  text: string;
   url: string;
 };
 
@@ -33,12 +32,12 @@ export function buildSharePayload(
   issuer?: ShareIssuer | null,
 ): SharePayload {
   if (!issuer) {
-    return { title: labels.title, text: labels.appText, url: href };
+    return { title: `${labels.title} · ${labels.appText}`, url: href };
   }
   const name = issuer.name?.trim() ? issuer.name : issuer.isin;
+  const issuerLabel = interpolate(labels.issuerText, { name, isin: issuer.isin });
   return {
-    title: `${name} · ${labels.title}`,
-    text: interpolate(labels.issuerText, { name, isin: issuer.isin }),
+    title: `${issuerLabel} · ${labels.title}`,
     url: href,
   };
 }
