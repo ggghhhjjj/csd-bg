@@ -56,13 +56,20 @@
   flex-wrap: nowrap;
 }
 
-.header__cached-on {
-  margin: 0;
+.header__meta-text {
   font-size: 0.65rem;
   font-weight: 400;
   line-height: 1;
   color: #94a3b8;
   white-space: nowrap;
+}
+
+.header__cached-on {
+  margin: 0;
+}
+
+.header__meta-separator {
+  user-select: none;
 }
 
 .header__fetch-indicator {

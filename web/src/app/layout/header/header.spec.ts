@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
+import { AppConfigService } from '../../core/app/app-config.service';
 import { VectorsStore } from '../../core/data/vectors.store';
 import { IntroService } from '../../core/intro/intro.service';
 import { LocaleService, LOCALE_STORAGE_KEY } from '../../core/i18n/locale.service';
@@ -198,6 +199,28 @@ describe('Header', () => {
     expect(subtitle?.getAttribute('aria-label')).toBe(i18n.text('header.cachedOn', { date: label }));
   });
 
+  it('shows the application version next to the cache date', async () => {
+    await configureHeader({ cachedOn: signal('2026-08-19'), appVersion: signal(42) });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    const version = fixture.nativeElement.querySelector('.header__app-version') as HTMLElement | null;
+    expect(version?.textContent?.trim()).toBe('v42');
+    expect(version?.getAttribute('aria-label')).toBe(i18n.text('header.appVersion', { version: 'v42' }));
+    expect(fixture.nativeElement.querySelector('.header__meta-separator')?.textContent?.trim()).toBe('·');
+  });
+
+  it('hides the application version when config is not loaded', async () => {
+    await configureHeader({ appVersion: signal(null) });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.header__app-version')).toBeNull();
+  });
+
   it('hides the cache date when VectorsStore has not loaded', async () => {
     await configureHeader({ cachedOn: signal(null) });
 
@@ -263,6 +286,7 @@ async function configureHeader(
     fetchPhase?: ReturnType<typeof signal<string>>;
     countdownSec?: ReturnType<typeof signal<number | null>>;
     cachedOn?: ReturnType<typeof signal<string | null>>;
+    appVersion?: ReturnType<typeof signal<number | null>>;
     openFromMenu?: (locale: string) => void;
   } = {},
 ): Promise<void> {
@@ -284,6 +308,12 @@ async function configureHeader(
           cachedOn: store.cachedOn ?? signal(null),
           dataset: signal({ issuers }),
           issuerIndexByIsin: (isin: string) => issuers.findIndex((issuer) => issuer.isin === isin),
+        },
+      },
+      {
+        provide: AppConfigService,
+        useValue: {
+          version: store.appVersion ?? signal(null),
         },
       },
       {
