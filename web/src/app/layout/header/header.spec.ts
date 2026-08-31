@@ -155,8 +155,7 @@ describe('Header', () => {
 
     expect(share).toHaveBeenCalledOnce();
     expect(share).toHaveBeenCalledWith({
-      title: 'Sopharma AD · Свободен флот',
-      text: 'Sopharma AD (BG1100000001)',
+      title: 'Sopharma AD (BG1100000001) · Свободен флот',
       url: window.location.href,
     });
   });
