@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { AppConfigService } from './core/app/app-config.service';
 import { CordovaService } from './cordova.service';
 import { VectorsStore } from './core/data/vectors.store';
 import { IntroService } from './core/intro/intro.service';
@@ -16,6 +17,7 @@ import { VectorsFetchDialog } from './vectors-fetch/vectors-fetch-dialog';
   styleUrl: './app.css',
 })
 export class App implements OnInit {
+  private readonly appConfig = inject(AppConfigService);
   private readonly cordova = inject(CordovaService);
   private readonly intro = inject(IntroService);
   private readonly store = inject(VectorsStore);
@@ -24,6 +26,9 @@ export class App implements OnInit {
   ngOnInit(): void {
     this.cordova.deviceReady$.subscribe(() => {
       void this.store.load();
+      void this.appConfig.initialize().catch(() => {
+        // App version is optional; missing config must not block the app.
+      });
       void this.intro.initialize(this.i18n.locale()).catch(() => {
         // Intro is optional; missing config must not block the app.
       });

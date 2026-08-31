@@ -3,6 +3,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
+import { AppConfigService } from '../../core/app/app-config.service';
 import { VectorsStore } from '../../core/data/vectors.store';
 import { IntroService } from '../../core/intro/intro.service';
 import type { AppLocale } from '../../core/i18n/locale-url';
@@ -26,6 +27,7 @@ export function formatCachedOnLabel(isoDate: string, locale: AppLocale): string 
 export class Header {
   private readonly router = inject(Router);
   protected readonly store = inject(VectorsStore);
+  protected readonly appConfig = inject(AppConfigService);
   protected readonly intro = inject(IntroService);
   protected readonly i18n = inject(LocaleService);
 
@@ -48,6 +50,26 @@ export class Header {
     }
     return this.i18n.text('header.cachedOn', { date: label });
   });
+
+  protected readonly appVersionLabel = computed(() => {
+    const version = this.appConfig.version();
+    if (version === null) {
+      return null;
+    }
+    return `v${version}`;
+  });
+
+  protected readonly appVersionAria = computed(() => {
+    const label = this.appVersionLabel();
+    if (!label) {
+      return null;
+    }
+    return this.i18n.text('header.appVersion', { version: label });
+  });
+
+  protected readonly metaVisible = computed(
+    () => this.cachedOnLabel() !== null || this.appVersionLabel() !== null || this.fetchIndicatorVisible(),
+  );
 
   protected readonly fetchIndicatorVisible = computed(() => this.store.fetchPhase() !== 'idle');
 

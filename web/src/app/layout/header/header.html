@@ -17,10 +17,18 @@
   </div>
   <div class="header__brand">
     <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
-    @if (cachedOnLabel() || fetchIndicatorVisible()) {
+    @if (metaVisible()) {
       <div class="header__meta">
         @if (cachedOnLabel()) {
-          <p class="header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+          <p class="header__meta-text header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+        }
+        @if (appVersionLabel()) {
+          @if (cachedOnLabel()) {
+            <span class="header__meta-text header__meta-separator" aria-hidden="true">·</span>
+          }
+          <span class="header__meta-text header__app-version" [attr.aria-label]="appVersionAria()">{{
+            appVersionLabel()
+          }}</span>
         }
         @if (fetchIndicatorVisible()) {
           <span

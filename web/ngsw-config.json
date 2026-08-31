@@ -13,7 +13,8 @@
           "/*.css",
           "/*.js",
           "/assets/vectors.config.json",
-          "/assets/intro.config.json"
+          "/assets/intro.config.json",
+          "/assets/app.config.json"
         ]
       }
     }
