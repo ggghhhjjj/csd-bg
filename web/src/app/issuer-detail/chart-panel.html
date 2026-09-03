@@ -80,6 +80,11 @@
           </li>
         </ul>
       }
+      <span class="chart-panel__export-live" aria-live="polite">
+        @if (exportService.copied()) {
+          {{ i18n.text('chart.exportCopied') }}
+        }
+      </span>
     </div>
   </div>
   <div class="chart-panel__canvas" #chartHost></div>

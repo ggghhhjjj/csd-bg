@@ -92,6 +92,11 @@ describe('toCsv', () => {
       'Date,Total shares,Shareholders\n2024-01-02,100,10',
     );
   });
+
+  it('escapes comma-containing header labels', () => {
+    const rows: ChartExportRow[] = [{ date: '2024-01-02', values: ['100'] }];
+    expect(toCsv('Date', ['Shares, total'], rows)).toBe('Date,"Shares, total"\n2024-01-02,100');
+  });
 });
 
 describe('toMarkdownTable', () => {

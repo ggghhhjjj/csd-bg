@@ -81,6 +81,15 @@
   background: #334155;
 }
 
+.chart-panel__export-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .chart-panel__toggle,
 .chart-panel__preset {
   appearance: none;
