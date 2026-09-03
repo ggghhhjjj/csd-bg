@@ -27,6 +27,7 @@
 .chart-panel__export {
   position: relative;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .chart-panel__export-btn {
