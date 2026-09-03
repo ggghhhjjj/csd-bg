@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  HostListener,
   OnDestroy,
   computed,
   effect,
@@ -19,6 +20,7 @@ import { LocaleService } from '../core/i18n/locale.service';
 import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from './axis-tooltip-position';
 import { axisIndexFromChartEvent } from './axis-tip-index';
 import { ComparePointerSession } from './compare-pointer-session';
+import { ChartExportService, type ChartExportRequest } from './chart-export.service';
 
 const METRIC_COLORS: Record<MetricId, string> = {
   total_shares: '#38bdf8',
@@ -48,7 +50,8 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   readonly issuerIndex = input.required<number>();
 
   private readonly store = inject(VectorsStore);
-  private readonly i18n = inject(LocaleService);
+  protected readonly i18n = inject(LocaleService);
+  protected readonly exportService = inject(ChartExportService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -68,6 +71,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     shareholders: true,
   });
   protected readonly preset = signal<RangePreset | null>('m3');
+  protected readonly exportMenuOpen = signal(false);
   protected readonly compare = signal<ComparePopup | null>(null);
   protected readonly labels = computed<Record<MetricId, string>>(() => ({
     total_shares: this.i18n.text('metric.totalShares'),
@@ -92,6 +96,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   protected readonly closeLabel = computed(() => this.i18n.text('compare.close'));
   protected readonly metricIds: MetricId[] = ['total_shares', 'free_float', 'shareholders'];
   protected readonly showPercent = computed(() => this.store.showPercentChange());
+  protected readonly exportDisabled = computed(() => this.visibleMetrics().length === 0);
 
   constructor() {
     effect(() => {
@@ -155,6 +160,46 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   protected closeCompare(): void {
     this.compare.set(null);
+  }
+
+  protected toggleExportMenu(event: Event): void {
+    event.stopPropagation();
+    if (this.exportDisabled()) {
+      return;
+    }
+    this.exportMenuOpen.update((open) => !open);
+  }
+
+  protected async exportCsv(): Promise<void> {
+    this.exportMenuOpen.set(false);
+    await this.exportService.copyCsv(this.buildExportRequest());
+  }
+
+  protected async exportMarkdown(): Promise<void> {
+    this.exportMenuOpen.set(false);
+    await this.exportService.copyMarkdown(this.buildExportRequest());
+  }
+
+  @HostListener('document:click')
+  protected closeExportMenu(): void {
+    this.exportMenuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeExportMenuOnEscape(): void {
+    this.exportMenuOpen.set(false);
+  }
+
+  private buildExportRequest(): ChartExportRequest {
+    return {
+      dataset: this.dataset(),
+      issuerIndex: this.issuerIndex(),
+      viewStart: this.viewStart,
+      viewEnd: this.viewEnd,
+      metrics: this.visibleMetrics(),
+      dateLabel: this.i18n.text('table.date'),
+      metricLabels: this.labels(),
+    };
   }
 
   private applyRangeFromPreset(preset: RangePreset): void {

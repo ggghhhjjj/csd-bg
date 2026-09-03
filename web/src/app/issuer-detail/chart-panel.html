@@ -14,17 +14,73 @@
       </button>
     }
   </div>
-  <div class="chart-panel__presets">
-    @for (item of presets(); track item.id) {
+  <div class="chart-panel__toolbar">
+    <div class="chart-panel__presets">
+      @for (item of presets(); track item.id) {
+        <button
+          class="chart-panel__preset"
+          type="button"
+          [class.chart-panel__preset--active]="preset() === item.id"
+          (click)="setPreset(item.id)"
+        >
+          {{ item.label }}
+        </button>
+      }
+    </div>
+    <div class="chart-panel__export" (click)="$event.stopPropagation()">
       <button
-        class="chart-panel__preset"
+        class="chart-panel__preset chart-panel__export-btn"
         type="button"
-        [class.chart-panel__preset--active]="preset() === item.id"
-        (click)="setPreset(item.id)"
+        [disabled]="exportDisabled()"
+        [attr.aria-label]="i18n.text('chart.export')"
+        [attr.aria-expanded]="exportMenuOpen()"
+        aria-haspopup="menu"
+        (click)="toggleExportMenu($event)"
       >
-        {{ item.label }}
+        @if (exportService.copied()) {
+          <svg class="chart-panel__export-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5 12l5 5L20 7"
+            />
+          </svg>
+        } @else {
+          <svg class="chart-panel__export-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 3v12M8 11l4 4 4-4M5 21h14"
+            />
+          </svg>
+        }
       </button>
-    }
+      @if (exportMenuOpen()) {
+        <ul class="chart-panel__export-menu" role="menu">
+          <li role="none">
+            <button class="chart-panel__export-item" type="button" role="menuitem" (click)="exportCsv()">
+              {{ i18n.text('chart.exportCsv') }}
+            </button>
+          </li>
+          <li role="none">
+            <button
+              class="chart-panel__export-item"
+              type="button"
+              role="menuitem"
+              (click)="exportMarkdown()"
+            >
+              {{ i18n.text('chart.exportMarkdown') }}
+            </button>
+          </li>
+        </ul>
+      }
+    </div>
   </div>
   <div class="chart-panel__canvas" #chartHost></div>
   @if (compare(); as popup) {
