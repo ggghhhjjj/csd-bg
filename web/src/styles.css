@@ -13,3 +13,15 @@ body {
   color: #e2e8f0;
   font-family: Inter, system-ui, -apple-system, sans-serif;
 }
+
+/*
+ * iOS installed PWA: 100%, 100svh, and 100dvh resolve to screen height minus
+ * the top safe-area inset, leaving a dead band at the bottom (~status-bar height).
+ * 100lvh reports the full screen. Scoped to standalone/fullscreen so Safari tabs
+ * keep the smaller dynamic viewport (lvh there is toolbar-retracted height).
+ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html {
+    height: 100lvh;
+  }
+}
