@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -54,6 +55,7 @@ interface ComparePopup {
 export class ChartPanel implements AfterViewInit, OnDestroy {
   readonly dataset = input.required<ParsedDataset>();
   readonly issuerIndex = input.required<number>();
+  readonly viewRangeChange = output<{ from: string; to: string }>();
 
   private readonly store = inject(VectorsStore);
   private readonly route = inject(ActivatedRoute);
@@ -222,21 +224,24 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   private applyRangeFromPreset(preset: RangePreset): void {
     const dates = this.dataset().dates;
-    this.viewEnd = dates[dates.length - 1] ?? '';
-    this.viewStart = rangeStartIso(dates, preset);
+    this.setViewRange(rangeStartIso(dates, preset), dates[dates.length - 1] ?? '');
   }
 
   private applyCustomRange(from: string, to: string): void {
     const dates = this.dataset().dates;
     if (dates.length === 0) {
-      this.viewStart = from;
-      this.viewEnd = to;
+      this.setViewRange(from, to);
       return;
     }
     const startIndex = indexForDate(dates, from || dates[0]);
     const endIndex = indexForDate(dates, to || dates[dates.length - 1]);
-    this.viewStart = dates[Math.min(startIndex, endIndex)];
-    this.viewEnd = dates[Math.max(startIndex, endIndex)];
+    this.setViewRange(dates[Math.min(startIndex, endIndex)], dates[Math.max(startIndex, endIndex)]);
+  }
+
+  private setViewRange(from: string, to: string): void {
+    this.viewStart = from;
+    this.viewEnd = to;
+    this.viewRangeChange.emit({ from, to });
   }
 
   private syncQueryParams(): void {
@@ -454,8 +459,10 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       return;
     }
     const dates = this.dataset().dates;
-    this.viewStart = this.dateFromZoomValue(zoom.startValue, dates, this.viewStart);
-    this.viewEnd = this.dateFromZoomValue(zoom.endValue, dates, this.viewEnd);
+    this.setViewRange(
+      this.dateFromZoomValue(zoom.startValue, dates, this.viewStart),
+      this.dateFromZoomValue(zoom.endValue, dates, this.viewEnd),
+    );
   }
 
   private dateFromZoomValue(value: string | number | undefined, dates: string[], fallback: string): string {

@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -7,10 +7,11 @@ import { VectorsStore } from '../core/data/vectors.store';
 import { LocaleService } from '../core/i18n/locale.service';
 import { ChartPanel } from './chart-panel';
 import { MetricsTable } from './metrics-table';
+import { PeriodDiffs } from './period-diffs';
 
 @Component({
   selector: 'app-issuer-detail',
-  imports: [ChartPanel, MetricsTable],
+  imports: [ChartPanel, MetricsTable, PeriodDiffs],
   templateUrl: './issuer-detail.html',
   styleUrl: './issuer-detail.css',
 })
@@ -18,6 +19,7 @@ export class IssuerDetail {
   private readonly store = inject(VectorsStore);
   private readonly route = inject(ActivatedRoute);
   protected readonly i18n = inject(LocaleService);
+  protected readonly viewRange = signal({ from: '', to: '' });
 
   private readonly isin = toSignal(this.route.paramMap.pipe(map((params) => params.get('isin') ?? '')), {
     initialValue: '',

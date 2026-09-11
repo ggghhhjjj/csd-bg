@@ -1,0 +1,30 @@
+.period-diffs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.period-diffs__range,
+.period-diffs__line {
+  margin: 0;
+}
+
+.period-diffs__range {
+  color: #94a3b8;
+}
+
+.period-diffs__values {
+  color: #f8fafc;
+}
+
+.period-diffs__line--total_shares .period-diffs__label {
+  color: #38bdf8;
+}
+
+.period-diffs__line--free_float .period-diffs__label {
+  color: #34d399;
+}
+
+.period-diffs__line--shareholders .period-diffs__label {
+  color: #fbbf24;
+}

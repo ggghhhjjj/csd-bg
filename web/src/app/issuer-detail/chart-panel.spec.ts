@@ -122,6 +122,24 @@ describe('ChartPanel URL state', () => {
     expect(option.dataZoom[0].endValue).toBe('2024-06-01');
   });
 
+  it('emits the restored custom from/to window', async () => {
+    const fixture = await createPanel({ from: '2024-01-02', to: '2024-06-01' });
+    const emitted: Array<{ from: string; to: string }> = [];
+    fixture.componentInstance.viewRangeChange.subscribe((range) => emitted.push(range));
+    fixture.detectChanges();
+
+    expect(emitted).toEqual([{ from: '2024-01-02', to: '2024-06-01' }]);
+  });
+
+  it('emits the preset window after init', async () => {
+    const fixture = await createPanel({ range: 'max' });
+    const emitted: Array<{ from: string; to: string }> = [];
+    fixture.componentInstance.viewRangeChange.subscribe((range) => emitted.push(range));
+    fixture.detectChanges();
+
+    expect(emitted).toEqual([{ from: '2024-01-01', to: '2024-06-01' }]);
+  });
+
   async function createPanel(query: Record<string, string>) {
     const route = {
       snapshot: { queryParamMap: convertToParamMap(query) },

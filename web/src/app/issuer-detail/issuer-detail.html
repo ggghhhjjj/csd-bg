@@ -3,7 +3,17 @@
     <h2 class="issuer-detail__name">{{ current.name }}</h2>
     <p class="issuer-detail__isin">{{ current.isin }}</p>
     @if (dataset(); as data) {
-      <app-chart-panel [dataset]="data" [issuerIndex]="issuerIndex()" />
+      <app-period-diffs
+        [dataset]="data"
+        [issuerIndex]="issuerIndex()"
+        [startDate]="viewRange().from"
+        [endDate]="viewRange().to"
+      />
+      <app-chart-panel
+        [dataset]="data"
+        [issuerIndex]="issuerIndex()"
+        (viewRangeChange)="viewRange.set($event)"
+      />
       <app-metrics-table [dataset]="data" [issuerIndex]="issuerIndex()" />
     }
   } @else if (dataset()) {

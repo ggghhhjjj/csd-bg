@@ -1,0 +1,11 @@
+@if (rows().length) {
+  <section class="period-diffs">
+    <p class="period-diffs__range">{{ startDate() }} — {{ endDate() }}</p>
+    @for (row of rows(); track row.metric) {
+      <p [class]="'period-diffs__line period-diffs__line--' + row.metric">
+        <span class="period-diffs__label">{{ labels()[row.metric] }}:</span>
+        <span class="period-diffs__values">{{ row.abs }} ({{ row.percent }})</span>
+      </p>
+    }
+  </section>
+}
