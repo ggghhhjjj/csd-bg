@@ -1,0 +1,16 @@
+<div class="range-presets">
+  <div class="range-presets__toolbar">
+    <div class="range-presets__presets">
+      @for (item of presets(); track item.id) {
+        <button
+          class="range-presets__preset"
+          type="button"
+          [class.range-presets__preset--active]="preset() === item.id"
+          (click)="select(item.id)"
+        >
+          {{ item.label }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

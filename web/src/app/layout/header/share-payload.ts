@@ -26,6 +26,13 @@ export function issuerIsinFromUrl(url: string): string | null {
   }
 }
 
+export function isHomeUrl(url: string): boolean {
+  const hashIndex = url.indexOf('#');
+  const afterHash = hashIndex >= 0 ? url.slice(hashIndex + 1) : url;
+  const path = afterHash.split('?')[0];
+  return path === '' || path === '/';
+}
+
 export function buildSharePayload(
   href: string,
   labels: SharePayloadLabels,

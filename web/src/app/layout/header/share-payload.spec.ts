@@ -1,10 +1,26 @@
-import { buildSharePayload, isShareAbortError, issuerIsinFromUrl } from './share-payload';
+import { buildSharePayload, isHomeUrl, isShareAbortError, issuerIsinFromUrl } from './share-payload';
 
 const LABELS = {
   title: 'Free Float',
   appText: 'CSD-BG Free Float analytics',
   issuerText: '{name} ({isin})',
 };
+
+describe('isHomeUrl', () => {
+  it('treats empty, slash, and hash-root paths as home', () => {
+    expect(isHomeUrl('/')).toBe(true);
+    expect(isHomeUrl('/#/')).toBe(true);
+    expect(isHomeUrl('https://example.com/app/#/')).toBe(true);
+    expect(isHomeUrl('/#/?x=1')).toBe(true);
+  });
+
+  it('returns false for issuer and statistics routes', () => {
+    expect(isHomeUrl('/issuer/BG1100000001')).toBe(false);
+    expect(isHomeUrl('/#/issuer/BG1100000001')).toBe(false);
+    expect(isHomeUrl('/statistics')).toBe(false);
+    expect(isHomeUrl('/#/statistics?range=y1')).toBe(false);
+  });
+});
 
 describe('issuerIsinFromUrl', () => {
   it('returns null for the home route', () => {

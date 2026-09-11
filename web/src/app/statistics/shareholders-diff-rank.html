@@ -1,0 +1,32 @@
+<section class="shareholders-diff-rank">
+  <div class="shareholders-diff-rank__header">
+    <h2 class="shareholders-diff-rank__title">{{ i18n.text('stats.shareholdersDiff') }}</h2>
+    <div class="shareholders-diff-rank__actions">
+      <button class="shareholders-diff-rank__action" type="button" (click)="toggleOrder()">
+        {{ sortLabel() }}
+      </button>
+      @if (canToggleLimit()) {
+        <button class="shareholders-diff-rank__action" type="button" (click)="toggleLimit()">
+          {{ limitLabel() }}
+        </button>
+      }
+    </div>
+  </div>
+  @if (visibleRows().length) {
+    <ul class="shareholders-diff-rank__items">
+      @for (row of visibleRows(); track row.isin) {
+        <li class="shareholders-diff-rank__item">
+          <a class="shareholders-diff-rank__link" [routerLink]="['/issuer', row.isin]">
+            <span class="shareholders-diff-rank__identity">
+              <span class="shareholders-diff-rank__name">{{ row.name }}</span>
+              <span class="shareholders-diff-rank__isin">{{ row.isin }}</span>
+            </span>
+            <span [class]="deltaClass(row.diff)">{{ row.abs }} ({{ row.percent }})</span>
+          </a>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="shareholders-diff-rank__empty">{{ i18n.text('stats.empty') }}</p>
+  }
+</section>

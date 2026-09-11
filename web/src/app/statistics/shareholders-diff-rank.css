@@ -1,0 +1,91 @@
+.shareholders-diff-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shareholders-diff-rank__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shareholders-diff-rank__title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.shareholders-diff-rank__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.shareholders-diff-rank__action {
+  appearance: none;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shareholders-diff-rank__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.shareholders-diff-rank__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: #1e293b;
+  border-radius: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.shareholders-diff-rank__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.shareholders-diff-rank__name {
+  font-weight: 600;
+}
+
+.shareholders-diff-rank__isin {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.shareholders-diff-rank__delta {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shareholders-diff-rank__delta--up {
+  color: #34d399;
+}
+
+.shareholders-diff-rank__delta--down {
+  color: #f87171;
+}
+
+.shareholders-diff-rank__empty {
+  margin: 0;
+  color: #94a3b8;
+}

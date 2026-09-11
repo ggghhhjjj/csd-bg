@@ -8,7 +8,7 @@ import { VectorsStore } from '../../core/data/vectors.store';
 import { IntroService } from '../../core/intro/intro.service';
 import type { AppLocale } from '../../core/i18n/locale-url';
 import { LocaleService } from '../../core/i18n/locale.service';
-import { buildSharePayload, isShareAbortError, issuerIsinFromUrl, type ShareIssuer } from './share-payload';
+import { buildSharePayload, isHomeUrl, isShareAbortError, issuerIsinFromUrl, type ShareIssuer } from './share-payload';
 
 const COPIED_MS = 2000;
 
@@ -99,17 +99,24 @@ export class Header {
     return phase === 'processing' || phase === 'countdown';
   });
 
-  protected readonly showHome = toSignal(
+  private readonly routeUrl = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map((event) => issuerIsinFromUrl(event.urlAfterRedirects) !== null),
-      startWith(issuerIsinFromUrl(this.router.url) !== null),
+      map((event) => event.urlAfterRedirects),
+      startWith(this.router.url),
     ),
-    { initialValue: false },
+    { initialValue: this.router.url },
   );
+
+  protected readonly showHome = computed(() => !isHomeUrl(this.routeUrl()));
+  protected readonly showStats = computed(() => isHomeUrl(this.routeUrl()));
 
   protected goHome(): void {
     void this.router.navigateByUrl('/');
+  }
+
+  protected goStatistics(): void {
+    void this.router.navigateByUrl('/statistics');
   }
 
   protected switchLocale(): void {

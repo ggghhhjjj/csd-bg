@@ -127,6 +127,41 @@ describe('Header', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/');
   });
 
+  it('shows a statistics icon on the home view that navigates to statistics', async () => {
+    await configureHeader();
+
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigateByUrl');
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const i18n = TestBed.inject(LocaleService);
+    const stats = findLabeledButton(fixture.nativeElement, i18n.text('header.statistics'));
+    expect(stats.querySelector('svg')).toBeTruthy();
+    expect(findLabeledButtonOptional(fixture.nativeElement, i18n.text('header.home'))).toBeUndefined();
+    stats.click();
+    expect(navigateSpy).toHaveBeenCalledWith('/statistics');
+  });
+
+  it('hides the statistics icon on issuer and statistics views', async () => {
+    await configureHeader();
+
+    const router = TestBed.inject(Router);
+    const i18n = TestBed.inject(LocaleService);
+
+    await router.navigateByUrl('/issuer/BG1100000001');
+    const issuerFixture = TestBed.createComponent(Header);
+    issuerFixture.detectChanges();
+    expect(findLabeledButtonOptional(issuerFixture.nativeElement, i18n.text('header.statistics'))).toBeUndefined();
+
+    await router.navigateByUrl('/statistics');
+    const statsFixture = TestBed.createComponent(Header);
+    statsFixture.detectChanges();
+    expect(findLabeledButtonOptional(statsFixture.nativeElement, i18n.text('header.statistics'))).toBeUndefined();
+    expect(findLabeledButton(statsFixture.nativeElement, i18n.text('header.home'))).toBeTruthy();
+  });
+
   it('renders a labeled share icon button', async () => {
     await configureHeader();
 
@@ -319,6 +354,7 @@ async function configureHeader(
       provideRouter([
         { path: '', component: DummyPage },
         { path: 'issuer/:isin', component: DummyPage },
+        { path: 'statistics', component: DummyPage },
       ]),
       {
         provide: VectorsStore,
@@ -357,10 +393,14 @@ function findMenuButton(root: HTMLElement, i18n: LocaleService): HTMLButtonEleme
 }
 
 function findLabeledButton(root: HTMLElement, label: string): HTMLButtonElement {
-  const buttons = [...root.querySelectorAll('button')] as HTMLButtonElement[];
-  const match = buttons.find((button) => button.getAttribute('aria-label') === label);
+  const match = findLabeledButtonOptional(root, label);
   expect(match).toBeTruthy();
   return match!;
+}
+
+function findLabeledButtonOptional(root: HTMLElement, label: string): HTMLButtonElement | undefined {
+  const buttons = [...root.querySelectorAll('button')] as HTMLButtonElement[];
+  return buttons.find((button) => button.getAttribute('aria-label') === label);
 }
 
 function stubNavigatorFunction(name: 'share', value: ((data?: ShareData) => Promise<void>) | undefined): void {

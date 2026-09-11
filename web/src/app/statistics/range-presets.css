@@ -1,0 +1,28 @@
+.range-presets__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.range-presets__presets {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.range-presets__preset {
+  appearance: none;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.range-presets__preset--active {
+  background: #334155;
+}

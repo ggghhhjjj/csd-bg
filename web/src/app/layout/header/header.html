@@ -13,6 +13,24 @@
           />
         </svg>
       </button>
+    } @else if (showStats()) {
+      <button
+        class="header__action header__icon-btn"
+        type="button"
+        (click)="goStatistics()"
+        [attr.aria-label]="i18n.text('header.statistics')"
+      >
+        <svg class="header__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M4 19V9M10 19V5M16 19v-6M3 19h18"
+          />
+        </svg>
+      </button>
     }
   </div>
   <div class="header__brand">

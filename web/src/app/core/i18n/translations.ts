@@ -28,7 +28,7 @@ const BG = {
   'header.shareIssuerText': '{name} ({isin})',
   'header.cachedOn': 'Заредени на {date}',
   'header.appVersion': 'Приложение {version}',
-  'issuers.heading': 'Емитенти',
+  'header.statistics': 'Статистика',
   'issuers.search': 'Търсене по име или ISIN…',
   'issuers.empty': 'Няма съвпадения.',
   'metric.totalShares': 'Общ брой акции',
@@ -61,6 +61,12 @@ const BG = {
   'intro.dialogTitle': 'Ръководство',
   'intro.frameTitle': 'Съдържание на ръководството',
   'intro.close': 'Затвори',
+  'stats.shareholdersDiff': 'Промяна в акционерите',
+  'stats.sortDesc': 'Низходящо',
+  'stats.sortAsc': 'Възходящо',
+  'stats.showAll': 'Покажи всички',
+  'stats.showTop5': 'Топ 5',
+  'stats.empty': 'Няма данни за избрания период.',
 } as const;
 
 export type TranslationKey = keyof typeof BG;
@@ -95,7 +101,7 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'header.shareIssuerText': '{name} ({isin})',
     'header.cachedOn': 'Loaded on {date}',
     'header.appVersion': 'App {version}',
-    'issuers.heading': 'Issuers',
+    'header.statistics': 'Statistics',
     'issuers.search': 'Search by name or ISIN…',
     'issuers.empty': 'No matching issuers.',
     'metric.totalShares': 'Total shares',
@@ -128,6 +134,12 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'intro.dialogTitle': 'Guide',
     'intro.frameTitle': 'Guide content',
     'intro.close': 'Close',
+    'stats.shareholdersDiff': 'Shareholders change',
+    'stats.sortDesc': 'Descending',
+    'stats.sortAsc': 'Ascending',
+    'stats.showAll': 'Show all',
+    'stats.showTop5': 'Top 5',
+    'stats.empty': 'No data for the selected period.',
   },
 };
 

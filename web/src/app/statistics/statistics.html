@@ -1,0 +1,6 @@
+<section class="statistics">
+  @if (dataset(); as data) {
+    <app-range-presets [preset]="preset()" (presetChange)="setPreset($event)" />
+    <app-shareholders-diff-rank [dataset]="data" [startDate]="viewRange().from" [endDate]="viewRange().to" />
+  }
+</section>
