@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @csd-bg/core && npm run build -w @csd-bg/cli && npm run build -w csd-bg-vscode",
+    "build": "npm run build -w @csd-bg/core && npm run build -w @csd-bg/cli",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",

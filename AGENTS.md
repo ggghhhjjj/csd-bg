@@ -27,7 +27,6 @@ packages/
       settings.ts        # CSD_BG_STATISTICS_URL env resolution
     tests/               # Vitest suite
   cli/                   # @csd-bg/cli — commander CLI
-  vscode/                # csd-bg-vscode — VS Code extension
 web/                     # Angular 22 + Cordova-browser PWA (NOT an npm workspace)
   src/                   # Angular sources — edit here
   public/assets/vectors.config.json  # four dataset URLs

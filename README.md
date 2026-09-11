@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/typescript-5.x-3178c6.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-BG (Central Securities Depository Bulgaria) website, stores them in SQLite, downloads PDF bytes, and extracts issuer metrics. Ships as a **CLI**, **Docker** one-shot batch job, and **VS Code extension**.
+A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-BG (Central Securities Depository Bulgaria) website, stores them in SQLite, downloads PDF bytes, and extracts issuer metrics. Ships as a **CLI** and **Docker** one-shot batch job.
 
 ## Features
 
@@ -14,7 +14,6 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
 - **GitHub Actions** — Daily scheduled scrape with compressed SQLite and vectors committed to `main`
-- **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Web client** — Angular + Cordova-browser PWA under `web/` (not an npm workspace)
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
 
@@ -28,7 +27,6 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
   - [Make targets](#make-targets)
   - [Docker](#docker)
   - [Docker Compose / Synology](#docker-compose--synology)
-  - [VS Code extension](#vs-code-extension)
 - [Pipeline workflow](#pipeline-workflow)
 - [Project structure](#project-structure)
 - [Development](#development)
@@ -90,7 +88,6 @@ Build compiles:
 |---------|--------|
 | `@csd-bg/core` | `packages/core/dist/` |
 | `@csd-bg/cli` | `packages/cli/dist/index.js` |
-| `csd-bg-vscode` | `packages/vscode/dist/extension.js` |
 
 ### Docker
 
@@ -230,37 +227,6 @@ docker compose run --rm csd-bg-scraper scrape,download,extract,vectors
 
 Compose mounts `${DATA_HOST_PATH:-./data}` → `/data` and passes pipeline args in `docker-compose.yml` (including `--max-pages 2` and `--early-stopping-threshold 5` for scheduled incremental runs). Adjust `command`, memory limits, and `DOCKER_USER` there for production. Local `make run` uses a slightly higher default (`MAX_PAGES=5`)—see [Make targets](#make-targets).
 
-### VS Code extension
-
-Package: `packages/vscode` (`csd-bg-vscode`)
-
-**Development**:
-
-1. `npm install && npm run build`
-2. Open repo in VS Code
-3. Run **Run Extension** from `packages/vscode/.vscode/launch.json` (F5)
-
-**Features**:
-
-- Activity bar: Pipeline, Dates, Issuers tree views
-- Commands: run full pipeline or individual steps
-- Webviews: data table explorer, Chart.js issuer trends, config editor
-- Settings: `csd-bg.statisticsUrl`, `csd-bg.dataDirectory`, timeout, pagination
-- Generate cron/Docker snippet for headless NAS scheduling
-
-**Settings** (workspace):
-
-| Setting | Description |
-|---------|-------------|
-| `csd-bg.statisticsUrl` | Same as `CSD_BG_STATISTICS_URL` |
-| `csd-bg.dataDirectory` | Folder for CSV/DB/logs (default `./data`) |
-| `csd-bg.timeout` | HTTP timeout |
-| `csd-bg.maxPages` | `0` = all pages |
-| `csd-bg.earlyStoppingThreshold` | Consecutive duplicate limit |
-| `csd-bg.usePostPagination` | POST pagination (default `true`) |
-| `csd-bg.enableEarlyStopping` | Early stop on scrape (default `true`) |
-| `csd-bg.logLevel` | Minimum log level for output and `app.log` (default `INFO`). `DEBUG` also enables CSV export during scrape |
-
 ## Pipeline workflow
 
 Default production command:
@@ -297,10 +263,8 @@ csd-bg/
 │   ├── core/                 # @csd-bg/core — scraper, DB, PDF, pipeline
 │   │   ├── src/
 │   │   └── tests/            # Vitest (uses tests/fixtures)
-│   ├── cli/                  # @csd-bg/cli — commander entrypoint
-│   │   └── src/index.ts
-│   └── vscode/               # csd-bg-vscode extension
-│       └── src/extension.ts
+│   └── cli/                  # @csd-bg/cli — commander entrypoint
+│       └── src/index.ts
 ├── web/                      # Angular 22 + Cordova-browser client (isolated npm project)
 ├── tests/fixtures/           # Offline HTML/PDF golden files (shared)
 ├── data/                     # Runtime CSV/DB/PDFs (gitignored); git tracks db.gz, vectors/, db_changed.txt
@@ -542,12 +506,11 @@ The database remains the source of truth. The app does **not** read CSV back for
 
 | Issue | Fix |
 |-------|-----|
-| `CSD_BG_STATISTICS_URL is not set` | Copy `.env.example` → `.env` or pass URL via VS Code setting |
+| `CSD_BG_STATISTICS_URL is not set` | Copy `.env.example` → `.env` and set the URL |
 | Permission denied on `/data` | Fix volume ownership (`DOCKER_USER` / `chown` on host path) |
 | HTTP timeouts | Increase `--timeout 60` |
 | Failed PDFs stuck | `download --clear-failed-downloads` or `extract --clear-failed-extracts` |
 | Docker build fails on `better-sqlite3` | Image installs `python3 make g++` for native module compile |
-| VS Code extension: empty trees | Run pipeline once; check `csd-bg.dataDirectory` points at your DB |
 
 ## Contributing
 
