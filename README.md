@@ -13,7 +13,7 @@ A TypeScript/Node.js application that scrapes Free Float PDF links from the CSD-
 - **Step pipeline** — `decompress`, `scrape`, `download`, `extract`, `vectors`, `compress` with early stopping on duplicates
 - **SQLite + optional CSV export** — Deduplicated metadata in SQLite; human-readable CSV only in verbose (DEBUG) mode
 - **Docker / Synology** — One-shot container with `/data` volume
-- **GitHub Actions** — Daily scheduled scrape with compressed SQLite and vectors committed to `main` via Git LFS
+- **GitHub Actions** — Daily scheduled scrape with compressed SQLite and vectors committed to `main`
 - **VS Code extension** — Run pipeline, browse dates/issuers, charts, config editor
 - **Web client** — Angular + Cordova-browser PWA under `web/` (not an npm workspace)
 - **Offline tests** — Vitest suite with HTML/PDF fixtures (no live site in CI)
@@ -365,7 +365,7 @@ Do not call the live CSD-BG site from automated tests.
 
 ### GitHub Actions (production)
 
-The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow decompresses the git-tracked gzip archive, scrapes/downloads/extracts, then compresses SQLite and commits `data/free_float.db.gz`, `data/vectors/`, and `data/db_changed.txt` to `main` using **Git LFS**. Downloaded PDFs under `data/pdfs/` are ephemeral working files (gitignored); PDF URLs stay in SQLite. The uncompressed `data/free_float.db` is gitignored.
+The recommended production setup runs on **GitHub-hosted Actions** daily at **19:00 Europe/Sofia** via [`.github/workflows/daily-scrape.yml`](.github/workflows/daily-scrape.yml). The workflow decompresses the git-tracked gzip archive, scrapes/downloads/extracts, then compresses SQLite and commits `data/free_float.db.gz`, `data/vectors/`, and `data/db_changed.txt` to `main`. Downloaded PDFs under `data/pdfs/` are ephemeral working files (gitignored); PDF URLs stay in SQLite. The uncompressed `data/free_float.db` is gitignored.
 
 #### One-time setup
 
@@ -375,17 +375,14 @@ The recommended production setup runs on **GitHub-hosted Actions** daily at **19
 
 3. **Watch for failures** — On GitHub.com, open the repo → **Watch** → **Custom** → enable **Actions** (or **All activity**). GitHub emails you when a scheduled run fails, with a link to the run.
 
-4. **Git LFS** — `data/free_float.db.gz` and `data/vectors/*.arrow` are LFS objects ([`.gitattributes`](.gitattributes)). Downloaded PDFs are not stored in git. The uncompressed SQLite file is not stored in git. Monitor usage under **Settings → Billing → Git LFS** ([GitHub LFS billing docs](https://docs.github.com/en/billing/concepts/product-billing/git-lfs)). Free/Pro includes 10 GiB storage and 10 GiB bandwidth per month.
-
 #### What the workflow does
 
 | Phase | Behavior |
 |-------|----------|
-| Data sync | Checkout with `lfs: false` (pointer files only); restore `.git/lfs` from Actions cache; `git lfs pull` materializes `data/free_float.db.gz` and `data/vectors/` from local LFS objects (remote fetch only for OIDs not in cache). |
+| Data sync | Checkout fetches `data/free_float.db.gz` and `data/vectors/` as normal Git blobs. |
 | Pipeline | Decompress `data/free_float.db.gz`, then `scrape,download,extract,vectors` with `--max-pages 5`, `--early-stopping-threshold 10`, then compress. PDFs are downloaded into `data/pdfs/` for extract only and are not committed. |
 | Commit | Push only if `data/db_changed.txt` changed (includes compressed DB and vectors in the same commit) |
 | Partial failure | DB changes are still committed; job status remains **Failed** if the pipeline exited non-zero |
-| Cache | Saved only after a fully successful run |
 
 #### Manual run
 
@@ -393,13 +390,13 @@ Actions → **Daily Scrape** → **Run workflow** (`workflow_dispatch`).
 
 #### Failure notification
 
-When any step fails (including Git LFS quota errors at checkout or push):
+When any step fails:
 
 1. **Watch email** — link to the failed run (GitHub does not embed log text in the email).
 2. **`app.log` artifact** — download from the run page (7-day retention; may be missing if failure occurred before the pipeline ran).
-3. **Job summary** — step outcomes, last 200 lines of `app.log` when present, and an LFS quota hint when checkout or push fails.
+3. **Job summary** — step outcomes and last 200 lines of `app.log` when present.
 
-After a failure, you can push manual corrections to `data/` on `main`; the next run’s `git lfs pull` downloads only LFS objects not already in the cached `.git/lfs` store.
+After a failure, you can push manual corrections to `data/` on `main`; the next run checks out the updated files normally.
 
 ### Synology DSM
 
