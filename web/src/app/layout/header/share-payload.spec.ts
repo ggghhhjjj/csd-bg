@@ -17,6 +17,10 @@ describe('issuerIsinFromUrl', () => {
     expect(issuerIsinFromUrl('/#/issuer/BG1100000001')).toBe('BG1100000001');
     expect(issuerIsinFromUrl('https://example.com/app/#/issuer/BG1100000001')).toBe('BG1100000001');
     expect(issuerIsinFromUrl('/issuer/BG1100000001?x=1')).toBe('BG1100000001');
+    expect(issuerIsinFromUrl('/#/issuer/BG1100000001?range=y1')).toBe('BG1100000001');
+    expect(issuerIsinFromUrl('https://example.com/app/#/issuer/BG1100000001?range=y1&metrics=free_float')).toBe(
+      'BG1100000001',
+    );
   });
 });
 
@@ -42,6 +46,16 @@ describe('buildSharePayload', () => {
 
   it('includes issuer name and ISIN for a detail view', () => {
     const url = 'https://example.com/app/#/issuer/BG1100000001';
+    expect(
+      buildSharePayload(url, LABELS, { name: 'Sopharma AD', isin: 'BG1100000001' }),
+    ).toEqual({
+      title: 'Sopharma AD (BG1100000001) · Free Float',
+      url,
+    });
+  });
+
+  it('passes through chart query params on the issuer URL unchanged', () => {
+    const url = 'https://example.com/app/#/issuer/BG1100000001?range=y1&metrics=free_float';
     expect(
       buildSharePayload(url, LABELS, { name: 'Sopharma AD', isin: 'BG1100000001' }),
     ).toEqual({

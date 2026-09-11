@@ -11,6 +11,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as echarts from 'echarts';
 
 import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
@@ -21,6 +22,11 @@ import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from 
 import { axisIndexFromChartEvent } from './axis-tip-index';
 import { ComparePointerSession } from './compare-pointer-session';
 import { ChartExportService, type ChartExportRequest } from './chart-export.service';
+import {
+  chartViewQueryEquals,
+  parseChartViewParams,
+  serializeChartViewParams,
+} from './chart-view-params';
 
 const METRIC_COLORS: Record<MetricId, string> = {
   total_shares: '#38bdf8',
@@ -50,6 +56,8 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   readonly issuerIndex = input.required<number>();
 
   private readonly store = inject(VectorsStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly i18n = inject(LocaleService);
   protected readonly exportService = inject(ChartExportService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
@@ -99,6 +107,11 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   protected readonly exportDisabled = computed(() => this.visibleMetrics().length === 0);
 
   constructor() {
+    const parsed = parseChartViewParams(this.route.snapshot.queryParamMap);
+    this.visible.set(parsed.visible);
+    this.preset.set(parsed.preset);
+    this.viewStart = parsed.from;
+    this.viewEnd = parsed.to;
     effect(() => {
       this.dataset();
       this.issuerIndex();
@@ -132,6 +145,9 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       this.applyRangeFromPreset(preset);
       this.render();
       this.applyingPreset = false;
+    } else {
+      this.applyCustomRange(this.viewStart, this.viewEnd);
+      this.render();
     }
     this.resizeObserver = new ResizeObserver(() => this.chart?.resize());
     this.resizeObserver.observe(this.host().nativeElement);
@@ -147,11 +163,13 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
 
   protected toggleMetric(metric: MetricId): void {
     this.visible.update((current) => ({ ...current, [metric]: !current[metric] }));
+    this.syncQueryParams();
   }
 
   protected setPreset(preset: RangePreset): void {
     this.preset.set(preset);
     this.compare.set(null);
+    this.syncQueryParams();
   }
 
   protected togglePercent(): void {
@@ -206,6 +224,36 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     const dates = this.dataset().dates;
     this.viewEnd = dates[dates.length - 1] ?? '';
     this.viewStart = rangeStartIso(dates, preset);
+  }
+
+  private applyCustomRange(from: string, to: string): void {
+    const dates = this.dataset().dates;
+    if (dates.length === 0) {
+      this.viewStart = from;
+      this.viewEnd = to;
+      return;
+    }
+    const startIndex = indexForDate(dates, from || dates[0]);
+    const endIndex = indexForDate(dates, to || dates[dates.length - 1]);
+    this.viewStart = dates[Math.min(startIndex, endIndex)];
+    this.viewEnd = dates[Math.max(startIndex, endIndex)];
+  }
+
+  private syncQueryParams(): void {
+    const query = serializeChartViewParams({
+      visible: this.visible(),
+      preset: this.preset(),
+      from: this.viewStart,
+      to: this.viewEnd,
+    });
+    if (chartViewQueryEquals(this.route.snapshot.queryParamMap, query)) {
+      return;
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: query,
+      replaceUrl: true,
+    });
   }
 
   private visibleMetrics(): MetricId[] {
@@ -389,6 +437,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
       this.syncViewFromSlider();
       if (!this.applyingPreset) {
         this.preset.set(null);
+        this.syncQueryParams();
       }
     });
   }

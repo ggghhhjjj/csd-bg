@@ -160,6 +160,29 @@ describe('Header', () => {
     });
   });
 
+  it('shares the current issuer URL including chart query params', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubNavigatorFunction('share', share);
+    await configureHeader();
+
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/issuer/BG1100000001?range=y1&metrics=free_float');
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    findShareButton(fixture.nativeElement, TestBed.inject(LocaleService)).click();
+    await fixture.whenStable();
+
+    expect(share).toHaveBeenCalledOnce();
+    expect(share).toHaveBeenCalledWith({
+      title: 'Sopharma AD (BG1100000001) · Свободен флот',
+      url: window.location.href,
+    });
+    expect(router.url).toContain('range=y1');
+    expect(router.url).toContain('metrics=free_float');
+  });
+
   it('copies the URL when navigator.share is missing', async () => {
     stubNavigatorFunction('share', undefined);
     const writeText = vi.fn().mockResolvedValue(undefined);
