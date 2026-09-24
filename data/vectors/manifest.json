@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generated_at": "2026-09-23T23:13:50.217Z",
+  "generated_at": "2026-09-24T23:32:45.512Z",
   "issuer_count": 297,
-  "date_count": 1161,
+  "date_count": 1162,
   "date_min": "2022-01-04",
-  "date_max": "2026-09-23",
+  "date_max": "2026-09-24",
   "catalog_file": "catalog.json",
   "dates_file": "dates.arrow",
   "arrow_file": "free_float_vectors.arrow",
