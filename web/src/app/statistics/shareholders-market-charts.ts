@@ -21,6 +21,7 @@ import {
 const COLOR_LOSSES = '#f87171';
 const COLOR_GAINS = '#34d399';
 const COLOR_TOTAL = '#fbbf24';
+const FLOW_STACK_ID = 'flow';
 
 @Component({
   selector: 'app-shareholders-market-charts',
@@ -32,8 +33,7 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
 
-  private readonly lossesHost = viewChild.required<ElementRef<HTMLDivElement>>('lossesHost');
-  private readonly gainsHost = viewChild.required<ElementRef<HTMLDivElement>>('gainsHost');
+  private readonly flowHost = viewChild.required<ElementRef<HTMLDivElement>>('flowHost');
   private readonly totalHost = viewChild.required<ElementRef<HTMLDivElement>>('totalHost');
 
   protected readonly i18n = inject(LocaleService);
@@ -49,8 +49,7 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
 
   protected readonly hasData = computed(() => hasShareholdersAggregateData(this.aggregate()));
 
-  private lossesChart: echarts.ECharts | null = null;
-  private gainsChart: echarts.ECharts | null = null;
+  private flowChart: echarts.ECharts | null = null;
   private totalChart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
@@ -63,29 +62,26 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.lossesChart = echarts.init(this.lossesHost().nativeElement);
-    this.gainsChart = echarts.init(this.gainsHost().nativeElement);
+    this.flowChart = echarts.init(this.flowHost().nativeElement);
     this.totalChart = echarts.init(this.totalHost().nativeElement);
     this.renderAll();
     this.resizeObserver = new ResizeObserver(() => {
-      this.lossesChart?.resize();
-      this.gainsChart?.resize();
+      this.flowChart?.resize();
       this.totalChart?.resize();
     });
-    for (const host of [this.lossesHost(), this.gainsHost(), this.totalHost()]) {
+    for (const host of [this.flowHost(), this.totalHost()]) {
       this.resizeObserver.observe(host.nativeElement);
     }
   }
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
-    this.lossesChart?.dispose();
-    this.gainsChart?.dispose();
+    this.flowChart?.dispose();
     this.totalChart?.dispose();
   }
 
   private renderAll(): void {
-    if (!this.lossesChart || !this.gainsChart || !this.totalChart) {
+    if (!this.flowChart || !this.totalChart) {
       return;
     }
     const { dates, losses, gains, totalShareholders } = this.aggregate();
@@ -93,8 +89,14 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
       return;
     }
 
-    this.renderBar(this.lossesChart, dates, losses, this.i18n.text('stats.shareholdersLossesDaily'), COLOR_LOSSES);
-    this.renderBar(this.gainsChart, dates, gains, this.i18n.text('stats.shareholdersGainsDaily'), COLOR_GAINS);
+    this.renderStackedFlowChart(
+      this.flowChart,
+      dates,
+      gains,
+      losses,
+      this.i18n.text('stats.shareholdersGainsDaily'),
+      this.i18n.text('stats.shareholdersLossesDaily'),
+    );
     this.renderLine(
       this.totalChart,
       dates,
@@ -104,14 +106,87 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     );
   }
 
-  private renderBar(
+  private renderStackedFlowChart(
     chart: echarts.ECharts,
     dates: string[],
-    values: number[],
-    seriesName: string,
-    color: string,
+    gains: number[],
+    losses: number[],
+    incomingLabel: string,
+    outgoingLabel: string,
   ): void {
-    chart.setOption(this.baseOption(dates, seriesName, color, 'bar', values), true);
+    const bottom = dates.length > 8 ? 88 : 64;
+    chart.setOption(
+      {
+        animation: false,
+        legend: {
+          show: true,
+          bottom: 0,
+          textStyle: { color: '#94a3b8', fontSize: 11 },
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          confine: true,
+          formatter: (params: unknown) => this.flowTooltipFormatter(params, incomingLabel, outgoingLabel),
+        },
+        grid: { left: 56, right: 16, top: 16, bottom },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisLabel: { rotate: dates.length > 8 ? 90 : 0, fontSize: 10, color: '#94a3b8' },
+          axisLine: { lineStyle: { color: '#334155' } },
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#334155' } },
+        },
+        series: [
+          {
+            name: incomingLabel,
+            type: 'bar',
+            stack: FLOW_STACK_ID,
+            data: gains,
+            itemStyle: { color: COLOR_GAINS },
+          },
+          {
+            name: outgoingLabel,
+            type: 'bar',
+            stack: FLOW_STACK_ID,
+            data: losses,
+            itemStyle: { color: COLOR_LOSSES },
+          },
+        ],
+      },
+      true,
+    );
+  }
+
+  private flowTooltipFormatter(
+    params: unknown,
+    incomingLabel: string,
+    outgoingLabel: string,
+  ): string {
+    if (!Array.isArray(params) || params.length === 0) {
+      return '';
+    }
+    const first = params[0] as { axisValue?: string };
+    const date = first.axisValue ?? '';
+    let incoming = 0;
+    let outgoing = 0;
+    const lines: string[] = [`${date}`];
+    for (const item of params) {
+      const row = item as { seriesName?: string; value?: number; marker?: string };
+      const value = typeof row.value === 'number' ? row.value : 0;
+      if (row.seriesName === incomingLabel) {
+        incoming = value;
+      } else if (row.seriesName === outgoingLabel) {
+        outgoing = value;
+      }
+      lines.push(`${row.marker ?? ''} ${row.seriesName ?? ''}: ${value.toLocaleString()}`);
+    }
+    lines.push(`${this.i18n.text('stats.shareholdersFlowTotal')}: ${(incoming + outgoing).toLocaleString()}`);
+    return lines.join('<br/>');
   }
 
   private renderLine(
