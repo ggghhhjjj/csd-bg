@@ -1,0 +1,19 @@
+<section class="shareholders-market-charts">
+  @if (!hasData()) {
+    <p class="shareholders-market-charts__empty">{{ i18n.text('stats.empty') }}</p>
+  }
+  <div class="shareholders-market-charts__panels" [class.shareholders-market-charts__panels--hidden]="!hasData()">
+    <div class="shareholders-market-charts__block">
+      <h2 class="shareholders-market-charts__title">{{ i18n.text('stats.shareholdersLossesDaily') }}</h2>
+      <div #lossesHost class="shareholders-market-charts__chart" role="img"></div>
+    </div>
+    <div class="shareholders-market-charts__block">
+      <h2 class="shareholders-market-charts__title">{{ i18n.text('stats.shareholdersGainsDaily') }}</h2>
+      <div #gainsHost class="shareholders-market-charts__chart" role="img"></div>
+    </div>
+    <div class="shareholders-market-charts__block">
+      <h2 class="shareholders-market-charts__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+      <div #totalHost class="shareholders-market-charts__chart" role="img"></div>
+    </div>
+  </div>
+</section>
