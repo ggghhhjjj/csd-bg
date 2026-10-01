@@ -67,8 +67,10 @@ const BG = {
   'stats.showAll': 'Покажи всички',
   'stats.showTop5': 'Топ 5',
   'stats.empty': 'Няма данни за избрания период.',
-  'stats.shareholdersLossesDaily': 'Дневни загуби на акционери (пазар)',
-  'stats.shareholdersGainsDaily': 'Дневни печалби на акционери (пазар)',
+  'stats.shareholdersFlowDaily': 'Дневен оборот на акционери (пазар)',
+  'stats.shareholdersFlowTotal': 'Общо движение',
+  'stats.shareholdersLossesDaily': 'Изходящи акционери',
+  'stats.shareholdersGainsDaily': 'Входящи акционери',
   'stats.shareholdersTotalDaily': 'Общ брой акционери (пазар)',
 } as const;
 
@@ -143,8 +145,10 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'stats.showAll': 'Show all',
     'stats.showTop5': 'Top 5',
     'stats.empty': 'No data for the selected period.',
-    'stats.shareholdersLossesDaily': 'Daily shareholder losses (market)',
-    'stats.shareholdersGainsDaily': 'Daily shareholder gains (market)',
+    'stats.shareholdersFlowDaily': 'Daily shareholder turnover (market)',
+    'stats.shareholdersFlowTotal': 'Total movement',
+    'stats.shareholdersLossesDaily': 'Outgoing shareholders',
+    'stats.shareholdersGainsDaily': 'Incoming shareholders',
     'stats.shareholdersTotalDaily': 'Total shareholders (market)',
   },
 };

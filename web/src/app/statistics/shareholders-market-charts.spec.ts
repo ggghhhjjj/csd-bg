@@ -31,7 +31,7 @@ describe('ShareholdersMarketCharts', () => {
     }
   });
 
-  it('renders chart titles and configures echarts when data exists', async () => {
+  it('renders flow chart title and configures stacked flow plus total charts', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', datasetFixture());
     fixture.componentRef.setInput('startDate', '2024-06-02');
@@ -41,9 +41,15 @@ describe('ShareholdersMarketCharts', () => {
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.shareholders-market-charts__title')?.textContent).toContain('загуби');
+    expect(root.querySelector('.shareholders-market-charts__title')?.textContent).toContain('оборот');
     expect(mockChart.setOption).toHaveBeenCalled();
-    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    const flowOption = mockChart.setOption.mock.calls[0]?.[0] as {
+      series?: Array<{ stack?: string; type?: string }>;
+    };
+    expect(flowOption.series?.length).toBe(2);
+    expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
