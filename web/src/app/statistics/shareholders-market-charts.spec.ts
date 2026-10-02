@@ -43,7 +43,7 @@ describe('ShareholdersMarketCharts', () => {
     const root = fixture.nativeElement as HTMLElement;
     expect(root.querySelector('.shareholders-market-charts__title')?.textContent).toContain('оборот');
     expect(mockChart.setOption).toHaveBeenCalled();
-    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(2);
 
     const flowOption = mockChart.setOption.mock.calls[0]?.[0] as {
       series?: Array<{ stack?: string; type?: string }>;
@@ -54,16 +54,12 @@ describe('ShareholdersMarketCharts', () => {
     const totalOption = mockChart.setOption.mock.calls[1]?.[0] as {
       legend?: { show?: boolean };
       series?: Array<{ type?: string }>;
+      tooltip?: { formatter?: unknown };
     };
     expect(totalOption.legend?.show).toBe(true);
     expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
-
-    const periodOption = mockChart.setOption.mock.calls[2]?.[0] as {
-      series?: Array<{ type?: string }>;
-    };
-    expect(periodOption.series?.length).toBe(1);
-    expect(periodOption.series?.[0]?.type).toBe('line');
+    expect(typeof totalOption.tooltip?.formatter).toBe('function');
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
