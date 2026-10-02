@@ -3,7 +3,21 @@
     <p class="shareholders-total-daily-chart__empty">{{ i18n.text('stats.empty') }}</p>
   }
   <div class="shareholders-total-daily-chart__panel" [class.shareholders-total-daily-chart__panel--hidden]="!hasData()">
-    <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+    <div class="shareholders-total-daily-chart__header">
+      <div class="shareholders-total-daily-chart__heading">
+        <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+        @if (scaleSubtitle()) {
+          <p class="shareholders-total-daily-chart__subtitle">{{ scaleSubtitle() }}</p>
+        }
+      </div>
+      <button
+        class="shareholders-total-daily-chart__action"
+        type="button"
+        (click)="cycleScaleMode()"
+      >
+        {{ scaleModeLabel() }}
+      </button>
+    </div>
     <div #chartHost class="shareholders-total-daily-chart__chart" role="img"></div>
   </div>
 </section>

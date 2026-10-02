@@ -36,7 +36,7 @@ describe('ShareholdersTotalDailyChart', () => {
     }
   });
 
-  it('renders total chart title and configures line series', async () => {
+  it('renders total chart title and configures line series with per-series baseline axes', async () => {
     const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
     fixture.componentRef.setInput('dataset', datasetFixture());
     fixture.componentRef.setInput('startDate', '2024-06-02');
@@ -47,24 +47,71 @@ describe('ShareholdersTotalDailyChart', () => {
 
     const root = fixture.nativeElement as HTMLElement;
     expect(root.querySelector('.shareholders-total-daily-chart__title')?.textContent).toContain('брой');
+    expect(root.querySelector('.shareholders-total-daily-chart__action')?.textContent).toContain('базова');
     expect(mockChart.setOption).toHaveBeenCalled();
 
     const totalOption = mockChart.setOption.mock.calls[0]?.[0] as {
       legend?: { show?: boolean };
-      series?: Array<{ type?: string }>;
-      tooltip?: { formatter?: unknown };
+      series?: Array<{ type?: string; yAxisIndex?: number; data?: Array<{ value?: number; raw?: number }> }>;
+      tooltip?: { formatter?: (params: unknown) => string };
       dataZoom?: Array<{ type?: string; startValue?: string; endValue?: string }>;
+      yAxis?: Array<{ scale?: boolean; position?: string }>;
+      grid?: { right?: number };
     };
     expect(totalOption.legend?.show).toBe(true);
     expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
+    expect(totalOption.yAxis?.length).toBe(3);
+    expect(totalOption.yAxis?.[0]?.scale).toBe(true);
+    expect(totalOption.yAxis?.[1]?.position).toBe('right');
+    expect(totalOption.yAxis?.[2]?.position).toBe('right');
+    expect(totalOption.grid?.right).toBe(108);
+    expect(totalOption.series?.[0]?.yAxisIndex).toBe(0);
+    expect(totalOption.series?.[1]?.yAxisIndex).toBe(1);
+    expect(totalOption.series?.[2]?.yAxisIndex).toBe(2);
+    expect(totalOption.series?.[0]?.data?.[0]?.raw).toBe(2400);
+    expect(totalOption.series?.[0]?.data?.[0]?.value).toBe(0);
+    expect(totalOption.series?.[2]?.data?.[0]?.raw).toBe(2400);
+    expect(totalOption.series?.[2]?.data?.[0]?.value).toBe(0);
     expect(typeof totalOption.tooltip?.formatter).toBe('function');
     const xAxis = (totalOption as { xAxis?: { data?: string[] } }).xAxis;
-    expect(xAxis?.data).toEqual(['2024-06-01', '2024-06-02']);
+    expect(xAxis?.data).toEqual(['2024-06-02']);
     expect(totalOption.dataZoom?.[0]?.type).toBe('slider');
     expect(totalOption.dataZoom?.[0]?.startValue).toBe('2024-06-02');
     expect(totalOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
     expect(mockChart.on).toHaveBeenCalledWith('datazoom', expect.any(Function));
+
+    const tooltip = totalOption.tooltip?.formatter?.([
+      {
+        axisValue: '2024-06-02',
+        seriesName: 'Общо (пазар)',
+        marker: '•',
+        data: { value: 0, raw: 2400 },
+      },
+    ]);
+    expect(tooltip).toContain('2,400');
+    expect(tooltip).toContain('Δ');
+    expect(tooltip).toContain('Общо:');
+    expect(tooltip).not.toContain('абс.');
+    expect(tooltip).not.toContain('Общо (пазар)');
+  });
+
+  it('baseline-transforms period-changed totals on a dedicated axis', async () => {
+    const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const totalOption = mockChart.setOption.mock.calls.at(-1)?.[0] as {
+      series?: Array<{ yAxisIndex?: number; data?: Array<{ value?: number; raw?: number }> }>;
+    };
+    expect(totalOption.series?.[2]?.yAxisIndex).toBe(2);
+    expect(totalOption.series?.[2]?.data?.[0]?.raw).toBe(2407);
+    expect(totalOption.series?.[2]?.data?.[0]?.value).toBe(7);
+    expect(totalOption.series?.[2]?.data?.[1]?.raw).toBe(2400);
+    expect(totalOption.series?.[2]?.data?.[1]?.value).toBe(0);
   });
 
   it('updates dataZoom window when startDate and endDate inputs change', async () => {
@@ -87,6 +134,31 @@ describe('ShareholdersTotalDailyChart', () => {
     };
     expect(lastOption.dataZoom?.[0]?.startValue).toBe('2024-06-01');
     expect(lastOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
+  });
+
+  it('cycles to absolute scale with a single y-axis', async () => {
+    const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    mockChart.setOption.mockClear();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const action = root.querySelector('.shareholders-total-daily-chart__action') as HTMLButtonElement;
+    action.click();
+    action.click();
+    action.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const lastOption = mockChart.setOption.mock.calls.at(-1)?.[0] as {
+      yAxis?: unknown[];
+      series?: Array<{ data?: Array<{ value?: number; raw?: number }> }>;
+    };
+    expect(lastOption.yAxis?.length).toBe(1);
+    expect(lastOption.series?.[0]?.data?.[0]?.value).toBe(2407);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {

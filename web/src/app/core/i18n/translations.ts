@@ -76,6 +76,21 @@ const BG = {
   'stats.shareholdersTotalDailyAll': 'Общо (пазар)',
   'stats.shareholdersTotalDailyChanged': 'Общо при промяна (пазар)',
   'stats.shareholdersTotalPeriodChanged': 'Общо акционери при промяна в периода (пазар)',
+  'stats.shareholdersTotalDailyScaleBaseline': 'От базова линия',
+  'stats.shareholdersTotalDailyScaleDifference': 'Дневна разлика',
+  'stats.shareholdersTotalDailyScaleZscore': 'Z-стойност',
+  'stats.shareholdersTotalDailyScaleAbsolute': 'Абсолютни стойности',
+  'stats.shareholdersTotalDailyScaleHint':
+    'Показани са отклонения спрямо минимума във видимия период (всяка серия с отделна ос). «Промяна в периода» е за избрания диапазон от филтъра.',
+  'stats.shareholdersTotalDailyAxisBaseline': 'Δ от B = {baseline}',
+  'stats.shareholdersTotalDailyAxisDifference': 'Δ ден/ден',
+  'stats.shareholdersTotalDailyAxisZscore': 'z (μ={mean}, σ={std})',
+  'stats.shareholdersTotalDailyTooltipSeriesAll': 'Общо',
+  'stats.shareholdersTotalDailyTooltipSeriesChanged': 'Дневна промяна',
+  'stats.shareholdersTotalDailyTooltipSeriesPeriod': 'Промяна в периода',
+  'stats.shareholdersTotalDailyTooltipDelta': 'Δ',
+  'stats.shareholdersTotalDailyTooltipStep': 'стъпка',
+  'stats.shareholdersTotalDailyTooltipZ': 'z',
 } as const;
 
 export type TranslationKey = keyof typeof BG;
@@ -158,6 +173,21 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'stats.shareholdersTotalDailyAll': 'Total (market)',
     'stats.shareholdersTotalDailyChanged': 'Total among issuers with daily change (market)',
     'stats.shareholdersTotalPeriodChanged': 'Total shareholders among issuers with change in period (market)',
+    'stats.shareholdersTotalDailyScaleBaseline': 'From baseline',
+    'stats.shareholdersTotalDailyScaleDifference': 'Day-over-day',
+    'stats.shareholdersTotalDailyScaleZscore': 'Z-score',
+    'stats.shareholdersTotalDailyScaleAbsolute': 'Absolute values',
+    'stats.shareholdersTotalDailyScaleHint':
+      'Deviations from the minimum in the visible chart range (each series has its own axis). “Change in period” uses the statistics range filter.',
+    'stats.shareholdersTotalDailyAxisBaseline': 'Δ from B = {baseline}',
+    'stats.shareholdersTotalDailyAxisDifference': 'Day-over-day Δ',
+    'stats.shareholdersTotalDailyAxisZscore': 'z (μ={mean}, σ={std})',
+    'stats.shareholdersTotalDailyTooltipSeriesAll': 'Total',
+    'stats.shareholdersTotalDailyTooltipSeriesChanged': 'Daily change',
+    'stats.shareholdersTotalDailyTooltipSeriesPeriod': 'Period change',
+    'stats.shareholdersTotalDailyTooltipDelta': 'Δ',
+    'stats.shareholdersTotalDailyTooltipStep': 'step',
+    'stats.shareholdersTotalDailyTooltipZ': 'z',
   },
 };
 
