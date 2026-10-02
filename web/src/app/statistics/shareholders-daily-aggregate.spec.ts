@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
-import { aggregateShareholdersDaily, hasShareholdersAggregateData } from './shareholders-daily-aggregate';
+import {
+  aggregateShareholdersDaily,
+  hasShareholdersAggregateData,
+  issuersWithShareholderChangeInRange,
+} from './shareholders-daily-aggregate';
 
 describe('aggregateShareholdersDaily', () => {
   it('aggregates losses, gains, and total for the user A/B/C example on date X', () => {
@@ -26,6 +30,7 @@ describe('aggregateShareholdersDaily', () => {
     expect(result.gains).toEqual([5]);
     expect(result.totalShareholders).toEqual([2400]);
     expect(result.totalShareholdersChanged).toEqual([2400]);
+    expect(result.totalShareholdersChangedInPeriod).toEqual([2400]);
   });
 
   it('excludes unchanged issuers from the changed total', () => {
@@ -48,6 +53,26 @@ describe('aggregateShareholdersDaily', () => {
     const result = aggregateShareholdersDaily(dataset, '2024-06-02', '2024-06-02');
     expect(result.totalShareholders).toEqual([3400]);
     expect(result.totalShareholdersChanged).toEqual([2400]);
+    expect(result.totalShareholdersChangedInPeriod).toEqual([2400]);
+  });
+
+  it('includes issuers with mid-period change even when start and end counts match', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'Volatile A' },
+        { id: 2, isin: 'B', name: 'Stable B' },
+      ],
+      ['2024-06-01', '2024-06-02', '2024-06-03'],
+      [
+        [100, 110, 100],
+        [1000, 1000, 1000],
+      ],
+    );
+
+    const result = aggregateShareholdersDaily(dataset, '2024-06-01', '2024-06-03');
+    expect(result.totalShareholders).toEqual([1100, 1110, 1100]);
+    expect(result.totalShareholdersChangedInPeriod).toEqual([100, 110, 100]);
+    expect(result.totalShareholdersChanged).toEqual([0, 110, 100]);
   });
 
   it('uses zero gains/losses on the global first dataset date', () => {
@@ -62,6 +87,7 @@ describe('aggregateShareholdersDaily', () => {
     expect(first.gains).toEqual([0]);
     expect(first.totalShareholders).toEqual([100]);
     expect(first.totalShareholdersChanged).toEqual([0]);
+    expect(first.totalShareholdersChangedInPeriod).toEqual([0]);
   });
 
   it('excludes issuers missing a prior value from delta sums', () => {
@@ -82,6 +108,7 @@ describe('aggregateShareholdersDaily', () => {
     expect(result.gains).toEqual([0]);
     expect(result.totalShareholders).toEqual([140]);
     expect(result.totalShareholdersChanged).toEqual([90]);
+    expect(result.totalShareholdersChangedInPeriod).toEqual([90]);
   });
 
   it('returns empty series when the dataset has no dates', () => {
@@ -92,7 +119,27 @@ describe('aggregateShareholdersDaily', () => {
       gains: [],
       totalShareholders: [],
       totalShareholdersChanged: [],
+      totalShareholdersChangedInPeriod: [],
     });
+  });
+});
+
+describe('issuersWithShareholderChangeInRange', () => {
+  it('marks issuers with any day-over-day change in the range', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'A' },
+        { id: 2, isin: 'B', name: 'B' },
+      ],
+      ['2024-06-01', '2024-06-02', '2024-06-03'],
+      [
+        [100, 110, 100],
+        [50, 50, 50],
+      ],
+    );
+
+    const flags = issuersWithShareholderChangeInRange(dataset, 0, 2);
+    expect(Array.from(flags)).toEqual([1, 0]);
   });
 });
 
@@ -105,6 +152,7 @@ describe('hasShareholdersAggregateData', () => {
         gains: [],
         totalShareholders: [],
         totalShareholdersChanged: [],
+        totalShareholdersChangedInPeriod: [],
       }),
     ).toBe(false);
     expect(
@@ -114,6 +162,7 @@ describe('hasShareholdersAggregateData', () => {
         gains: [0],
         totalShareholders: [0],
         totalShareholdersChanged: [0],
+        totalShareholdersChangedInPeriod: [0],
       }),
     ).toBe(false);
   });
@@ -126,6 +175,7 @@ describe('hasShareholdersAggregateData', () => {
         gains: [0],
         totalShareholders: [2400],
         totalShareholdersChanged: [2400],
+        totalShareholdersChangedInPeriod: [2400],
       }),
     ).toBe(true);
   });
