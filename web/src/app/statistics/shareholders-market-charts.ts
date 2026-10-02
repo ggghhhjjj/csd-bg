@@ -211,6 +211,20 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     return lines.join('<br/>');
   }
 
+  private totalTooltipFormatter(params: unknown): string {
+    if (!Array.isArray(params) || params.length === 0) {
+      return '';
+    }
+    const first = params[0] as { axisValue?: string };
+    const lines: string[] = [first.axisValue ?? ''];
+    for (const item of params) {
+      const row = item as { value?: number; marker?: string };
+      const value = typeof row.value === 'number' ? row.value : 0;
+      lines.push(`${row.marker ?? ''} ${value.toLocaleString()}`);
+    }
+    return lines.join('<br/>');
+  }
+
   private renderTotalComparisonChart(
     chart: echarts.ECharts,
     dates: string[],
@@ -234,6 +248,7 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
           trigger: 'axis',
           axisPointer: { type: 'line' },
           confine: true,
+          formatter: (params: unknown) => this.totalTooltipFormatter(params),
         },
         grid: { left: 56, right: 16, top: 16, bottom },
         xAxis: {

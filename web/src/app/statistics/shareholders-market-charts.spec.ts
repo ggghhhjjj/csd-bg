@@ -54,10 +54,12 @@ describe('ShareholdersMarketCharts', () => {
     const totalOption = mockChart.setOption.mock.calls[1]?.[0] as {
       legend?: { show?: boolean };
       series?: Array<{ type?: string }>;
+      tooltip?: { formatter?: unknown };
     };
     expect(totalOption.legend?.show).toBe(true);
     expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
+    expect(typeof totalOption.tooltip?.formatter).toBe('function');
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
