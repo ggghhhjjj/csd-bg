@@ -9,6 +9,8 @@ export type ShareholdersDailyAggregate = {
   gains: number[];
   /** Sum of valid shareholder counts across all issuers. */
   totalShareholders: number[];
+  /** Sum of shareholder counts for issuers with non-zero day-over-day delta. */
+  totalShareholdersChanged: number[];
 };
 
 /**
@@ -23,7 +25,7 @@ export function aggregateShareholdersDaily(
   const start = fromIso || dataset.dates[0] || '';
   const end = toIso || dataset.dates[dataset.dates.length - 1] || '';
   if (!start || !end || dataset.dates.length === 0) {
-    return { dates: [], losses: [], gains: [], totalShareholders: [] };
+    return { dates: [], losses: [], gains: [], totalShareholders: [], totalShareholdersChanged: [] };
   }
 
   const fromIndex = indexForDate(dataset.dates, start);
@@ -35,11 +37,13 @@ export function aggregateShareholdersDaily(
   const losses: number[] = [];
   const gains: number[] = [];
   const totalShareholders: number[] = [];
+  const totalShareholdersChanged: number[] = [];
 
   for (let dateIndex = rangeStart; dateIndex <= rangeEnd; dateIndex += 1) {
     dates.push(dataset.dates[dateIndex]);
 
     let total = 0;
+    let changedTotal = 0;
     let negativeSum = 0;
     let positiveSum = 0;
 
@@ -53,6 +57,9 @@ export function aggregateShareholdersDaily(
         const prev = metricAt(dataset, 'shareholders', issuerIndex, dateIndex - 1);
         if (today !== null && prev !== null) {
           const delta = today - prev;
+          if (delta !== 0) {
+            changedTotal += today;
+          }
           if (delta < 0) {
             negativeSum += delta;
           } else if (delta > 0) {
@@ -63,11 +70,12 @@ export function aggregateShareholdersDaily(
     }
 
     totalShareholders.push(total);
+    totalShareholdersChanged.push(changedTotal);
     losses.push(Math.abs(negativeSum));
     gains.push(positiveSum);
   }
 
-  return { dates, losses, gains, totalShareholders };
+  return { dates, losses, gains, totalShareholders, totalShareholdersChanged };
 }
 
 export function hasShareholdersAggregateData(aggregate: ShareholdersDailyAggregate): boolean {

@@ -21,6 +21,7 @@ import {
 const COLOR_LOSSES = '#f87171';
 const COLOR_GAINS = '#34d399';
 const COLOR_TOTAL = '#fbbf24';
+const COLOR_TOTAL_CHANGED = '#60a5fa';
 const FLOW_STACK_ID = 'flow';
 
 @Component({
@@ -42,7 +43,7 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     const from = this.startDate();
     const to = this.endDate();
     if (!from || !to) {
-      return { dates: [], losses: [], gains: [], totalShareholders: [] };
+      return { dates: [], losses: [], gains: [], totalShareholders: [], totalShareholdersChanged: [] };
     }
     return aggregateShareholdersDaily(this.dataset(), from, to);
   });
@@ -84,8 +85,8 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     if (!this.flowChart || !this.totalChart) {
       return;
     }
-    const { dates, losses, gains, totalShareholders } = this.aggregate();
-    if (!hasShareholdersAggregateData({ dates, losses, gains, totalShareholders })) {
+    const { dates, losses, gains, totalShareholders, totalShareholdersChanged } = this.aggregate();
+    if (!hasShareholdersAggregateData({ dates, losses, gains, totalShareholders, totalShareholdersChanged })) {
       return;
     }
 
@@ -97,12 +98,13 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
       this.i18n.text('stats.shareholdersGainsDaily'),
       this.i18n.text('stats.shareholdersLossesDaily'),
     );
-    this.renderLine(
+    this.renderTotalComparisonChart(
       this.totalChart,
       dates,
       totalShareholders,
-      this.i18n.text('stats.shareholdersTotalDaily'),
-      COLOR_TOTAL,
+      totalShareholdersChanged,
+      this.i18n.text('stats.shareholdersTotalDailyAll'),
+      this.i18n.text('stats.shareholdersTotalDailyChanged'),
     );
   }
 
@@ -189,52 +191,60 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     return lines.join('<br/>');
   }
 
-  private renderLine(
+  private renderTotalComparisonChart(
     chart: echarts.ECharts,
     dates: string[],
-    values: number[],
-    seriesName: string,
-    color: string,
+    totalAll: number[],
+    totalChanged: number[],
+    allLabel: string,
+    changedLabel: string,
   ): void {
-    chart.setOption(this.baseOption(dates, seriesName, color, 'line', values), true);
-  }
-
-  private baseOption(
-    dates: string[],
-    seriesName: string,
-    color: string,
-    type: 'bar' | 'line',
-    values: number[],
-  ): echarts.EChartsOption {
-    return {
-      animation: false,
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        confine: true,
-      },
-      grid: { left: 56, right: 16, top: 16, bottom: dates.length > 8 ? 72 : 48 },
-      xAxis: {
-        type: 'category',
-        data: dates,
-        axisLabel: { rotate: dates.length > 8 ? 90 : 0, fontSize: 10, color: '#94a3b8' },
-        axisLine: { lineStyle: { color: '#334155' } },
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: '#94a3b8', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#334155' } },
-      },
-      series: [
-        {
-          name: seriesName,
-          type,
-          data: values,
-          showSymbol: type === 'line',
-          itemStyle: { color },
-          lineStyle: type === 'line' ? { color } : undefined,
+    const bottom = dates.length > 8 ? 88 : 64;
+    chart.setOption(
+      {
+        animation: false,
+        legend: {
+          show: true,
+          bottom: 0,
+          textStyle: { color: '#94a3b8', fontSize: 11 },
         },
-      ],
-    };
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'line' },
+          confine: true,
+        },
+        grid: { left: 56, right: 16, top: 16, bottom },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisLabel: { rotate: dates.length > 8 ? 90 : 0, fontSize: 10, color: '#94a3b8' },
+          axisLine: { lineStyle: { color: '#334155' } },
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#94a3b8', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#334155' } },
+        },
+        series: [
+          {
+            name: allLabel,
+            type: 'line',
+            data: totalAll,
+            showSymbol: true,
+            itemStyle: { color: COLOR_TOTAL },
+            lineStyle: { color: COLOR_TOTAL },
+          },
+          {
+            name: changedLabel,
+            type: 'line',
+            data: totalChanged,
+            showSymbol: true,
+            itemStyle: { color: COLOR_TOTAL_CHANGED },
+            lineStyle: { color: COLOR_TOTAL_CHANGED },
+          },
+        ],
+      },
+      true,
+    );
   }
 }

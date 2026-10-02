@@ -50,6 +50,14 @@ describe('ShareholdersMarketCharts', () => {
     };
     expect(flowOption.series?.length).toBe(2);
     expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
+
+    const totalOption = mockChart.setOption.mock.calls[1]?.[0] as {
+      legend?: { show?: boolean };
+      series?: Array<{ type?: string }>;
+    };
+    expect(totalOption.legend?.show).toBe(true);
+    expect(totalOption.series?.length).toBe(2);
+    expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
