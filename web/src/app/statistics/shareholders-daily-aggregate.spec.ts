@@ -25,6 +25,29 @@ describe('aggregateShareholdersDaily', () => {
     expect(result.losses).toEqual([12]);
     expect(result.gains).toEqual([5]);
     expect(result.totalShareholders).toEqual([2400]);
+    expect(result.totalShareholdersChanged).toEqual([2400]);
+  });
+
+  it('excludes unchanged issuers from the changed total', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'Emitter A' },
+        { id: 2, isin: 'B', name: 'Emitter B' },
+        { id: 3, isin: 'C', name: 'Emitter C' },
+        { id: 4, isin: 'D', name: 'Emitter D' },
+      ],
+      ['2024-06-01', '2024-06-02'],
+      [
+        [502, 500],
+        [1295, 1300],
+        [610, 600],
+        [1000, 1000],
+      ],
+    );
+
+    const result = aggregateShareholdersDaily(dataset, '2024-06-02', '2024-06-02');
+    expect(result.totalShareholders).toEqual([3400]);
+    expect(result.totalShareholdersChanged).toEqual([2400]);
   });
 
   it('uses zero gains/losses on the global first dataset date', () => {
@@ -38,6 +61,7 @@ describe('aggregateShareholdersDaily', () => {
     expect(first.losses).toEqual([0]);
     expect(first.gains).toEqual([0]);
     expect(first.totalShareholders).toEqual([100]);
+    expect(first.totalShareholdersChanged).toEqual([0]);
   });
 
   it('excludes issuers missing a prior value from delta sums', () => {
@@ -57,6 +81,7 @@ describe('aggregateShareholdersDaily', () => {
     expect(result.losses).toEqual([10]);
     expect(result.gains).toEqual([0]);
     expect(result.totalShareholders).toEqual([140]);
+    expect(result.totalShareholdersChanged).toEqual([90]);
   });
 
   it('returns empty series when the dataset has no dates', () => {
@@ -66,19 +91,29 @@ describe('aggregateShareholdersDaily', () => {
       losses: [],
       gains: [],
       totalShareholders: [],
+      totalShareholdersChanged: [],
     });
   });
 });
 
 describe('hasShareholdersAggregateData', () => {
   it('is false when there are no dates or all totals are zero', () => {
-    expect(hasShareholdersAggregateData({ dates: [], losses: [], gains: [], totalShareholders: [] })).toBe(false);
+    expect(
+      hasShareholdersAggregateData({
+        dates: [],
+        losses: [],
+        gains: [],
+        totalShareholders: [],
+        totalShareholdersChanged: [],
+      }),
+    ).toBe(false);
     expect(
       hasShareholdersAggregateData({
         dates: ['2024-06-01'],
         losses: [0],
         gains: [0],
         totalShareholders: [0],
+        totalShareholdersChanged: [0],
       }),
     ).toBe(false);
   });
@@ -90,6 +125,7 @@ describe('hasShareholdersAggregateData', () => {
         losses: [0],
         gains: [0],
         totalShareholders: [2400],
+        totalShareholdersChanged: [2400],
       }),
     ).toBe(true);
   });

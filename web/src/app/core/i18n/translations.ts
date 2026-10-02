@@ -72,6 +72,8 @@ const BG = {
   'stats.shareholdersLossesDaily': 'Изходящи акционери',
   'stats.shareholdersGainsDaily': 'Входящи акционери',
   'stats.shareholdersTotalDaily': 'Общ брой акционери (пазар)',
+  'stats.shareholdersTotalDailyAll': 'Общо (пазар)',
+  'stats.shareholdersTotalDailyChanged': 'Общо при промяна (пазар)',
 } as const;
 
 export type TranslationKey = keyof typeof BG;
@@ -150,6 +152,8 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'stats.shareholdersLossesDaily': 'Outgoing shareholders',
     'stats.shareholdersGainsDaily': 'Incoming shareholders',
     'stats.shareholdersTotalDaily': 'Total shareholders (market)',
+    'stats.shareholdersTotalDailyAll': 'Total (market)',
+    'stats.shareholdersTotalDailyChanged': 'Total among issuers with daily change (market)',
   },
 };
 
