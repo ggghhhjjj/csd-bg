@@ -5,7 +5,8 @@ import { rangeStartIso, type RangePreset } from '../core/data/date-range';
 import { VectorsStore } from '../core/data/vectors.store';
 import { RangePresets } from './range-presets';
 import { ShareholdersDiffRank } from './shareholders-diff-rank';
-import { ShareholdersMarketCharts } from './shareholders-market-charts';
+import { ShareholdersFlowDailyChart } from './shareholders-flow-daily-chart';
+import { ShareholdersTotalDailyChart } from './shareholders-total-daily-chart';
 import {
   parseStatisticsRange,
   serializeStatisticsRange,
@@ -14,7 +15,7 @@ import {
 
 @Component({
   selector: 'app-statistics',
-  imports: [RangePresets, ShareholdersDiffRank, ShareholdersMarketCharts],
+  imports: [RangePresets, ShareholdersDiffRank, ShareholdersFlowDailyChart, ShareholdersTotalDailyChart],
   templateUrl: './statistics.html',
   styleUrl: './statistics.css',
 })

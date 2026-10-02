@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
-import { ShareholdersMarketCharts } from './shareholders-market-charts';
+import { ShareholdersFlowDailyChart } from './shareholders-flow-daily-chart';
 
 const { mockChart } = vi.hoisted(() => ({
   mockChart: {
@@ -17,7 +17,7 @@ vi.mock('echarts', () => ({
   init: () => mockChart,
 }));
 
-describe('ShareholdersMarketCharts', () => {
+describe('ShareholdersFlowDailyChart', () => {
   beforeEach(() => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
@@ -31,8 +31,8 @@ describe('ShareholdersMarketCharts', () => {
     }
   });
 
-  it('renders flow chart title and configures stacked flow plus total charts', async () => {
-    const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+  it('renders flow chart title and configures stacked bar series', async () => {
+    const fixture = TestBed.createComponent(ShareholdersFlowDailyChart);
     fixture.componentRef.setInput('dataset', datasetFixture());
     fixture.componentRef.setInput('startDate', '2024-06-02');
     fixture.componentRef.setInput('endDate', '2024-06-02');
@@ -41,35 +41,24 @@ describe('ShareholdersMarketCharts', () => {
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.shareholders-market-charts__title')?.textContent).toContain('оборот');
+    expect(root.querySelector('.shareholders-flow-daily-chart__title')?.textContent).toContain('оборот');
     expect(mockChart.setOption).toHaveBeenCalled();
-    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(2);
 
     const flowOption = mockChart.setOption.mock.calls[0]?.[0] as {
       series?: Array<{ stack?: string; type?: string }>;
     };
     expect(flowOption.series?.length).toBe(2);
     expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
-
-    const totalOption = mockChart.setOption.mock.calls[1]?.[0] as {
-      legend?: { show?: boolean };
-      series?: Array<{ type?: string }>;
-      tooltip?: { formatter?: unknown };
-    };
-    expect(totalOption.legend?.show).toBe(true);
-    expect(totalOption.series?.length).toBe(3);
-    expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
-    expect(typeof totalOption.tooltip?.formatter).toBe('function');
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
-    const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+    const fixture = TestBed.createComponent(ShareholdersFlowDailyChart);
     fixture.componentRef.setInput('dataset', emptyFixture());
     fixture.componentRef.setInput('startDate', '2024-06-01');
     fixture.componentRef.setInput('endDate', '2024-06-01');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.shareholders-market-charts__empty')?.textContent).toContain(
+    expect(fixture.nativeElement.querySelector('.shareholders-flow-daily-chart__empty')?.textContent).toContain(
       'Няма данни',
     );
     expect(mockChart.setOption).not.toHaveBeenCalled();
