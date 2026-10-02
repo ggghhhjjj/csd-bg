@@ -7,6 +7,7 @@ import {
   inject,
   input,
   OnDestroy,
+  output,
   viewChild,
 } from '@angular/core';
 import * as echarts from 'echarts';
@@ -31,6 +32,8 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   readonly dataset = input.required<ParsedDataset>();
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
+  readonly selectedDate = input<string | null>(null);
+  readonly dateSelect = output<string>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -56,6 +59,24 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private readonly onZrClick = (event: { offsetX?: number; offsetY?: number }): void => {
+    if (!this.chart) {
+      return;
+    }
+    const offsetX = event.offsetX ?? 0;
+    const offsetY = event.offsetY ?? 0;
+    const point: [number, number] = [offsetX, offsetY];
+    const inPlot =
+      this.chart.containPixel({ gridIndex: 0 }, point) ||
+      this.chart.containPixel({ xAxisIndex: 0 }, point);
+    if (!inPlot) {
+      return;
+    }
+    const date = this.dateAtChartPixel(offsetX, offsetY);
+    if (date) {
+      this.dateSelect.emit(date);
+    }
+  };
 
   constructor() {
     effect(() => {
@@ -67,6 +88,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
+    this.chart.getZr().on('click', this.onZrClick);
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -76,6 +98,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+    this.chart?.getZr().off('click', this.onZrClick);
     this.chart?.dispose();
   }
 
@@ -109,6 +132,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
         xAxis: {
           type: 'category',
           data: dates,
+          triggerEvent: true,
           axisLabel: { rotate: dates.length > 8 ? 90 : 0, fontSize: 10, color: '#94a3b8' },
           axisLine: { lineStyle: { color: '#334155' } },
         },
@@ -138,6 +162,23 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     );
   }
 
+  private dateAtChartPixel(offsetX: number, offsetY: number): string | undefined {
+    if (!this.chart) {
+      return undefined;
+    }
+    const { dates } = this.aggregate();
+    if (dates.length === 0) {
+      return undefined;
+    }
+    const point: [number, number] = [offsetX, offsetY];
+    const fromXAxis = this.chart.convertFromPixel({ xAxisIndex: 0 }, point);
+    const fromSeries = this.chart.convertFromPixel({ seriesIndex: 0 }, point);
+    return (
+      categoryDateFromConvertResult(fromXAxis, dates) ??
+      categoryDateFromConvertResult(fromSeries, dates)
+    );
+  }
+
   private flowTooltipFormatter(
     params: unknown,
     incomingLabel: string,
@@ -164,4 +205,29 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     lines.push(`${this.i18n.text('stats.shareholdersFlowTotal')}: ${(incoming + outgoing).toLocaleString()}`);
     return lines.join('<br/>');
   }
+}
+
+function categoryDateFromConvertResult(raw: unknown, dates: string[]): string | undefined {
+  const index = categoryIndexFromConvertResult(raw, dates);
+  if (index !== undefined && index >= 0 && index < dates.length) {
+    return dates[index];
+  }
+  if (typeof raw === 'string' && dates.includes(raw)) {
+    return raw;
+  }
+  return undefined;
+}
+
+function categoryIndexFromConvertResult(raw: unknown, dates: string[]): number | undefined {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.round(raw);
+  }
+  if (typeof raw === 'string') {
+    const index = dates.indexOf(raw);
+    return index >= 0 ? index : undefined;
+  }
+  if (Array.isArray(raw) && raw.length > 0) {
+    return categoryIndexFromConvertResult(raw[0], dates);
+  }
+  return undefined;
 }

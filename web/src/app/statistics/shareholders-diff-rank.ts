@@ -20,6 +20,7 @@ export class ShareholdersDiffRank {
   readonly dataset = input.required<ParsedDataset>();
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
+  readonly focusDate = input<string | null>(null);
 
   protected readonly i18n = inject(LocaleService);
   protected readonly order = signal<RankOrder>('desc');
@@ -45,6 +46,14 @@ export class ShareholdersDiffRank {
   protected readonly limitLabel = computed(() =>
     this.showAll() ? this.i18n.text('stats.showTop5') : this.i18n.text('stats.showAll'),
   );
+
+  protected readonly title = computed(() => {
+    const focus = this.focusDate();
+    if (focus) {
+      return this.i18n.text('stats.shareholdersDiffOnDate', { date: focus });
+    }
+    return this.i18n.text('stats.shareholdersDiff');
+  });
 
   protected toggleOrder(): void {
     this.order.update((current) => (current === 'desc' ? 'asc' : 'desc'));

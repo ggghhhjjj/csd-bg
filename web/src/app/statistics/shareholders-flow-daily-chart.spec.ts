@@ -5,13 +5,34 @@ import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { ShareholdersFlowDailyChart } from './shareholders-flow-daily-chart';
 
-const { mockChart } = vi.hoisted(() => ({
-  mockChart: {
-    setOption: vi.fn(),
-    dispose: vi.fn(),
-    resize: vi.fn(),
-  },
-}));
+const { mockChart, zrClickHandler } = vi.hoisted(() => {
+  let handler: ((event: { offsetX?: number; offsetY?: number }) => void) | undefined;
+  const clickHandlerRef = {
+    get: () => handler,
+    set: (next: ((event: { offsetX?: number; offsetY?: number }) => void) | undefined) => {
+      handler = next;
+    },
+  };
+  const mockZr = {
+    on: vi.fn((_event: string, cb: (event: { offsetX?: number; offsetY?: number }) => void) => {
+      clickHandlerRef.set(cb);
+    }),
+    off: vi.fn(() => {
+      clickHandlerRef.set(undefined);
+    }),
+  };
+  return {
+    zrClickHandler: clickHandlerRef,
+    mockChart: {
+      setOption: vi.fn(),
+      dispose: vi.fn(),
+      resize: vi.fn(),
+      containPixel: vi.fn(() => true),
+      convertFromPixel: vi.fn(() => 0),
+      getZr: () => mockZr,
+    },
+  };
+});
 
 vi.mock('echarts', () => ({
   init: () => mockChart,
@@ -22,6 +43,11 @@ describe('ShareholdersFlowDailyChart', () => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
     mockChart.setOption.mockClear();
+    mockChart.containPixel.mockClear();
+    mockChart.containPixel.mockReturnValue(true);
+    mockChart.convertFromPixel.mockClear();
+    mockChart.convertFromPixel.mockReturnValue(0);
+    zrClickHandler.set(undefined);
     if (!globalThis.ResizeObserver) {
       globalThis.ResizeObserver = class {
         observe(): void {}
@@ -49,6 +75,38 @@ describe('ShareholdersFlowDailyChart', () => {
     };
     expect(flowOption.series?.length).toBe(2);
     expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
+    const xAxis = (flowOption as { xAxis?: { triggerEvent?: boolean } }).xAxis;
+    expect(xAxis?.triggerEvent).toBe(true);
+  });
+
+  it('emits dateSelect from canvas clicks in the plot column', async () => {
+    const fixture = TestBed.createComponent(ShareholdersFlowDailyChart);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    const dates: string[] = [];
+    fixture.componentRef.instance.dateSelect.subscribe((date) => dates.push(date));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    mockChart.convertFromPixel.mockReturnValue(1);
+    zrClickHandler.get()?.({ offsetX: 400, offsetY: 20 });
+    expect(dates).toEqual(['2024-06-02']);
+  });
+
+  it('ignores canvas clicks outside the plot and x-axis', async () => {
+    const fixture = TestBed.createComponent(ShareholdersFlowDailyChart);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    const dates: string[] = [];
+    fixture.componentRef.instance.dateSelect.subscribe((date) => dates.push(date));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    mockChart.containPixel.mockReturnValue(false);
+    zrClickHandler.get()?.({ offsetX: 10, offsetY: 200 });
+    expect(dates).toEqual([]);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {

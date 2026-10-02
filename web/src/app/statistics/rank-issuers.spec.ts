@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
-import { limitRankedIssuers, rankIssuersByShareholdersDiff } from './rank-issuers';
+import {
+  limitRankedIssuers,
+  rankIssuersByShareholdersDiff,
+  shareholdersDailyDiffRange,
+} from './rank-issuers';
 
 const DATES = ['2024-01-01', '2024-04-01', '2024-07-01'];
 
@@ -52,6 +56,24 @@ describe('rankIssuersByShareholdersDiff', () => {
     const ranked = rankIssuersByShareholdersDiff(rankingFixture(), DATES[0], DATES[2], 'desc');
     expect(ranked[0]).toMatchObject({ name: 'Delta', abs: '+20', percent: '+2000.00%' });
     expect(ranked[ranked.length - 1]).toMatchObject({ name: 'Gamma', abs: '-8', percent: '-16.00%' });
+  });
+});
+
+describe('shareholdersDailyDiffRange', () => {
+  it('returns the prior report day through the focus date', () => {
+    expect(shareholdersDailyDiffRange(DATES, DATES[2])).toEqual({
+      from: DATES[1],
+      to: DATES[2],
+    });
+  });
+
+  it('returns empty range for the first dataset date', () => {
+    expect(shareholdersDailyDiffRange(DATES, DATES[0])).toEqual({ from: '', to: '' });
+  });
+
+  it('returns empty range for unknown dates', () => {
+    expect(shareholdersDailyDiffRange(DATES, '2099-01-01')).toEqual({ from: '', to: '' });
+    expect(shareholdersDailyDiffRange([], DATES[1])).toEqual({ from: '', to: '' });
   });
 });
 

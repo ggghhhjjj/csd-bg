@@ -1,4 +1,18 @@
 import { indexForDate } from '../core/data/date-range';
+
+export function shareholdersDailyDiffRange(
+  dates: string[],
+  focusIso: string,
+): { from: string; to: string } {
+  if (!focusIso || dates.length === 0) {
+    return { from: '', to: '' };
+  }
+  const index = indexForDate(dates, focusIso);
+  if (dates[index] !== focusIso || index === 0) {
+    return { from: '', to: '' };
+  }
+  return { from: dates[index - 1], to: dates[index] };
+}
 import { firstLastInRange, formatDelta, type ParsedDataset } from '../core/data/vectors.types';
 
 export type RankOrder = 'asc' | 'desc';
