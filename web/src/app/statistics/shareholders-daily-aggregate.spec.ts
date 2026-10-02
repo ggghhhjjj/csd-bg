@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import {
   aggregateShareholdersDaily,
+  aggregateShareholdersDailyChartFullHistory,
   hasShareholdersAggregateData,
   issuersWithShareholderChangeInRange,
 } from './shareholders-daily-aggregate';
@@ -121,6 +122,32 @@ describe('aggregateShareholdersDaily', () => {
       totalShareholdersChanged: [],
       totalShareholdersChangedInPeriod: [],
     });
+  });
+});
+
+describe('aggregateShareholdersDailyChartFullHistory', () => {
+  it('returns all dataset dates while period-changed totals follow the statistics filter only', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'Emitter A' },
+        { id: 2, isin: 'B', name: 'Emitter B' },
+        { id: 3, isin: 'C', name: 'Emitter C' },
+        { id: 4, isin: 'D', name: 'Emitter D' },
+      ],
+      ['2024-06-01', '2024-06-02', '2024-06-03'],
+      [
+        [502, 500, 500],
+        [1295, 1300, 1300],
+        [610, 600, 600],
+        [1000, 1000, 1000],
+      ],
+    );
+
+    const full = aggregateShareholdersDailyChartFullHistory(dataset, '2024-06-02', '2024-06-02');
+
+    expect(full.dates).toEqual(['2024-06-01', '2024-06-02', '2024-06-03']);
+    expect(full.totalShareholders).toEqual([3407, 3400, 3400]);
+    expect(full.totalShareholdersChangedInPeriod).toEqual([2407, 2400, 2400]);
   });
 });
 
