@@ -14,9 +14,17 @@ import * as echarts from 'echarts';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
-  aggregateShareholdersDaily,
+  aggregateShareholdersDailyFull,
   hasShareholdersAggregateData,
 } from './shareholders-daily-aggregate';
+import {
+  clampViewRange,
+  fullSpanForDates,
+  readDataZoomRange,
+  STATISTICS_CHART_GRID_BOTTOM,
+  STATISTICS_CHART_LEGEND_BOTTOM,
+  statisticsDataZoomSlider,
+} from './statistics-chart-data-zoom';
 
 const COLOR_TOTAL = '#fbbf24';
 const COLOR_TOTAL_CHANGED = '#60a5fa';
@@ -36,29 +44,36 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
 
   protected readonly i18n = inject(LocaleService);
 
-  protected readonly aggregate = computed(() => {
-    const from = this.startDate();
-    const to = this.endDate();
-    if (!from || !to) {
-      return {
-        dates: [],
-        losses: [],
-        gains: [],
-        totalShareholders: [],
-        totalShareholdersChanged: [],
-        totalShareholdersChangedInPeriod: [],
-      };
-    }
-    return aggregateShareholdersDaily(this.dataset(), from, to);
-  });
+  protected readonly aggregate = computed(() => aggregateShareholdersDailyFull(this.dataset()));
 
   protected readonly hasData = computed(() => hasShareholdersAggregateData(this.aggregate()));
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private viewStart = '';
+  private viewEnd = '';
+  private rangeKey = '';
+  private readonly onDataZoom = (): void => {
+    if (!this.chart) {
+      return;
+    }
+    const { dates } = this.aggregate();
+    const range = readDataZoomRange(this.chart, dates, this.viewStart, this.viewEnd);
+    this.viewStart = range.start;
+    this.viewEnd = range.end;
+  };
 
   constructor() {
     effect(() => {
+      const from = this.startDate();
+      const to = this.endDate();
+      const key = `${from}|${to}`;
+      if (key !== this.rangeKey) {
+        this.rangeKey = key;
+        const window = clampViewRange(from, to, this.aggregate().dates);
+        this.viewStart = window.start;
+        this.viewEnd = window.end;
+      }
       this.aggregate();
       this.i18n.locale();
       this.render();
@@ -67,6 +82,11 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
+    this.chart.on('datazoom', this.onDataZoom);
+    const window = clampViewRange(this.startDate(), this.endDate(), this.aggregate().dates);
+    this.viewStart = window.start;
+    this.viewEnd = window.end;
+    this.rangeKey = `${this.startDate()}|${this.endDate()}`;
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -76,6 +96,7 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+    this.chart?.off('datazoom', this.onDataZoom);
     this.chart?.dispose();
   }
 
@@ -92,13 +113,16 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
     const allLabel = this.i18n.text('stats.shareholdersTotalDailyAll');
     const changedLabel = this.i18n.text('stats.shareholdersTotalDailyChanged');
     const periodChangedLabel = this.i18n.text('stats.shareholdersTotalPeriodChanged');
-    const bottom = dates.length > 8 ? 96 : 72;
+    const span = fullSpanForDates(dates);
+    const zoom = clampViewRange(this.viewStart, this.viewEnd, dates);
+    this.viewStart = zoom.start || span.start;
+    this.viewEnd = zoom.end || span.end;
     this.chart.setOption(
       {
         animation: false,
         legend: {
           show: true,
-          bottom: 0,
+          bottom: STATISTICS_CHART_LEGEND_BOTTOM,
           textStyle: { color: '#94a3b8', fontSize: 11 },
         },
         tooltip: {
@@ -107,7 +131,8 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
           confine: true,
           formatter: (params: unknown) => this.totalTooltipFormatter(params),
         },
-        grid: { left: 56, right: 16, top: 16, bottom },
+        grid: { left: 56, right: 16, top: 16, bottom: STATISTICS_CHART_GRID_BOTTOM },
+        dataZoom: [statisticsDataZoomSlider(this.viewStart, this.viewEnd)],
         xAxis: {
           type: 'category',
           data: dates,

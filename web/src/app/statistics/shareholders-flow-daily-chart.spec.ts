@@ -27,6 +27,9 @@ const { mockChart, zrClickHandler } = vi.hoisted(() => {
       setOption: vi.fn(),
       dispose: vi.fn(),
       resize: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      getOption: vi.fn(() => ({ dataZoom: [{ startValue: '2024-06-01', endValue: '2024-06-02' }] })),
       containPixel: vi.fn(() => true),
       convertFromPixel: vi.fn(() => 0),
       getZr: () => mockZr,
@@ -43,6 +46,8 @@ describe('ShareholdersFlowDailyChart', () => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
     mockChart.setOption.mockClear();
+    mockChart.on.mockClear();
+    mockChart.off.mockClear();
     mockChart.containPixel.mockClear();
     mockChart.containPixel.mockReturnValue(true);
     mockChart.convertFromPixel.mockClear();
@@ -72,11 +77,39 @@ describe('ShareholdersFlowDailyChart', () => {
 
     const flowOption = mockChart.setOption.mock.calls[0]?.[0] as {
       series?: Array<{ stack?: string; type?: string }>;
+      dataZoom?: Array<{ type?: string; startValue?: string; endValue?: string }>;
     };
     expect(flowOption.series?.length).toBe(2);
     expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
-    const xAxis = (flowOption as { xAxis?: { triggerEvent?: boolean } }).xAxis;
+    const xAxis = (flowOption as { xAxis?: { triggerEvent?: boolean; data?: string[] } }).xAxis;
     expect(xAxis?.triggerEvent).toBe(true);
+    expect(xAxis?.data).toEqual(['2024-06-01', '2024-06-02']);
+    expect(flowOption.dataZoom?.[0]?.type).toBe('slider');
+    expect(flowOption.dataZoom?.[0]?.startValue).toBe('2024-06-02');
+    expect(flowOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
+    expect(mockChart.on).toHaveBeenCalledWith('datazoom', expect.any(Function));
+  });
+
+  it('updates dataZoom window when startDate and endDate inputs change', async () => {
+    const fixture = TestBed.createComponent(ShareholdersFlowDailyChart);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-02');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    mockChart.setOption.mockClear();
+
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(mockChart.setOption).toHaveBeenCalled();
+    const lastOption = mockChart.setOption.mock.calls.at(-1)?.[0] as {
+      dataZoom?: Array<{ startValue?: string; endValue?: string }>;
+    };
+    expect(lastOption.dataZoom?.[0]?.startValue).toBe('2024-06-01');
+    expect(lastOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
   });
 
   it('emits dateSelect from canvas clicks in the plot column', async () => {

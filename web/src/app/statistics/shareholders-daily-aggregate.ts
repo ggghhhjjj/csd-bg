@@ -42,6 +42,21 @@ export function issuersWithShareholderChangeInRange(
  * Day-over-day change uses the previous row in `dataset.dates` (prior report day),
  * not calendar days. The first global date has zero gains/losses.
  */
+export function aggregateShareholdersDailyFull(dataset: ParsedDataset): ShareholdersDailyAggregate {
+  const dates = dataset.dates;
+  if (dates.length === 0) {
+    return {
+      dates: [],
+      losses: [],
+      gains: [],
+      totalShareholders: [],
+      totalShareholdersChanged: [],
+      totalShareholdersChangedInPeriod: [],
+    };
+  }
+  return aggregateShareholdersDaily(dataset, dates[0], dates[dates.length - 1] ?? '');
+}
+
 export function aggregateShareholdersDaily(
   dataset: ParsedDataset,
   fromIso: string,
