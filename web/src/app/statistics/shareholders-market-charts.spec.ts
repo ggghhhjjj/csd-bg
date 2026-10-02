@@ -56,7 +56,7 @@ describe('ShareholdersMarketCharts', () => {
       series?: Array<{ type?: string }>;
     };
     expect(totalOption.legend?.show).toBe(true);
-    expect(totalOption.series?.length).toBe(2);
+    expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
 
     const periodOption = mockChart.setOption.mock.calls[2]?.[0] as {

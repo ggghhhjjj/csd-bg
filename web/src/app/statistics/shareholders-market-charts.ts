@@ -126,8 +126,10 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
       dates,
       totalShareholders,
       totalShareholdersChanged,
+      totalShareholdersChangedInPeriod,
       this.i18n.text('stats.shareholdersTotalDailyAll'),
       this.i18n.text('stats.shareholdersTotalDailyChanged'),
+      this.i18n.text('stats.shareholdersTotalPeriodChanged'),
     );
     this.renderSingleLineChart(
       this.periodChangedChart,
@@ -269,10 +271,12 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     dates: string[],
     totalAll: number[],
     totalChanged: number[],
+    totalChangedInPeriod: number[],
     allLabel: string,
     changedLabel: string,
+    periodChangedLabel: string,
   ): void {
-    const bottom = dates.length > 8 ? 88 : 64;
+    const bottom = dates.length > 8 ? 96 : 72;
     chart.setOption(
       {
         animation: false,
@@ -314,6 +318,14 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
             showSymbol: true,
             itemStyle: { color: COLOR_TOTAL_CHANGED },
             lineStyle: { color: COLOR_TOTAL_CHANGED },
+          },
+          {
+            name: periodChangedLabel,
+            type: 'line',
+            data: totalChangedInPeriod,
+            showSymbol: true,
+            itemStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
+            lineStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
           },
         ],
       },
