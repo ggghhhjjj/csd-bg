@@ -18,6 +18,8 @@ Dataset URLs are in [`public/assets/vectors.config.json`](public/assets/vectors.
 
 Introduction HTML lives in [`../intro-web/`](../intro-web/) and is copied to `public/intro/` before serve/build (`npm run copy-intro`). Bump `contentVersion` in [`public/assets/intro.config.json`](public/assets/intro.config.json) when intro content changes.
 
+Contextual help (the **?** control) lives in [`../help-web/`](../help-web/) and is copied to `public/help/` (`npm run copy-help`, included in `copy-static`). Register topics in [`public/assets/help-topics.json`](public/assets/help-topics.json) and [`src/app/core/help/help-topic-id.ts`](src/app/core/help/help-topic-id.ts); co-locate `*.help-id.ts` next to Angular features.
+
 Application build number lives in [`public/assets/app.config.json`](public/assets/app.config.json) and is shown in the header (`v42`). GitHub Pages deploy bumps it automatically during `npm run build:web` (CI only); scraper-only commits do not trigger a web deploy or version change.
 
 Do not copy `data/vectors` into `www/`.

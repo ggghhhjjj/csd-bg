@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Total shareholders · Help</title>
+    <link rel="stylesheet" href="../../_shared/topic-base.css" />
+    <link rel="stylesheet" href="css/topic.css" />
+  </head>
+  <body class="topic">
+    <main class="topic__main">
+      <h1 class="topic__title" data-i18n="title">Общ брой акционери (пазар)</h1>
+      <p class="topic__lead" data-i18n="lead">
+        Линиите проследяват пазарните общи стойности по отчетни дни: всички акционери и подмножеството с
+        дневна промяна.
+      </p>
+
+      <h2 class="topic__section-title" data-i18n="seriesTitle">Серии и оси</h2>
+      <ul class="topic__list">
+        <li data-i18n="seriesTotal">Жълта линия (лява ос) — сумата на валидни акционери по всички емитенти.</li>
+        <li data-i18n="seriesChanged">
+          Синя линия (дясна ос) — сумата само за емитенти с ненулева промяна спрямо предишния отчетен ден.
+        </li>
+      </ul>
+
+      <p class="topic__text" data-i18n="windowNote">
+        Под заглавието може да се покаже промяната между първия и последния видим ден в текущия прозорец на
+        графиката.
+      </p>
+
+      <p class="topic__text" data-i18n="dayNote">
+        Промяната ден-до-ден използва предишния ред в данните (отчетен ден), не календарни дни.
+      </p>
+    </main>
+
+    <script>
+      window.HELP_COPY = {
+        bg: {
+          documentTitle: 'Общ брой акционери · Помощ',
+          title: 'Общ брой акционери (пазар)',
+          lead: 'Линиите проследяват пазарните общи стойности по отчетни дни: всички акционери и подмножеството с дневна промяна.',
+          seriesTitle: 'Серии и оси',
+          seriesTotal: 'Жълта линия (лява ос) — сумата на валидни акционери по всички емитенти.',
+          seriesChanged:
+            'Синя линия (дясна ос) — сумата само за емитенти с ненулева промяна спрямо предишния отчетен ден.',
+          windowNote:
+            'Под заглавието може да се покаже промяната между първия и последния видим ден в текущия прозорец на графиката.',
+          dayNote: 'Промяната ден-до-ден използва предишния ред в данните (отчетен ден), не календарни дни.',
+        },
+        en: {
+          documentTitle: 'Total shareholders · Help',
+          title: 'Total shareholders (market)',
+          lead: 'The lines track market-wide totals by report day: all shareholders and the subset with a daily change.',
+          seriesTitle: 'Series and axes',
+          seriesTotal: 'Yellow line (left axis) — sum of valid shareholder counts across all issuers.',
+          seriesChanged:
+            'Blue line (right axis) — sum only for issuers with a non-zero change versus the prior report day.',
+          windowNote:
+            'Below the title you may see the change between the first and last visible day in the chart window.',
+          dayNote: 'Day-over-day change uses the previous row in the data (report day), not calendar days.',
+        },
+      };
+    </script>
+    <script src="../../_shared/apply-locale.js"></script>
+  </body>
+</html>

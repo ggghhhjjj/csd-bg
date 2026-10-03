@@ -1,0 +1,10 @@
+@if (visible()) {
+  <button
+    class="help-trigger"
+    type="button"
+    (click)="openHelp()"
+    [attr.aria-label]="ariaLabel()"
+  >
+    <span class="help-trigger__glyph" aria-hidden="true">?</span>
+  </button>
+}

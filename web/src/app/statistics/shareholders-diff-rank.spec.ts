@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { HELP_MANIFEST_FIXTURE } from '../core/help/help-manifest.fixture';
 import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { ShareholdersDiffRank } from './shareholders-diff-rank';
@@ -12,6 +13,17 @@ describe('ShareholdersDiffRank', () => {
   beforeEach(() => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => HELP_MANIFEST_FIXTURE,
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('shows the selected date range under the title', async () => {

@@ -1,6 +1,7 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { HELP_MANIFEST_FIXTURE } from '../core/help/help-manifest.fixture';
 import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { ShareholdersMarketCharts } from './shareholders-market-charts';
@@ -44,6 +45,13 @@ describe('ShareholdersMarketCharts', () => {
   beforeEach(() => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => HELP_MANIFEST_FIXTURE,
+      }),
+    );
     mockChart.setOption.mockClear();
     mockChart.on.mockClear();
     mockChart.getOption.mockClear();
@@ -55,6 +63,10 @@ describe('ShareholdersMarketCharts', () => {
         disconnect(): void {}
       } as unknown as typeof ResizeObserver;
     }
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('renders flow chart title and configures stacked flow plus total charts', async () => {

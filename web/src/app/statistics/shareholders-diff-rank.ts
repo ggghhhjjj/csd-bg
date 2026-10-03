@@ -4,16 +4,18 @@ import { RouterLink } from '@angular/router';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import { formatDelta } from '../core/data/vectors.types';
+import { HelpTrigger } from '../help/help-trigger';
 import {
   limitRankedIssuers,
   rankIssuersByShareholdersDiff,
   TOP_RANK_COUNT,
   type RankOrder,
 } from './rank-issuers';
+import { SHAREHOLDERS_DIFF_RANK_HELP } from './shareholders-diff-rank.help-id';
 
 @Component({
   selector: 'app-shareholders-diff-rank',
-  imports: [RouterLink],
+  imports: [RouterLink, HelpTrigger],
   templateUrl: './shareholders-diff-rank.html',
   styleUrl: './shareholders-diff-rank.css',
 })
@@ -28,6 +30,7 @@ export class ShareholdersDiffRank {
   readonly showAllChange = output<boolean>();
 
   protected readonly i18n = inject(LocaleService);
+  protected readonly helpTopic = SHAREHOLDERS_DIFF_RANK_HELP;
 
   protected readonly ranked = computed(() => {
     const from = this.startDate();

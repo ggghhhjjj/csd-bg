@@ -1,5 +1,6 @@
 <div class="range-presets">
   <div class="range-presets__toolbar">
+    <app-help-trigger [topicId]="helpTopic" />
     <div class="range-presets__presets">
       @for (item of presets(); track item.id) {
         <button

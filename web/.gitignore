@@ -4,6 +4,7 @@
 /dist
 /www
 /public/intro
+/public/help
 /tmp
 /out-tsc
 /bazel-out

@@ -18,6 +18,7 @@ import {
 } from '../core/chart/chart-slider-data-zoom';
 import { visibleIndexRange } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
+import { HelpTrigger } from '../help/help-trigger';
 import {
   hasShareholdersAggregateData,
   type ShareholdersDailyAggregate,
@@ -27,6 +28,7 @@ import {
   selectedDateMarkLine,
   type ChartDatePickBinding,
 } from './shareholders-chart-date-pick';
+import { SHAREHOLDERS_FLOW_DAILY_CHART_HELP } from './shareholders-flow-daily-chart.help-id';
 
 const COLOR_LOSSES = '#f87171';
 const COLOR_GAINS = '#34d399';
@@ -34,6 +36,7 @@ const FLOW_STACK_ID = 'flow';
 
 @Component({
   selector: 'app-shareholders-flow-daily-chart',
+  imports: [HelpTrigger],
   templateUrl: './shareholders-flow-daily-chart.html',
   styleUrl: './shareholders-flow-daily-chart.css',
 })
@@ -48,6 +51,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
   protected readonly i18n = inject(LocaleService);
+  protected readonly helpTopic = SHAREHOLDERS_FLOW_DAILY_CHART_HELP;
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;

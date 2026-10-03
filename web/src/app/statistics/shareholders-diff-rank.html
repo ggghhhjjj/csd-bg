@@ -1,7 +1,10 @@
 <section class="shareholders-diff-rank">
   <div class="shareholders-diff-rank__header">
     <div class="shareholders-diff-rank__heading">
-      <h2 class="shareholders-diff-rank__title">{{ i18n.text('stats.shareholdersDiff') }}</h2>
+      <div class="shareholders-diff-rank__title-row">
+        <h2 class="shareholders-diff-rank__title">{{ i18n.text('stats.shareholdersDiff') }}</h2>
+        <app-help-trigger [topicId]="helpTopic" />
+      </div>
       @if (rangeLabel()) {
         <p class="shareholders-diff-rank__range">{{ rangeLabel() }}</p>
       }

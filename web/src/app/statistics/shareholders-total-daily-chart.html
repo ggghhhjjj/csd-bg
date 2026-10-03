@@ -1,6 +1,9 @@
 <div class="shareholders-total-daily-chart">
   <div class="shareholders-total-daily-chart__heading">
-    <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+    <div class="shareholders-total-daily-chart__title-row">
+      <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+      <app-help-trigger [topicId]="helpTopic" />
+    </div>
     @if (windowDiffLabel()) {
       <p [class]="windowDiffClass()">{{ windowDiffLabel() }}</p>
     }

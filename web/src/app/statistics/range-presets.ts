@@ -2,9 +2,12 @@ import { Component, computed, inject, input, output } from '@angular/core';
 
 import type { RangePreset } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
+import { HelpTrigger } from '../help/help-trigger';
+import { RANGE_PRESETS_HELP } from './range-presets.help-id';
 
 @Component({
   selector: 'app-range-presets',
+  imports: [HelpTrigger],
   templateUrl: './range-presets.html',
   styleUrl: './range-presets.css',
 })
@@ -13,6 +16,8 @@ export class RangePresets {
   readonly presetChange = output<RangePreset>();
 
   private readonly i18n = inject(LocaleService);
+
+  protected readonly helpTopic = RANGE_PRESETS_HELP;
 
   protected readonly presets = computed<Array<{ id: RangePreset; label: string }>>(() => [
     { id: 'd5', label: this.i18n.text('range.d5') },

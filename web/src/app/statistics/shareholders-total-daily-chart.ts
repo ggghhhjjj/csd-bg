@@ -24,6 +24,7 @@ import {
 import { visibleIndexRange } from '../core/data/date-range';
 import { formatDelta } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
+import { HelpTrigger } from '../help/help-trigger';
 import {
   hasShareholdersAggregateData,
   marketTotalShareholdersWindowSpan,
@@ -34,12 +35,14 @@ import {
   selectedDateMarkLine,
   type ChartDatePickBinding,
 } from './shareholders-chart-date-pick';
+import { SHAREHOLDERS_TOTAL_DAILY_CHART_HELP } from './shareholders-total-daily-chart.help-id';
 
 const COLOR_TOTAL = '#fbbf24';
 const COLOR_TOTAL_CHANGED = '#60a5fa';
 
 @Component({
   selector: 'app-shareholders-total-daily-chart',
+  imports: [HelpTrigger],
   templateUrl: './shareholders-total-daily-chart.html',
   styleUrl: './shareholders-total-daily-chart.css',
 })
@@ -54,6 +57,7 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
   protected readonly i18n = inject(LocaleService);
+  protected readonly helpTopic = SHAREHOLDERS_TOTAL_DAILY_CHART_HELP;
 
   protected readonly windowSpan = computed(() => {
     if (!hasShareholdersAggregateData(this.aggregate())) {

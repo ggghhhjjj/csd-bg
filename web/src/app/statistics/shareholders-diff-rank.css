@@ -18,6 +18,12 @@
   gap: 0.15rem;
 }
 
+.shareholders-diff-rank__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .shareholders-diff-rank__title {
   margin: 0;
   font-size: 1.05rem;

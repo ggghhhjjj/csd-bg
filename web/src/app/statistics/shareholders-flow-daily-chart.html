@@ -1,4 +1,7 @@
 <div class="shareholders-flow-daily-chart">
-  <h2 class="shareholders-flow-daily-chart__title">{{ i18n.text('stats.shareholdersFlowDaily') }}</h2>
+  <div class="shareholders-flow-daily-chart__title-row">
+    <h2 class="shareholders-flow-daily-chart__title">{{ i18n.text('stats.shareholdersFlowDaily') }}</h2>
+    <app-help-trigger [topicId]="helpTopic" />
+  </div>
   <div #chartHost class="shareholders-flow-daily-chart__chart" role="img"></div>
 </div>

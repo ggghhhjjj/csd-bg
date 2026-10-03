@@ -22,6 +22,7 @@ import {
 } from '../core/chart/nice-axis-bounds';
 import { visibleIndexRange } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
+import { HelpTrigger } from '../help/help-trigger';
 import {
   hasShareholdersAggregateData,
   type ShareholdersDailyAggregate,
@@ -31,12 +32,14 @@ import {
   selectedDateMarkLine,
   type ChartDatePickBinding,
 } from './shareholders-chart-date-pick';
+import { SHAREHOLDERS_TOTAL_PERIOD_DAILY_CHART_HELP } from './shareholders-total-period-daily-chart.help-id';
 
 const COLOR_TOTAL = '#fbbf24';
 const COLOR_TOTAL_PERIOD_CHANGED = '#c084fc';
 
 @Component({
   selector: 'app-shareholders-total-period-daily-chart',
+  imports: [HelpTrigger],
   templateUrl: './shareholders-total-period-daily-chart.html',
   styleUrl: './shareholders-total-period-daily-chart.css',
 })
@@ -51,6 +54,7 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
   protected readonly i18n = inject(LocaleService);
+  protected readonly helpTopic = SHAREHOLDERS_TOTAL_PERIOD_DAILY_CHART_HELP;
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;

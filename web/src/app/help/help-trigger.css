@@ -1,0 +1,33 @@
+:host {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.help-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.625rem;
+  height: 1.625rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #475569;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-trigger:focus-visible {
+  outline: 2px solid #64748b;
+  outline-offset: 2px;
+}
+
+.help-trigger__glyph {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}

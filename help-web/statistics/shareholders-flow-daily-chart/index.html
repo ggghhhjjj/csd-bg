@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily shareholder turnover · Help</title>
+    <link rel="stylesheet" href="../../_shared/topic-base.css" />
+    <link rel="stylesheet" href="css/topic.css" />
+  </head>
+  <body class="topic">
+    <main class="topic__main">
+      <h1 class="topic__title" data-i18n="title">Дневен оборот на акционери (пазар)</h1>
+      <p class="topic__lead" data-i18n="lead">
+        Стълбовата диаграма показва колко акционери са влезли и излезли от пазара всеки отчетен ден, сумирано
+        по всички емитенти.
+      </p>
+
+      <h2 class="topic__section-title" data-i18n="seriesTitle">Серии</h2>
+      <ul class="topic__list">
+        <li data-i18n="seriesGains">Зелено — входящи акционери (положителни дневни промени).</li>
+        <li data-i18n="seriesLosses">Червено — изходящи акционери (отрицателни промени, показани като положителна величина).</li>
+      </ul>
+
+      <p class="topic__text" data-i18n="stackNote">
+        Стълбовете са насложени: височината на деня е общото движение (вход + изход). В подсказката виждате и
+        трите стойности.
+      </p>
+
+      <p class="topic__text" data-i18n="interactionNote">
+        Плъзгачът под графиката променя видимия интервал; клик върху ден маркира избраната дата и синхронизира
+        останалите графики на страницата.
+      </p>
+    </main>
+
+    <script>
+      window.HELP_COPY = {
+        bg: {
+          documentTitle: 'Дневен оборот на акционери · Помощ',
+          title: 'Дневен оборот на акционери (пазар)',
+          lead: 'Стълбовата диаграма показва колко акционери са влезли и излезли от пазара всеки отчетен ден, сумирано по всички емитенти.',
+          seriesTitle: 'Серии',
+          seriesGains: 'Зелено — входящи акционери (положителни дневни промени).',
+          seriesLosses: 'Червено — изходящи акционери (отрицателни промени, показани като положителна величина).',
+          stackNote:
+            'Стълбовете са насложени: височината на деня е общото движение (вход + изход). В подсказката виждате и трите стойности.',
+          interactionNote:
+            'Плъзгачът под графиката променя видимия интервал; клик върху ден маркира избраната дата и синхронизира останалите графики на страницата.',
+        },
+        en: {
+          documentTitle: 'Daily shareholder turnover · Help',
+          title: 'Daily shareholder turnover (market)',
+          lead: 'The stacked bar chart shows how many shareholders entered and left the market on each report day, summed across all issuers.',
+          seriesTitle: 'Series',
+          seriesGains: 'Green — incoming shareholders (positive day-over-day changes).',
+          seriesLosses: 'Red — outgoing shareholders (negative changes shown as a positive magnitude).',
+          stackNote:
+            'Bars are stacked: each day’s height is total movement (incoming + outgoing). The tooltip shows all three values.',
+          interactionNote:
+            'The slider under the chart changes the visible range; clicking a day selects that date and syncs the other charts on the page.',
+        },
+      };
+    </script>
+    <script src="../../_shared/apply-locale.js"></script>
+  </body>
+</html>
