@@ -41,30 +41,34 @@ describe('ShareholdersMarketCharts', () => {
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('.shareholders-market-charts__title')?.textContent).toContain('оборот');
+    expect(root.querySelector('.shareholders-flow-daily-chart__title')?.textContent).toContain('оборот');
     expect(mockChart.setOption).toHaveBeenCalled();
     expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(2);
 
-    const flowOption = mockChart.setOption.mock.calls[0]?.[0] as {
+    const flowOption = mockChart.setOption.mock.calls.find(
+      (call) => (call[0] as { series?: Array<{ type?: string }> }).series?.every((s) => s.type === 'bar'),
+    )?.[0] as {
       series?: Array<{ stack?: string; type?: string }>;
     };
-    expect(flowOption.series?.length).toBe(2);
-    expect(flowOption.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
+    expect(flowOption?.series?.length).toBe(2);
+    expect(flowOption?.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
 
-    const totalOption = mockChart.setOption.mock.calls[1]?.[0] as {
+    const totalOption = mockChart.setOption.mock.calls.find(
+      (call) => (call[0] as { series?: Array<{ type?: string }> }).series?.every((s) => s.type === 'line'),
+    )?.[0] as {
       legend?: { show?: boolean };
       series?: Array<{ type?: string }>;
       tooltip?: { formatter?: unknown };
       yAxis?: { min?: number; max?: number };
     };
-    expect(totalOption.legend?.show).toBe(true);
-    expect(totalOption.series?.length).toBe(3);
-    expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
-    expect(typeof totalOption.tooltip?.formatter).toBe('function');
-    expect(totalOption.yAxis?.min).toBeDefined();
-    expect(totalOption.yAxis?.max).toBeDefined();
-    expect(totalOption.yAxis!.min!).toBeLessThan(totalOption.yAxis!.max!);
-    expect(totalOption.yAxis!.min!).toBeGreaterThan(0);
+    expect(totalOption?.legend?.show).toBe(true);
+    expect(totalOption?.series?.length).toBe(3);
+    expect(totalOption?.series?.every((s) => s.type === 'line')).toBe(true);
+    expect(typeof totalOption?.tooltip?.formatter).toBe('function');
+    expect(totalOption?.yAxis?.min).toBeDefined();
+    expect(totalOption?.yAxis?.max).toBeDefined();
+    expect(totalOption!.yAxis!.min!).toBeLessThan(totalOption!.yAxis!.max!);
+    expect(totalOption!.yAxis!.min!).toBeGreaterThan(0);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
