@@ -14,12 +14,6 @@
       [selectedDate]="selectedRankDate()"
       (dateSelect)="onFlowDateSelect($event)"
     />
-    <app-shareholders-total-daily-chart
-      [dataset]="data"
-      [startDate]="viewRange().from"
-      [endDate]="viewRange().to"
-      [selectedDate]="selectedRankDate()"
-      (dateSelect)="onFlowDateSelect($event)"
-    />
+    <app-shareholders-total-daily-chart [dataset]="data" [startDate]="viewRange().from" [endDate]="viewRange().to" />
   }
 </section>

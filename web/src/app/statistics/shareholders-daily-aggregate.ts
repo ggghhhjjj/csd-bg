@@ -42,55 +42,19 @@ export function issuersWithShareholderChangeInRange(
  * Day-over-day change uses the previous row in `dataset.dates` (prior report day),
  * not calendar days. The first global date has zero gains/losses.
  */
-const EMPTY_SHAREHOLDERS_DAILY_AGGREGATE: ShareholdersDailyAggregate = {
-  dates: [],
-  losses: [],
-  gains: [],
-  totalShareholders: [],
-  totalShareholdersChanged: [],
-  totalShareholdersChangedInPeriod: [],
-};
-
 export function aggregateShareholdersDailyFull(dataset: ParsedDataset): ShareholdersDailyAggregate {
   const dates = dataset.dates;
   if (dates.length === 0) {
-    return { ...EMPTY_SHAREHOLDERS_DAILY_AGGREGATE };
+    return {
+      dates: [],
+      losses: [],
+      gains: [],
+      totalShareholders: [],
+      totalShareholdersChanged: [],
+      totalShareholdersChangedInPeriod: [],
+    };
   }
   return aggregateShareholdersDaily(dataset, dates[0], dates[dates.length - 1] ?? '');
-}
-
-/**
- * Full dataset history on the date axis; `periodFromIso` / `periodToIso` only define
- * which issuers count toward `totalShareholdersChangedInPeriod` (statistics range filter).
- */
-export function aggregateShareholdersDailyChartFullHistory(
-  dataset: ParsedDataset,
-  periodFromIso: string,
-  periodToIso: string,
-): ShareholdersDailyAggregate {
-  if (dataset.dates.length === 0) {
-    return { ...EMPTY_SHAREHOLDERS_DAILY_AGGREGATE };
-  }
-  const periodStart = periodFromIso || dataset.dates[0] || '';
-  const periodEnd = periodToIso || dataset.dates[dataset.dates.length - 1] || '';
-  if (!periodStart || !periodEnd) {
-    return { ...EMPTY_SHAREHOLDERS_DAILY_AGGREGATE };
-  }
-  const fromIndex = indexForDate(dataset.dates, periodStart);
-  const toIndex = indexForDate(dataset.dates, periodEnd);
-  const periodRangeStart = Math.min(fromIndex, toIndex);
-  const periodRangeEnd = Math.max(fromIndex, toIndex);
-  const changedInPeriod = issuersWithShareholderChangeInRange(
-    dataset,
-    periodRangeStart,
-    periodRangeEnd,
-  );
-  return aggregateShareholdersDailyForIndices(
-    dataset,
-    0,
-    dataset.dates.length - 1,
-    changedInPeriod,
-  );
 }
 
 export function aggregateShareholdersDaily(
@@ -101,7 +65,14 @@ export function aggregateShareholdersDaily(
   const start = fromIso || dataset.dates[0] || '';
   const end = toIso || dataset.dates[dataset.dates.length - 1] || '';
   if (!start || !end || dataset.dates.length === 0) {
-    return { ...EMPTY_SHAREHOLDERS_DAILY_AGGREGATE };
+    return {
+      dates: [],
+      losses: [],
+      gains: [],
+      totalShareholders: [],
+      totalShareholdersChanged: [],
+      totalShareholdersChangedInPeriod: [],
+    };
   }
 
   const fromIndex = indexForDate(dataset.dates, start);
@@ -109,15 +80,7 @@ export function aggregateShareholdersDaily(
   const rangeStart = Math.min(fromIndex, toIndex);
   const rangeEnd = Math.max(fromIndex, toIndex);
   const changedInPeriod = issuersWithShareholderChangeInRange(dataset, rangeStart, rangeEnd);
-  return aggregateShareholdersDailyForIndices(dataset, rangeStart, rangeEnd, changedInPeriod);
-}
 
-function aggregateShareholdersDailyForIndices(
-  dataset: ParsedDataset,
-  rangeStart: number,
-  rangeEnd: number,
-  changedInPeriod: Uint8Array,
-): ShareholdersDailyAggregate {
   const dates: string[] = [];
   const losses: number[] = [];
   const gains: number[] = [];

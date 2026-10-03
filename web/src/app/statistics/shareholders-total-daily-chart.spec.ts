@@ -5,37 +5,16 @@ import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { ShareholdersTotalDailyChart } from './shareholders-total-daily-chart';
 
-const { mockChart, zrClickHandler } = vi.hoisted(() => {
-  let handler: ((event: { offsetX?: number; offsetY?: number }) => void) | undefined;
-  const clickHandlerRef = {
-    get: () => handler,
-    set: (next: ((event: { offsetX?: number; offsetY?: number }) => void) | undefined) => {
-      handler = next;
-    },
-  };
-  const mockZr = {
-    on: vi.fn((_event: string, cb: (event: { offsetX?: number; offsetY?: number }) => void) => {
-      clickHandlerRef.set(cb);
-    }),
-    off: vi.fn(() => {
-      clickHandlerRef.set(undefined);
-    }),
-  };
-  return {
-    zrClickHandler: clickHandlerRef,
-    mockChart: {
-      setOption: vi.fn(),
-      dispose: vi.fn(),
-      resize: vi.fn(),
-      on: vi.fn(),
-      off: vi.fn(),
-      getOption: vi.fn(() => ({ dataZoom: [{ startValue: '2024-06-01', endValue: '2024-06-02' }] })),
-      containPixel: vi.fn(() => true),
-      convertFromPixel: vi.fn(() => 0),
-      getZr: () => mockZr,
-    },
-  };
-});
+const { mockChart } = vi.hoisted(() => ({
+  mockChart: {
+    setOption: vi.fn(),
+    dispose: vi.fn(),
+    resize: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    getOption: vi.fn(() => ({ dataZoom: [{ startValue: '2024-06-01', endValue: '2024-06-02' }] })),
+  },
+}));
 
 vi.mock('echarts', () => ({
   init: () => mockChart,
@@ -90,13 +69,13 @@ describe('ShareholdersTotalDailyChart', () => {
     expect(totalOption.series?.[0]?.yAxisIndex).toBe(0);
     expect(totalOption.series?.[1]?.yAxisIndex).toBe(1);
     expect(totalOption.series?.[2]?.yAxisIndex).toBe(2);
-    expect(totalOption.series?.[0]?.data?.[1]?.raw).toBe(2400);
-    expect(totalOption.series?.[0]?.data?.[1]?.value).toBe(0);
-    expect(totalOption.series?.[2]?.data?.[1]?.raw).toBe(2400);
-    expect(totalOption.series?.[2]?.data?.[1]?.value).toBe(0);
+    expect(totalOption.series?.[0]?.data?.[0]?.raw).toBe(2400);
+    expect(totalOption.series?.[0]?.data?.[0]?.value).toBe(0);
+    expect(totalOption.series?.[2]?.data?.[0]?.raw).toBe(2400);
+    expect(totalOption.series?.[2]?.data?.[0]?.value).toBe(0);
     expect(typeof totalOption.tooltip?.formatter).toBe('function');
     const xAxis = (totalOption as { xAxis?: { data?: string[] } }).xAxis;
-    expect(xAxis?.data).toEqual(['2024-06-01', '2024-06-02']);
+    expect(xAxis?.data).toEqual(['2024-06-02']);
     expect(totalOption.dataZoom?.[0]?.type).toBe('slider');
     expect(totalOption.dataZoom?.[0]?.startValue).toBe('2024-06-02');
     expect(totalOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
@@ -180,36 +159,6 @@ describe('ShareholdersTotalDailyChart', () => {
     };
     expect(lastOption.yAxis?.length).toBe(1);
     expect(lastOption.series?.[0]?.data?.[0]?.value).toBe(2407);
-  });
-
-  it('emits dateSelect from canvas clicks in the plot column', async () => {
-    const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
-    fixture.componentRef.setInput('dataset', datasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
-    const dates: string[] = [];
-    fixture.componentRef.instance.dateSelect.subscribe((date) => dates.push(date));
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    mockChart.convertFromPixel.mockReturnValue(1);
-    zrClickHandler.get()?.({ offsetX: 400, offsetY: 20 });
-    expect(dates).toEqual(['2024-06-02']);
-  });
-
-  it('ignores canvas clicks outside the plot and x-axis', async () => {
-    const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
-    fixture.componentRef.setInput('dataset', datasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
-    const dates: string[] = [];
-    fixture.componentRef.instance.dateSelect.subscribe((date) => dates.push(date));
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    mockChart.containPixel.mockReturnValue(false);
-    zrClickHandler.get()?.({ offsetX: 10, offsetY: 200 });
-    expect(dates).toEqual([]);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {

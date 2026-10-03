@@ -7,7 +7,6 @@ import {
   inject,
   input,
   OnDestroy,
-  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -16,10 +15,9 @@ import * as echarts from 'echarts';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
-  aggregateShareholdersDailyChartFullHistory,
+  aggregateShareholdersDaily,
   hasShareholdersAggregateData,
 } from './shareholders-daily-aggregate';
-import { dateAtCategoryChartPixel } from './statistics-chart-category-date';
 import {
   clampViewRange,
   fullSpanForDates,
@@ -52,8 +50,6 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   readonly dataset = input.required<ParsedDataset>();
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
-  readonly selectedDate = input<string | null>(null);
-  readonly dateSelect = output<string>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -68,15 +64,11 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
     if (!from || !to) {
       const dates = dataset.dates;
       if (dates.length === 0) {
-        return aggregateShareholdersDailyChartFullHistory(dataset, '', '');
+        return aggregateShareholdersDaily(dataset, '', '');
       }
-      return aggregateShareholdersDailyChartFullHistory(
-        dataset,
-        dates[0],
-        dates[dates.length - 1] ?? '',
-      );
+      return aggregateShareholdersDaily(dataset, dates[0], dates[dates.length - 1] ?? '');
     }
-    return aggregateShareholdersDailyChartFullHistory(dataset, from, to);
+    return aggregateShareholdersDaily(dataset, from, to);
   });
 
   protected readonly hasData = computed(() => hasShareholdersAggregateData(this.aggregate()));
@@ -115,25 +107,6 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
     this.viewEnd = range.end;
     this.render();
   };
-  private readonly onZrClick = (event: { offsetX?: number; offsetY?: number }): void => {
-    if (!this.chart) {
-      return;
-    }
-    const offsetX = event.offsetX ?? 0;
-    const offsetY = event.offsetY ?? 0;
-    const point: [number, number] = [offsetX, offsetY];
-    const inPlot =
-      this.chart.containPixel({ gridIndex: 0 }, point) ||
-      this.chart.containPixel({ xAxisIndex: 0 }, point);
-    if (!inPlot) {
-      return;
-    }
-    const { dates } = this.aggregate();
-    const date = dateAtCategoryChartPixel(this.chart, offsetX, offsetY, dates);
-    if (date) {
-      this.dateSelect.emit(date);
-    }
-  };
 
   constructor() {
     effect(() => {
@@ -156,7 +129,6 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
     this.chart.on('datazoom', this.onDataZoom);
-    this.chart.getZr().on('click', this.onZrClick);
     const window = clampViewRange(this.startDate(), this.endDate(), this.aggregate().dates);
     this.viewStart = window.start;
     this.viewEnd = window.end;
@@ -171,7 +143,6 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
     this.chart?.off('datazoom', this.onDataZoom);
-    this.chart?.getZr().off('click', this.onZrClick);
     this.chart?.dispose();
   }
 
@@ -278,7 +249,6 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
         xAxis: {
           type: 'category',
           data: dates,
-          triggerEvent: true,
           axisLabel: { rotate: dates.length > 8 ? 90 : 0, fontSize: 10, color: '#94a3b8' },
           axisLine: { lineStyle: { color: '#334155' } },
         },

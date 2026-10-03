@@ -18,7 +18,6 @@ import {
   aggregateShareholdersDailyFull,
   hasShareholdersAggregateData,
 } from './shareholders-daily-aggregate';
-import { dateAtCategoryChartPixel } from './statistics-chart-category-date';
 import {
   clampViewRange,
   fullSpanForDates,
@@ -79,8 +78,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     if (!inPlot) {
       return;
     }
-    const { dates } = this.aggregate();
-    const date = dateAtCategoryChartPixel(this.chart, offsetX, offsetY, dates);
+    const date = this.dateAtChartPixel(offsetX, offsetY);
     if (date) {
       this.dateSelect.emit(date);
     }
@@ -189,6 +187,23 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     );
   }
 
+  private dateAtChartPixel(offsetX: number, offsetY: number): string | undefined {
+    if (!this.chart) {
+      return undefined;
+    }
+    const { dates } = this.aggregate();
+    if (dates.length === 0) {
+      return undefined;
+    }
+    const point: [number, number] = [offsetX, offsetY];
+    const fromXAxis = this.chart.convertFromPixel({ xAxisIndex: 0 }, point);
+    const fromSeries = this.chart.convertFromPixel({ seriesIndex: 0 }, point);
+    return (
+      categoryDateFromConvertResult(fromXAxis, dates) ??
+      categoryDateFromConvertResult(fromSeries, dates)
+    );
+  }
+
   private flowTooltipFormatter(
     params: unknown,
     incomingLabel: string,
@@ -215,4 +230,29 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     lines.push(`${this.i18n.text('stats.shareholdersFlowTotal')}: ${(incoming + outgoing).toLocaleString()}`);
     return lines.join('<br/>');
   }
+}
+
+function categoryDateFromConvertResult(raw: unknown, dates: string[]): string | undefined {
+  const index = categoryIndexFromConvertResult(raw, dates);
+  if (index !== undefined && index >= 0 && index < dates.length) {
+    return dates[index];
+  }
+  if (typeof raw === 'string' && dates.includes(raw)) {
+    return raw;
+  }
+  return undefined;
+}
+
+function categoryIndexFromConvertResult(raw: unknown, dates: string[]): number | undefined {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.round(raw);
+  }
+  if (typeof raw === 'string') {
+    const index = dates.indexOf(raw);
+    return index >= 0 ? index : undefined;
+  }
+  if (Array.isArray(raw) && raw.length > 0) {
+    return categoryIndexFromConvertResult(raw[0], dates);
+  }
+  return undefined;
 }
