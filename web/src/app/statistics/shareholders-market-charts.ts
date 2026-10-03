@@ -8,10 +8,11 @@ import {
 } from './shareholders-daily-aggregate';
 import { ShareholdersFlowDailyChart } from './shareholders-flow-daily-chart';
 import { ShareholdersTotalDailyChart } from './shareholders-total-daily-chart';
+import { ShareholdersTotalPeriodDailyChart } from './shareholders-total-period-daily-chart';
 
 @Component({
   selector: 'app-shareholders-market-charts',
-  imports: [ShareholdersFlowDailyChart, ShareholdersTotalDailyChart],
+  imports: [ShareholdersFlowDailyChart, ShareholdersTotalDailyChart, ShareholdersTotalPeriodDailyChart],
   templateUrl: './shareholders-market-charts.html',
   styleUrl: './shareholders-market-charts.css',
 })

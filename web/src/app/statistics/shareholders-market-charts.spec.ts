@@ -43,7 +43,7 @@ describe('ShareholdersMarketCharts', () => {
     const root = fixture.nativeElement as HTMLElement;
     expect(root.querySelector('.shareholders-flow-daily-chart__title')?.textContent).toContain('оборот');
     expect(mockChart.setOption).toHaveBeenCalled();
-    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(mockChart.setOption.mock.calls.length).toBeGreaterThanOrEqual(3);
 
     const flowOption = mockChart.setOption.mock.calls.find(
       (call) => (call[0] as { series?: Array<{ type?: string }> }).series?.every((s) => s.type === 'bar'),
@@ -53,22 +53,32 @@ describe('ShareholdersMarketCharts', () => {
     expect(flowOption?.series?.length).toBe(2);
     expect(flowOption?.series?.every((s) => s.type === 'bar' && s.stack === 'flow')).toBe(true);
 
-    const totalOption = mockChart.setOption.mock.calls.find(
-      (call) => (call[0] as { series?: Array<{ type?: string }> }).series?.every((s) => s.type === 'line'),
-    )?.[0] as {
-      legend?: { show?: boolean };
-      series?: Array<{ type?: string }>;
-      tooltip?: { formatter?: unknown };
-      yAxis?: { min?: number; max?: number };
-    };
-    expect(totalOption?.legend?.show).toBe(true);
-    expect(totalOption?.series?.length).toBe(3);
-    expect(totalOption?.series?.every((s) => s.type === 'line')).toBe(true);
-    expect(typeof totalOption?.tooltip?.formatter).toBe('function');
-    expect(totalOption?.yAxis?.min).toBeDefined();
-    expect(totalOption?.yAxis?.max).toBeDefined();
-    expect(totalOption!.yAxis!.min!).toBeLessThan(totalOption!.yAxis!.max!);
-    expect(totalOption!.yAxis!.min!).toBeGreaterThan(0);
+    const lineOptions = mockChart.setOption.mock.calls
+      .map((call) => call[0] as {
+        legend?: { show?: boolean };
+        series?: Array<{ type?: string; yAxisIndex?: number }>;
+        tooltip?: { formatter?: unknown };
+        yAxis?: Array<{ position?: string; min?: number; max?: number }>;
+      })
+      .filter((option) => option.series?.every((s) => s.type === 'line'));
+    expect(lineOptions.length).toBe(2);
+    for (const totalOption of lineOptions) {
+      expect(totalOption.legend?.show).toBe(true);
+      expect(totalOption.series?.length).toBe(2);
+      expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
+      expect(totalOption.series?.[0]?.yAxisIndex).toBe(0);
+      expect(totalOption.series?.[1]?.yAxisIndex).toBe(1);
+      expect(typeof totalOption.tooltip?.formatter).toBe('function');
+      expect(totalOption.yAxis?.length).toBe(2);
+      expect(totalOption.yAxis?.[0]?.position).toBe('left');
+      expect(totalOption.yAxis?.[1]?.position).toBe('right');
+      for (const axis of totalOption.yAxis ?? []) {
+        expect(axis.min).toBeDefined();
+        expect(axis.max).toBeDefined();
+        expect(axis.min!).toBeLessThan(axis.max!);
+        expect(axis.min!).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('shows empty state when range has no shareholder totals', async () => {

@@ -21,14 +21,14 @@ import {
 } from './shareholders-daily-aggregate';
 
 const COLOR_TOTAL = '#fbbf24';
-const COLOR_TOTAL_CHANGED = '#60a5fa';
+const COLOR_TOTAL_PERIOD_CHANGED = '#c084fc';
 
 @Component({
-  selector: 'app-shareholders-total-daily-chart',
-  templateUrl: './shareholders-total-daily-chart.html',
-  styleUrl: './shareholders-total-daily-chart.css',
+  selector: 'app-shareholders-total-period-daily-chart',
+  templateUrl: './shareholders-total-period-daily-chart.html',
+  styleUrl: './shareholders-total-period-daily-chart.css',
 })
-export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
+export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestroy {
   readonly aggregate = input.required<ShareholdersDailyAggregate>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
@@ -64,19 +64,19 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
     if (!this.chart) {
       return;
     }
-    const { dates, totalShareholders, totalShareholdersChanged } = this.aggregate();
+    const { dates, totalShareholders, totalShareholdersChangedInPeriod } = this.aggregate();
     if (!hasShareholdersAggregateData(this.aggregate())) {
       return;
     }
 
     const allLabel = this.i18n.text('stats.shareholdersTotalDailyAll');
-    const changedLabel = this.i18n.text('stats.shareholdersTotalDailyChanged');
+    const periodChangedLabel = this.i18n.text('stats.shareholdersTotalPeriodChanged');
     const bottom = dates.length > 8 ? 96 : 72;
     const windowEnd = dates.length - 1;
     const totalExtent = finiteMinMaxInWindow(totalShareholders, 0, windowEnd);
-    const changedExtent = finiteMinMaxInWindow(totalShareholdersChanged, 0, windowEnd);
+    const periodExtent = finiteMinMaxInWindow(totalShareholdersChangedInPeriod, 0, windowEnd);
     const totalBounds = totalExtent ? niceAxisBounds(totalExtent.min, totalExtent.max) : null;
-    const changedBounds = changedExtent ? niceAxisBounds(changedExtent.min, changedExtent.max) : null;
+    const periodBounds = periodExtent ? niceAxisBounds(periodExtent.min, periodExtent.max) : null;
     this.chart.setOption(
       {
         animation: false,
@@ -110,9 +110,9 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
           {
             type: 'value',
             position: 'right',
-            ...(changedBounds ? { min: changedBounds.min, max: changedBounds.max } : {}),
-            axisLine: { show: true, lineStyle: { color: COLOR_TOTAL_CHANGED } },
-            axisLabel: { color: COLOR_TOTAL_CHANGED, fontSize: 10 },
+            ...(periodBounds ? { min: periodBounds.min, max: periodBounds.max } : {}),
+            axisLine: { show: true, lineStyle: { color: COLOR_TOTAL_PERIOD_CHANGED } },
+            axisLabel: { color: COLOR_TOTAL_PERIOD_CHANGED, fontSize: 10 },
             splitLine: { show: false },
           },
         ],
@@ -127,13 +127,13 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
             lineStyle: { color: COLOR_TOTAL },
           },
           {
-            name: changedLabel,
+            name: periodChangedLabel,
             type: 'line',
             yAxisIndex: 1,
-            data: totalShareholdersChanged,
+            data: totalShareholdersChangedInPeriod,
             showSymbol: true,
-            itemStyle: { color: COLOR_TOTAL_CHANGED },
-            lineStyle: { color: COLOR_TOTAL_CHANGED },
+            itemStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
+            lineStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
           },
         ],
       },
