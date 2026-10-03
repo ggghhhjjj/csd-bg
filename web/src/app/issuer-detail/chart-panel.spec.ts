@@ -26,7 +26,7 @@ vi.mock('echarts', () => ({
   init: () => mockChart,
 }));
 
-function datasetFixture(): ParsedDataset {
+function datasetFixture(overrides: Partial<ParsedDataset> = {}): ParsedDataset {
   return {
     generatedAt: '2026-01-01T00:00:00.000Z',
     dates: ['2024-01-01', '2024-01-02', '2024-01-03', '2024-06-01'],
@@ -37,7 +37,20 @@ function datasetFixture(): ParsedDataset {
     totalSharesValid: new Uint8Array([1, 1, 1, 1]),
     freeFloatValid: new Uint8Array([1, 1, 1, 1]),
     shareholdersValid: new Uint8Array([1, 1, 1, 1]),
+    ...overrides,
   };
+}
+
+function largeScaleDataset(): ParsedDataset {
+  return datasetFixture({
+    dates: ['2024-01-01', '2024-06-01'],
+    totalShares: new Int32Array([1_500_000, 1_500_000]),
+    freeFloat: new Int32Array([1_264_557, 1_441_076]),
+    shareholders: new Int32Array([400, 500]),
+    totalSharesValid: new Uint8Array([1, 1]),
+    freeFloatValid: new Uint8Array([1, 1]),
+    shareholdersValid: new Uint8Array([1, 1]),
+  });
 }
 
 describe('ChartPanel URL state', () => {
@@ -138,6 +151,41 @@ describe('ChartPanel URL state', () => {
     fixture.detectChanges();
 
     expect(emitted).toEqual([{ from: '2024-01-01', to: '2024-06-01' }]);
+  });
+
+  it('sets padded nice y-axis bounds from the visible window', async () => {
+    const fixture = await createPanel({ range: 'max', metrics: 'free_float' });
+    fixture.componentRef.setInput('dataset', largeScaleDataset());
+    fixture.detectChanges();
+
+    const option = mockChart.setOption.mock.calls.at(-1)?.[0] as {
+      yAxis?: Array<{ min?: number; max?: number }>;
+    };
+    expect(option.yAxis?.[0]?.min).toBe(1_250_000);
+    expect(option.yAxis?.[0]?.max).toBe(1_450_000);
+  });
+
+  it('recomputes y-axis bounds after datazoom', async () => {
+    const fixture = await createPanel({ range: 'max', metrics: 'free_float' });
+    fixture.componentRef.setInput('dataset', largeScaleDataset());
+    fixture.detectChanges();
+
+    const dataZoomHandler = mockChart.on.mock.calls.find(([event]) => event === 'datazoom')?.[1] as
+      | (() => void)
+      | undefined;
+    expect(dataZoomHandler).toBeDefined();
+
+    mockChart.getOption.mockReturnValue({
+      dataZoom: [{ startValue: '2024-01-01', endValue: '2024-01-01' }],
+    });
+    mockChart.setOption.mockClear();
+    dataZoomHandler!();
+
+    const option = mockChart.setOption.mock.calls.at(-1)?.[0] as {
+      yAxis?: Array<{ min?: number; max?: number }>;
+    };
+    expect(option.yAxis?.[0]?.min).toBeLessThan(1_264_557);
+    expect(option.yAxis?.[0]?.max).toBeGreaterThan(1_264_557);
   });
 
   async function createPanel(query: Record<string, string>) {

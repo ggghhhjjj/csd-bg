@@ -63,3 +63,22 @@ export function indexForDate(dates: string[], iso: string): number {
   }
   return Math.min(dates.length - 1, Math.max(0, low));
 }
+
+/** Inclusive index span for chart dataZoom / preset windows (matches indexForDate semantics). */
+export function visibleIndexRange(
+  dates: string[],
+  viewStart: string,
+  viewEnd: string,
+): { startIndex: number; endIndex: number } {
+  if (dates.length === 0) {
+    return { startIndex: 0, endIndex: 0 };
+  }
+  const startIso = viewStart || dates[0];
+  const endIso = viewEnd || dates[dates.length - 1];
+  let startIndex = indexForDate(dates, startIso);
+  let endIndex = indexForDate(dates, endIso);
+  if (startIndex > endIndex) {
+    [startIndex, endIndex] = [endIndex, startIndex];
+  }
+  return { startIndex, endIndex };
+}

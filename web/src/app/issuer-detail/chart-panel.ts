@@ -17,7 +17,13 @@ import * as echarts from 'echarts';
 
 import { metricAt, firstLastInRange, formatDelta, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
 import { VectorsStore } from '../core/data/vectors.store';
-import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date-range';
+import {
+  indexForDate,
+  rangeStartIso,
+  visibleIndexRange,
+  type RangePreset,
+} from '../core/data/date-range';
+import { finiteMinMaxInWindow, niceAxisBounds } from '../core/chart/nice-axis-bounds';
 import { LocaleService } from '../core/i18n/locale.service';
 import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from './axis-tooltip-position';
 import { axisIndexFromChartEvent } from './axis-tip-index';
@@ -277,12 +283,16 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     }
     const dates = this.dataset().dates;
     const metrics = this.visibleMetrics();
+    const { startIndex, endIndex } = visibleIndexRange(dates, this.viewStart, this.viewEnd);
     const yAxis = metrics.map((metric, index) => {
       const position = index === 1 ? 'right' : 'left';
+      const extent = finiteMinMaxInWindow(this.seriesValues(metric), startIndex, endIndex);
+      const bounds = extent ? niceAxisBounds(extent.min, extent.max) : null;
       return {
         type: 'value' as const,
         position,
         offset: index >= 2 ? 56 : 0,
+        ...(bounds ? { min: bounds.min, max: bounds.max } : {}),
         axisLine: { show: true, lineStyle: { color: METRIC_COLORS[metric] } },
         axisLabel: { color: METRIC_COLORS[metric] },
         splitLine: { show: index === 0 },
@@ -440,6 +450,7 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private bindDataZoom(): void {
     this.chart?.on('datazoom', () => {
       this.syncViewFromSlider();
+      this.render();
       if (!this.applyingPreset) {
         this.preset.set(null);
         this.syncQueryParams();
