@@ -6,6 +6,7 @@ import {
   aggregateShareholdersDaily,
   hasShareholdersAggregateData,
   issuersWithShareholderChangeInRange,
+  marketTotalShareholdersWindowSpan,
 } from './shareholders-daily-aggregate';
 
 function dayMetrics(
@@ -293,6 +294,38 @@ describe('issuersWithShareholderChangeInRange', () => {
 
     const flags = issuersWithShareholderChangeInRange(dataset, 0, 2);
     expect(Array.from(flags)).toEqual([1, 0]);
+  });
+});
+
+describe('marketTotalShareholdersWindowSpan', () => {
+  it('returns end minus start total for the visible window', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'A' },
+        { id: 2, isin: 'B', name: 'B' },
+      ],
+      ['2024-06-01', '2024-06-02', '2024-06-03'],
+      [
+        [100, 110, 120],
+        [50, 50, 40],
+      ],
+    );
+    const aggregate = aggregateShareholdersDaily(dataset, '2024-06-01', '2024-06-03');
+
+    expect(marketTotalShareholdersWindowSpan(aggregate, '2024-06-01', '2024-06-03')).toEqual({
+      from: '2024-06-01',
+      to: '2024-06-03',
+      startValue: 150,
+      endValue: 160,
+      diff: 10,
+    });
+    expect(marketTotalShareholdersWindowSpan(aggregate, '2024-06-02', '2024-06-02')).toEqual({
+      from: '2024-06-02',
+      to: '2024-06-02',
+      startValue: 160,
+      endValue: 160,
+      diff: 0,
+    });
   });
 });
 

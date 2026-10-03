@@ -1,6 +1,7 @@
 import {
   AfterViewInit,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -21,9 +22,11 @@ import {
   niceAxisBounds,
 } from '../core/chart/nice-axis-bounds';
 import { visibleIndexRange } from '../core/data/date-range';
+import { formatDelta } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
   hasShareholdersAggregateData,
+  marketTotalShareholdersWindowSpan,
   type ShareholdersDailyAggregate,
 } from './shareholders-daily-aggregate';
 import {
@@ -51,6 +54,29 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
   protected readonly i18n = inject(LocaleService);
+
+  protected readonly windowSpan = computed(() => {
+    if (!hasShareholdersAggregateData(this.aggregate())) {
+      return null;
+    }
+    return marketTotalShareholdersWindowSpan(
+      this.aggregate(),
+      this.viewStart(),
+      this.viewEnd(),
+    );
+  });
+
+  protected readonly windowDiffLabel = computed(() => {
+    const span = this.windowSpan();
+    if (!span) {
+      return '';
+    }
+    return this.i18n.text('stats.shareholdersTotalDailyWindowDiff', {
+      from: span.from,
+      to: span.to,
+      diff: formatDelta(span.startValue, span.endValue, false),
+    });
+  });
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -188,6 +214,17 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
       },
       true,
     );
+  }
+
+  protected windowDiffClass(): string {
+    const diff = this.windowSpan()?.diff ?? null;
+    if (diff === null || diff === 0) {
+      return 'shareholders-total-daily-chart__window-diff';
+    }
+    if (diff > 0) {
+      return 'shareholders-total-daily-chart__window-diff shareholders-total-daily-chart__window-diff--up';
+    }
+    return 'shareholders-total-daily-chart__window-diff shareholders-total-daily-chart__window-diff--down';
   }
 
   private totalTooltipFormatter(params: unknown): string {

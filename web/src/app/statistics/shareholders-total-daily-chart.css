@@ -4,9 +4,30 @@
   gap: 0.5rem;
 }
 
+.shareholders-total-daily-chart__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
 .shareholders-total-daily-chart__title {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.shareholders-total-daily-chart__window-diff {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+
+.shareholders-total-daily-chart__window-diff--up {
+  color: #34d399;
+}
+
+.shareholders-total-daily-chart__window-diff--down {
+  color: #f87171;
 }
 
 .shareholders-total-daily-chart__chart {

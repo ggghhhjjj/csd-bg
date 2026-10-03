@@ -77,6 +77,7 @@ const BG = {
   'stats.shareholdersTotalDaily': 'Общ брой акционери (пазар)',
   'stats.shareholdersTotalDailyAll': 'Общо (пазар)',
   'stats.shareholdersTotalDailyChanged': 'Общо при промяна (пазар)',
+  'stats.shareholdersTotalDailyWindowDiff': '{from} → {to}: {diff}',
   'stats.shareholdersTotalPeriodChanged': 'Общо акционери при промяна в периода (пазар)',
   'stats.shareholdersTotalPeriodDaily': 'Общ брой акционери при промяна в периода (пазар)',
 } as const;
@@ -162,6 +163,7 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'stats.shareholdersTotalDaily': 'Total shareholders (market)',
     'stats.shareholdersTotalDailyAll': 'Total (market)',
     'stats.shareholdersTotalDailyChanged': 'Total among issuers with daily change (market)',
+    'stats.shareholdersTotalDailyWindowDiff': '{from} → {to}: {diff}',
     'stats.shareholdersTotalPeriodChanged': 'Total shareholders among issuers with change in period (market)',
     'stats.shareholdersTotalPeriodDaily': 'Total shareholders with change in period (market)',
   },

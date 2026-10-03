@@ -1,4 +1,9 @@
 <div class="shareholders-total-daily-chart">
-  <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+  <div class="shareholders-total-daily-chart__heading">
+    <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
+    @if (windowDiffLabel()) {
+      <p [class]="windowDiffClass()">{{ windowDiffLabel() }}</p>
+    }
+  </div>
   <div #chartHost class="shareholders-total-daily-chart__chart" role="img"></div>
 </div>

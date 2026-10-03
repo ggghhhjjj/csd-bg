@@ -1,4 +1,4 @@
-import { indexForDate } from '../core/data/date-range';
+import { indexForDate, visibleIndexRange } from '../core/data/date-range';
 import { metricAt, type ParsedDataset } from '../core/data/vectors.types';
 
 export type ShareholdersDailyAggregate = {
@@ -139,6 +139,31 @@ export function aggregateShareholdersDaily(
     totalShareholders,
     totalShareholdersChanged,
     totalShareholdersChangedInPeriod,
+  };
+}
+
+/** Market total at the inclusive start/end of the chart dataZoom window. */
+export function marketTotalShareholdersWindowSpan(
+  aggregate: ShareholdersDailyAggregate,
+  viewStart: string,
+  viewEnd: string,
+): { from: string; to: string; startValue: number; endValue: number; diff: number } | null {
+  const { dates, totalShareholders } = aggregate;
+  if (dates.length === 0) {
+    return null;
+  }
+  const { startIndex, endIndex } = visibleIndexRange(dates, viewStart, viewEnd);
+  const startValue = totalShareholders[startIndex];
+  const endValue = totalShareholders[endIndex];
+  if (startValue === undefined || endValue === undefined) {
+    return null;
+  }
+  return {
+    from: dates[startIndex],
+    to: dates[endIndex],
+    startValue,
+    endValue,
+    diff: endValue - startValue,
   };
 }
 
