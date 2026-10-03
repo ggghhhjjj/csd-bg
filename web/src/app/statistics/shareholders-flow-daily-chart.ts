@@ -15,17 +15,9 @@ import * as echarts from 'echarts';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
-  aggregateShareholdersDailyFull,
+  aggregateShareholdersDaily,
   hasShareholdersAggregateData,
 } from './shareholders-daily-aggregate';
-import {
-  clampViewRange,
-  fullSpanForDates,
-  readDataZoomRange,
-  STATISTICS_CHART_GRID_BOTTOM,
-  STATISTICS_CHART_LEGEND_BOTTOM,
-  statisticsDataZoomSlider,
-} from './statistics-chart-data-zoom';
 
 const COLOR_LOSSES = '#f87171';
 const COLOR_GAINS = '#34d399';
@@ -47,24 +39,26 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   protected readonly i18n = inject(LocaleService);
 
-  protected readonly aggregate = computed(() => aggregateShareholdersDailyFull(this.dataset()));
+  protected readonly aggregate = computed(() => {
+    const from = this.startDate();
+    const to = this.endDate();
+    if (!from || !to) {
+      return {
+        dates: [],
+        losses: [],
+        gains: [],
+        totalShareholders: [],
+        totalShareholdersChanged: [],
+        totalShareholdersChangedInPeriod: [],
+      };
+    }
+    return aggregateShareholdersDaily(this.dataset(), from, to);
+  });
 
   protected readonly hasData = computed(() => hasShareholdersAggregateData(this.aggregate()));
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private viewStart = '';
-  private viewEnd = '';
-  private rangeKey = '';
-  private readonly onDataZoom = (): void => {
-    if (!this.chart) {
-      return;
-    }
-    const { dates } = this.aggregate();
-    const range = readDataZoomRange(this.chart, dates, this.viewStart, this.viewEnd);
-    this.viewStart = range.start;
-    this.viewEnd = range.end;
-  };
   private readonly onZrClick = (event: { offsetX?: number; offsetY?: number }): void => {
     if (!this.chart) {
       return;
@@ -86,15 +80,6 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const from = this.startDate();
-      const to = this.endDate();
-      const key = `${from}|${to}`;
-      if (key !== this.rangeKey) {
-        this.rangeKey = key;
-        const window = clampViewRange(from, to, this.aggregate().dates);
-        this.viewStart = window.start;
-        this.viewEnd = window.end;
-      }
       this.aggregate();
       this.i18n.locale();
       this.render();
@@ -103,12 +88,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
-    this.chart.on('datazoom', this.onDataZoom);
     this.chart.getZr().on('click', this.onZrClick);
-    const window = clampViewRange(this.startDate(), this.endDate(), this.aggregate().dates);
-    this.viewStart = window.start;
-    this.viewEnd = window.end;
-    this.rangeKey = `${this.startDate()}|${this.endDate()}`;
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -118,7 +98,6 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
-    this.chart?.off('datazoom', this.onDataZoom);
     this.chart?.getZr().off('click', this.onZrClick);
     this.chart?.dispose();
   }
@@ -134,16 +113,13 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
     const incomingLabel = this.i18n.text('stats.shareholdersGainsDaily');
     const outgoingLabel = this.i18n.text('stats.shareholdersLossesDaily');
-    const span = fullSpanForDates(dates);
-    const zoom = clampViewRange(this.viewStart, this.viewEnd, dates);
-    this.viewStart = zoom.start || span.start;
-    this.viewEnd = zoom.end || span.end;
+    const bottom = dates.length > 8 ? 88 : 64;
     this.chart.setOption(
       {
         animation: false,
         legend: {
           show: true,
-          bottom: STATISTICS_CHART_LEGEND_BOTTOM,
+          bottom: 0,
           textStyle: { color: '#94a3b8', fontSize: 11 },
         },
         tooltip: {
@@ -152,8 +128,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
           confine: true,
           formatter: (params: unknown) => this.flowTooltipFormatter(params, incomingLabel, outgoingLabel),
         },
-        grid: { left: 56, right: 16, top: 16, bottom: STATISTICS_CHART_GRID_BOTTOM },
-        dataZoom: [statisticsDataZoomSlider(this.viewStart, this.viewEnd)],
+        grid: { left: 56, right: 16, top: 16, bottom },
         xAxis: {
           type: 'category',
           data: dates,

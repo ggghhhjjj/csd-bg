@@ -10,9 +10,6 @@ const { mockChart } = vi.hoisted(() => ({
     setOption: vi.fn(),
     dispose: vi.fn(),
     resize: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    getOption: vi.fn(() => ({ dataZoom: [{ startValue: '2024-06-01', endValue: '2024-06-02' }] })),
   },
 }));
 
@@ -25,8 +22,6 @@ describe('ShareholdersTotalDailyChart', () => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
     mockChart.setOption.mockClear();
-    mockChart.on.mockClear();
-    mockChart.off.mockClear();
     if (!globalThis.ResizeObserver) {
       globalThis.ResizeObserver = class {
         observe(): void {}
@@ -53,40 +48,11 @@ describe('ShareholdersTotalDailyChart', () => {
       legend?: { show?: boolean };
       series?: Array<{ type?: string }>;
       tooltip?: { formatter?: unknown };
-      dataZoom?: Array<{ type?: string; startValue?: string; endValue?: string }>;
     };
     expect(totalOption.legend?.show).toBe(true);
     expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
     expect(typeof totalOption.tooltip?.formatter).toBe('function');
-    const xAxis = (totalOption as { xAxis?: { data?: string[] } }).xAxis;
-    expect(xAxis?.data).toEqual(['2024-06-01', '2024-06-02']);
-    expect(totalOption.dataZoom?.[0]?.type).toBe('slider');
-    expect(totalOption.dataZoom?.[0]?.startValue).toBe('2024-06-02');
-    expect(totalOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
-    expect(mockChart.on).toHaveBeenCalledWith('datazoom', expect.any(Function));
-  });
-
-  it('updates dataZoom window when startDate and endDate inputs change', async () => {
-    const fixture = TestBed.createComponent(ShareholdersTotalDailyChart);
-    fixture.componentRef.setInput('dataset', datasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-02');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    mockChart.setOption.mockClear();
-
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    expect(mockChart.setOption).toHaveBeenCalled();
-    const lastOption = mockChart.setOption.mock.calls.at(-1)?.[0] as {
-      dataZoom?: Array<{ startValue?: string; endValue?: string }>;
-    };
-    expect(lastOption.dataZoom?.[0]?.startValue).toBe('2024-06-01');
-    expect(lastOption.dataZoom?.[0]?.endValue).toBe('2024-06-02');
   });
 
   it('shows empty state when range has no shareholder totals', async () => {
