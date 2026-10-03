@@ -6,6 +6,7 @@ import {
   inject,
   input,
   OnDestroy,
+  output,
   viewChild,
 } from '@angular/core';
 import * as echarts from 'echarts';
@@ -15,6 +16,11 @@ import {
   hasShareholdersAggregateData,
   type ShareholdersDailyAggregate,
 } from './shareholders-daily-aggregate';
+import {
+  bindChartDatePick,
+  selectedDateMarkLine,
+  type ChartDatePickBinding,
+} from './shareholders-chart-date-pick';
 
 const COLOR_LOSSES = '#f87171';
 const COLOR_GAINS = '#34d399';
@@ -27,6 +33,8 @@ const FLOW_STACK_ID = 'flow';
 })
 export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   readonly aggregate = input.required<ShareholdersDailyAggregate>();
+  readonly selectedDate = input<string | null>(null);
+  readonly dateSelected = output<string>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -34,10 +42,12 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private datePickBinding: ChartDatePickBinding | null = null;
 
   constructor() {
     effect(() => {
       this.aggregate();
+      this.selectedDate();
       this.i18n.locale();
       this.render();
     });
@@ -45,6 +55,12 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
+    this.datePickBinding = bindChartDatePick(
+      this.chart,
+      this.chartHost().nativeElement,
+      () => this.aggregate().dates,
+      (iso) => this.dateSelected.emit(iso),
+    );
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -53,6 +69,8 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.datePickBinding?.dispose();
+    this.datePickBinding = null;
     this.resizeObserver?.disconnect();
     this.chart?.dispose();
   }
@@ -69,6 +87,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
     const incomingLabel = this.i18n.text('stats.shareholdersGainsDaily');
     const outgoingLabel = this.i18n.text('stats.shareholdersLossesDaily');
     const bottom = dates.length > 8 ? 88 : 64;
+    const markLine = selectedDateMarkLine(this.selectedDate(), dates);
     this.chart.setOption(
       {
         animation: false,
@@ -101,13 +120,16 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
             type: 'bar',
             stack: FLOW_STACK_ID,
             data: gains,
+            triggerEvent: true,
             itemStyle: { color: COLOR_GAINS },
+            ...(markLine ? { markLine } : {}),
           },
           {
             name: outgoingLabel,
             type: 'bar',
             stack: FLOW_STACK_ID,
             data: losses,
+            triggerEvent: true,
             itemStyle: { color: COLOR_LOSSES },
           },
         ],

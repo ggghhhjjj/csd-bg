@@ -6,6 +6,7 @@ import {
   inject,
   input,
   OnDestroy,
+  output,
   viewChild,
 } from '@angular/core';
 import * as echarts from 'echarts';
@@ -19,6 +20,11 @@ import {
   hasShareholdersAggregateData,
   type ShareholdersDailyAggregate,
 } from './shareholders-daily-aggregate';
+import {
+  bindChartDatePick,
+  selectedDateMarkLine,
+  type ChartDatePickBinding,
+} from './shareholders-chart-date-pick';
 
 const COLOR_TOTAL = '#fbbf24';
 const COLOR_TOTAL_PERIOD_CHANGED = '#c084fc';
@@ -30,6 +36,8 @@ const COLOR_TOTAL_PERIOD_CHANGED = '#c084fc';
 })
 export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestroy {
   readonly aggregate = input.required<ShareholdersDailyAggregate>();
+  readonly selectedDate = input<string | null>(null);
+  readonly dateSelected = output<string>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -37,10 +45,12 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
 
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private datePickBinding: ChartDatePickBinding | null = null;
 
   constructor() {
     effect(() => {
       this.aggregate();
+      this.selectedDate();
       this.i18n.locale();
       this.render();
     });
@@ -48,6 +58,12 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
 
   ngAfterViewInit(): void {
     this.chart = echarts.init(this.chartHost().nativeElement);
+    this.datePickBinding = bindChartDatePick(
+      this.chart,
+      this.chartHost().nativeElement,
+      () => this.aggregate().dates,
+      (iso) => this.dateSelected.emit(iso),
+    );
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -56,6 +72,8 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
   }
 
   ngOnDestroy(): void {
+    this.datePickBinding?.dispose();
+    this.datePickBinding = null;
     this.resizeObserver?.disconnect();
     this.chart?.dispose();
   }
@@ -77,6 +95,7 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
     const periodExtent = finiteMinMaxInWindow(totalShareholdersChangedInPeriod, 0, windowEnd);
     const totalBounds = totalExtent ? niceAxisBounds(totalExtent.min, totalExtent.max) : null;
     const periodBounds = periodExtent ? niceAxisBounds(periodExtent.min, periodExtent.max) : null;
+    const markLine = selectedDateMarkLine(this.selectedDate(), dates);
     this.chart.setOption(
       {
         animation: false,
@@ -123,8 +142,10 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
             yAxisIndex: 0,
             data: totalShareholders,
             showSymbol: true,
+            triggerEvent: true,
             itemStyle: { color: COLOR_TOTAL },
             lineStyle: { color: COLOR_TOTAL },
+            ...(markLine ? { markLine } : {}),
           },
           {
             name: periodChangedLabel,
@@ -132,6 +153,7 @@ export class ShareholdersTotalPeriodDailyChart implements AfterViewInit, OnDestr
             yAxisIndex: 1,
             data: totalShareholdersChangedInPeriod,
             showSymbol: true,
+            triggerEvent: true,
             itemStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
             lineStyle: { color: COLOR_TOTAL_PERIOD_CHANGED },
           },

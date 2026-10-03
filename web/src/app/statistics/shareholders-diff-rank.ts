@@ -38,6 +38,15 @@ export class ShareholdersDiffRank {
 
   protected readonly canToggleLimit = computed(() => this.ranked().length > TOP_RANK_COUNT);
 
+  protected readonly rangeLabel = computed(() => {
+    const from = this.startDate();
+    const to = this.endDate();
+    if (!from || !to) {
+      return '';
+    }
+    return this.i18n.text('stats.shareholdersDiffRange', { from, to });
+  });
+
   protected readonly sortLabel = computed(() =>
     this.order() === 'desc' ? this.i18n.text('stats.sortDesc') : this.i18n.text('stats.sortAsc'),
   );

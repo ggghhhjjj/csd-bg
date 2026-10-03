@@ -11,10 +11,22 @@
   gap: 0.5rem;
 }
 
-.shareholders-diff-rank__title {
+.shareholders-diff-rank__heading {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.shareholders-diff-rank__title {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.shareholders-diff-rank__range {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
 .shareholders-diff-rank__actions {

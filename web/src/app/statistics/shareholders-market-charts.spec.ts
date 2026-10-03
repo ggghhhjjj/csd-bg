@@ -5,13 +5,33 @@ import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { ShareholdersMarketCharts } from './shareholders-market-charts';
 
-const { mockChart } = vi.hoisted(() => ({
-  mockChart: {
-    setOption: vi.fn(),
-    dispose: vi.fn(),
-    resize: vi.fn(),
-  },
-}));
+const { mockChart, zrClickHandler } = vi.hoisted(() => {
+  let handler: ((params: unknown) => void) | undefined;
+  const zr = {
+    on: vi.fn((_event: string, fn: (params: unknown) => void) => {
+      handler = fn;
+    }),
+    off: vi.fn(),
+  };
+  return {
+    zrClickHandler: {
+      get: () => handler,
+      set: (value: ((params: unknown) => void) | undefined) => {
+        handler = value;
+      },
+    },
+    mockChart: {
+      setOption: vi.fn(),
+      dispose: vi.fn(),
+      resize: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      getZr: vi.fn(() => zr),
+      convertFromPixel: vi.fn(() => ['2024-06-02']),
+      convertToPixel: vi.fn(),
+    },
+  };
+});
 
 vi.mock('echarts', () => ({
   init: () => mockChart,
@@ -22,6 +42,8 @@ describe('ShareholdersMarketCharts', () => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
     document.documentElement.lang = 'bg';
     mockChart.setOption.mockClear();
+    mockChart.on.mockClear();
+    zrClickHandler.set(undefined);
     if (!globalThis.ResizeObserver) {
       globalThis.ResizeObserver = class {
         observe(): void {}
@@ -92,6 +114,25 @@ describe('ShareholdersMarketCharts', () => {
       'Няма данни',
     );
     expect(mockChart.setOption).not.toHaveBeenCalled();
+  });
+
+  it('registers zrender click handlers and re-emits a picked date from pointer position', async () => {
+    const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+    fixture.componentRef.setInput('dataset', datasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-02');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(mockChart.getZr).toHaveBeenCalled();
+
+    const emitted: string[] = [];
+    fixture.componentInstance.dateSelected.subscribe((iso) => emitted.push(iso));
+    zrClickHandler.get()?.({
+      event: new MouseEvent('click', { clientX: 0, clientY: 0 }),
+    });
+    expect(emitted).toEqual(['2024-06-02']);
   });
 });
 

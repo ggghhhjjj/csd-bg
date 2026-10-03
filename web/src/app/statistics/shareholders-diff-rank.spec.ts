@@ -14,6 +14,25 @@ describe('ShareholdersDiffRank', () => {
     document.documentElement.lang = 'bg';
   });
 
+  it('shows the selected date range under the title', async () => {
+    const fixture = await createComponent();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.shareholders-diff-rank__range')?.textContent).toContain(
+      '2024-01-01 → 2024-07-01',
+    );
+  });
+
+  it('ranks by day-over-day change when the range is two adjacent report days', async () => {
+    const fixture = await createComponent();
+    fixture.componentRef.setInput('startDate', DATES[1]);
+    fixture.componentRef.setInput('endDate', DATES[2]);
+    fixture.detectChanges();
+
+    expect(rowNames(fixture.nativeElement)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin']);
+    expect(rowNames(fixture.nativeElement)[0]).toBe('Delta');
+  });
+
   it('shows the top 5 issuers in descending order by default', async () => {
     const fixture = await createComponent();
     fixture.detectChanges();

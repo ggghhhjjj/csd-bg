@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
@@ -20,6 +20,8 @@ export class ShareholdersMarketCharts {
   readonly dataset = input.required<ParsedDataset>();
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
+  readonly selectedDate = input<string | null>(null);
+  readonly dateSelected = output<string>();
 
   protected readonly i18n = inject(LocaleService);
 
