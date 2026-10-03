@@ -9,7 +9,7 @@ import { LocaleService } from '../core/i18n/locale.service';
   styleUrl: './range-presets.css',
 })
 export class RangePresets {
-  readonly preset = input.required<RangePreset>();
+  readonly activePreset = input.required<RangePreset | null>();
   readonly presetChange = output<RangePreset>();
 
   private readonly i18n = inject(LocaleService);

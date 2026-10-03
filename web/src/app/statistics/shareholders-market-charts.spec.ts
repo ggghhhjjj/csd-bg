@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
@@ -60,8 +60,7 @@ describe('ShareholdersMarketCharts', () => {
   it('renders flow chart title and configures stacked flow plus total charts', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', datasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-02');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
+    setPeriodAndView(fixture, '2024-06-02', '2024-06-02');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -124,8 +123,7 @@ describe('ShareholdersMarketCharts', () => {
   it('shows empty state when range has no shareholder totals', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', emptyFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-01');
+    setPeriodAndView(fixture, '2024-06-01', '2024-06-01');
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.shareholders-market-charts__empty')?.textContent).toContain(
@@ -134,13 +132,12 @@ describe('ShareholdersMarketCharts', () => {
     expect(mockChart.setOption).not.toHaveBeenCalled();
   });
 
-  it('emits viewRangeSettled after scrolling stops', async () => {
+  it('still emits viewRangeSettled when parent inputs echo the scrolled range', async () => {
     vi.useFakeTimers();
     try {
       const fixture = TestBed.createComponent(ShareholdersMarketCharts);
       fixture.componentRef.setInput('dataset', wideDatasetFixture());
-      fixture.componentRef.setInput('startDate', '2024-06-01');
-      fixture.componentRef.setInput('endDate', '2024-06-03');
+      setPeriodAndView(fixture, '2024-06-01', '2024-06-03');
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -155,6 +152,40 @@ describe('ShareholdersMarketCharts', () => {
         from: '2024-06-02',
         to: '2024-06-03',
       });
+      fixture.componentRef.setInput('viewStart', '2024-06-02');
+      fixture.componentRef.setInput('viewEnd', '2024-06-03');
+      fixture.detectChanges();
+
+      vi.advanceTimersByTime(350);
+      expect(settled).toEqual([{ from: '2024-06-02', to: '2024-06-03' }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('emits viewRangeSettled after scrolling stops', async () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+      fixture.componentRef.setInput('dataset', wideDatasetFixture());
+      setPeriodAndView(fixture, '2024-06-01', '2024-06-03');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const live: Array<{ from: string; to: string }> = [];
+      const settled: Array<{ from: string; to: string }> = [];
+      fixture.componentInstance.viewRangeChange.subscribe((range) => live.push(range));
+      fixture.componentInstance.viewRangeSettled.subscribe((range) => settled.push(range));
+
+      type Host = ShareholdersMarketCharts & {
+        onChartViewRangeChange: (range: { from: string; to: string }) => void;
+      };
+      (fixture.componentInstance as Host).onChartViewRangeChange({
+        from: '2024-06-02',
+        to: '2024-06-03',
+      });
+      expect(live).toEqual([{ from: '2024-06-02', to: '2024-06-03' }]);
       expect(settled).toEqual([]);
 
       vi.advanceTimersByTime(350);
@@ -167,8 +198,7 @@ describe('ShareholdersMarketCharts', () => {
   it('recomputes line y-axis bounds after datazoom and syncs all charts', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', wideDatasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-03');
+    setPeriodAndView(fixture, '2024-06-01', '2024-06-03');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -212,8 +242,7 @@ describe('ShareholdersMarketCharts', () => {
   it('registers zrender click handlers and re-emits a picked date from pointer position', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', datasetFixture());
-    fixture.componentRef.setInput('startDate', '2024-06-01');
-    fixture.componentRef.setInput('endDate', '2024-06-02');
+    setPeriodAndView(fixture, '2024-06-01', '2024-06-02');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -228,6 +257,13 @@ describe('ShareholdersMarketCharts', () => {
     expect(emitted).toEqual(['2024-06-02']);
   });
 });
+
+function setPeriodAndView(fixture: ComponentFixture<ShareholdersMarketCharts>, from: string, to: string): void {
+  fixture.componentRef.setInput('startDate', from);
+  fixture.componentRef.setInput('endDate', to);
+  fixture.componentRef.setInput('viewStart', from);
+  fixture.componentRef.setInput('viewEnd', to);
+}
 
 function wideDatasetFixture(): ParsedDataset {
   return packDataset(

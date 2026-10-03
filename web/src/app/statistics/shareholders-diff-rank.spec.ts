@@ -97,6 +97,12 @@ async function createComponent(dataset: ParsedDataset = rankingFixture()) {
   fixture.componentRef.setInput('dataset', dataset);
   fixture.componentRef.setInput('startDate', DATES[0]);
   fixture.componentRef.setInput('endDate', DATES[2]);
+  fixture.componentRef.setInput('order', 'desc');
+  fixture.componentRef.setInput('showAll', false);
+  fixture.componentInstance.orderChange.subscribe((order) => fixture.componentRef.setInput('order', order));
+  fixture.componentInstance.showAllChange.subscribe((showAll) =>
+    fixture.componentRef.setInput('showAll', showAll),
+  );
   return fixture;
 }
 

@@ -1,13 +1,24 @@
 <section class="statistics">
   @if (dataset(); as data) {
-    <app-range-presets [preset]="preset()" (presetChange)="setPreset($event)" />
-    <app-shareholders-diff-rank [dataset]="data" [startDate]="diffRankRange().from" [endDate]="diffRankRange().to" />
+    <app-range-presets [activePreset]="activePreset()" (presetChange)="setPreset($event)" />
+    <app-shareholders-diff-rank
+      [dataset]="data"
+      [startDate]="diffRankRange().from"
+      [endDate]="diffRankRange().to"
+      [order]="rankOrder()"
+      [showAll]="showAllRank()"
+      (orderChange)="onRankOrderChange($event)"
+      (showAllChange)="onShowAllRankChange($event)"
+    />
     <app-shareholders-market-charts
       [dataset]="data"
       [startDate]="viewRange().from"
       [endDate]="viewRange().to"
+      [viewStart]="chartSliderRange().from"
+      [viewEnd]="chartSliderRange().to"
       [selectedDate]="selectedChartDate()"
       (dateSelected)="onChartDateSelected($event)"
+      (viewRangeChange)="onChartViewRangeChange($event)"
       (viewRangeSettled)="onChartViewRangeSettled($event)"
     />
   }

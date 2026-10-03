@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import type { ParsedDataset } from '../core/data/vectors.types';
@@ -21,10 +21,13 @@ export class ShareholdersDiffRank {
   readonly dataset = input.required<ParsedDataset>();
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
+  readonly order = input.required<RankOrder>();
+  readonly showAll = input.required<boolean>();
+
+  readonly orderChange = output<RankOrder>();
+  readonly showAllChange = output<boolean>();
 
   protected readonly i18n = inject(LocaleService);
-  protected readonly order = signal<RankOrder>('desc');
-  protected readonly showAll = signal(false);
 
   protected readonly ranked = computed(() => {
     const from = this.startDate();
@@ -67,11 +70,11 @@ export class ShareholdersDiffRank {
   );
 
   protected toggleOrder(): void {
-    this.order.update((current) => (current === 'desc' ? 'asc' : 'desc'));
+    this.orderChange.emit(this.order() === 'desc' ? 'asc' : 'desc');
   }
 
   protected toggleLimit(): void {
-    this.showAll.update((current) => !current);
+    this.showAllChange.emit(!this.showAll());
   }
 
   protected deltaClass(diff: number): string {

@@ -5,7 +5,7 @@
         <button
           class="range-presets__preset"
           type="button"
-          [class.range-presets__preset--active]="preset() === item.id"
+          [class.range-presets__preset--active]="activePreset() === item.id"
           (click)="select(item.id)"
         >
           {{ item.label }}

@@ -21,10 +21,16 @@ const VIEW_RANGE_SETTLE_MS = 350;
 })
 export class ShareholdersMarketCharts implements OnDestroy {
   readonly dataset = input.required<ParsedDataset>();
+  /** Aggregate period bounds (preset window). */
   readonly startDate = input.required<string>();
   readonly endDate = input.required<string>();
+  /** Chart dataZoom slider window (controlled by parent). */
+  readonly viewStart = input.required<string>();
+  readonly viewEnd = input.required<string>();
   readonly selectedDate = input<string | null>(null);
   readonly dateSelected = output<string>();
+  /** Fired on each dataZoom change (before debounced {@link viewRangeSettled}). */
+  readonly viewRangeChange = output<{ from: string; to: string }>();
   readonly viewRangeSettled = output<{ from: string; to: string }>();
 
   protected readonly i18n = inject(LocaleService);
@@ -32,7 +38,9 @@ export class ShareholdersMarketCharts implements OnDestroy {
   protected readonly chartViewStart = signal('');
   protected readonly chartViewEnd = signal('');
 
-  private applyingPresetRange = false;
+  private applyingExternalRange = false;
+  /** True while the slider moved locally and parent `viewStart`/`viewEnd` may still be stale. */
+  private userAdjustingView = false;
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingSettled: { from: string; to: string } | null = null;
 
@@ -65,14 +73,22 @@ export class ShareholdersMarketCharts implements OnDestroy {
 
   constructor() {
     effect(() => {
-      const from = this.startDate();
-      const to = this.endDate();
+      const from = this.viewStart();
+      const to = this.viewEnd();
+      // Parent echoed our scroll range; do not cancel the debounced settle timer.
+      if (from === this.chartViewStart() && to === this.chartViewEnd()) {
+        this.userAdjustingView = false;
+        return;
+      }
+      if (this.userAdjustingView) {
+        return;
+      }
       this.cancelViewRangeSettled();
-      this.applyingPresetRange = true;
+      this.applyingExternalRange = true;
       this.chartViewStart.set(from);
       this.chartViewEnd.set(to);
       queueMicrotask(() => {
-        this.applyingPresetRange = false;
+        this.applyingExternalRange = false;
       });
     });
   }
@@ -82,14 +98,16 @@ export class ShareholdersMarketCharts implements OnDestroy {
   }
 
   protected onChartViewRangeChange(range: { from: string; to: string }): void {
-    if (this.applyingPresetRange) {
+    if (this.applyingExternalRange) {
       return;
     }
     if (range.from === this.chartViewStart() && range.to === this.chartViewEnd()) {
       return;
     }
+    this.userAdjustingView = true;
     this.chartViewStart.set(range.from);
     this.chartViewEnd.set(range.to);
+    this.viewRangeChange.emit(range);
     this.scheduleViewRangeSettled(range);
   }
 
@@ -109,6 +127,7 @@ export class ShareholdersMarketCharts implements OnDestroy {
       if (pending.from !== this.chartViewStart() || pending.to !== this.chartViewEnd()) {
         return;
       }
+      this.userAdjustingView = false;
       this.viewRangeSettled.emit(pending);
     }, VIEW_RANGE_SETTLE_MS);
   }
