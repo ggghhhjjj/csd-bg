@@ -26,6 +26,9 @@ const { mockChart, zrClickHandler } = vi.hoisted(() => {
       resize: vi.fn(),
       on: vi.fn(),
       off: vi.fn(),
+      getOption: vi.fn(() => ({
+        dataZoom: [{ startValue: '2024-06-01', endValue: '2024-06-01' }],
+      })),
       getZr: vi.fn(() => zr),
       convertFromPixel: vi.fn(() => ['2024-06-02']),
       convertToPixel: vi.fn(),
@@ -43,6 +46,7 @@ describe('ShareholdersMarketCharts', () => {
     document.documentElement.lang = 'bg';
     mockChart.setOption.mockClear();
     mockChart.on.mockClear();
+    mockChart.getOption.mockClear();
     zrClickHandler.set(undefined);
     if (!globalThis.ResizeObserver) {
       globalThis.ResizeObserver = class {
@@ -84,6 +88,20 @@ describe('ShareholdersMarketCharts', () => {
       })
       .filter((option) => option.series?.every((s) => s.type === 'line'));
     expect(lineOptions.length).toBe(2);
+    for (const option of mockChart.setOption.mock.calls.map((call) => call[0] as {
+      dataZoom?: Array<{ type?: string; startValue?: string; endValue?: string }>;
+      xAxis?: { data?: string[] };
+    })) {
+      expect(option.dataZoom?.[0]?.type).toBe('slider');
+      expect(option.dataZoom?.[0]?.startValue).toBe('2024-06-02');
+      expect(option.dataZoom?.[0]?.endValue).toBe('2024-06-02');
+    }
+
+    const flowWithAxis = mockChart.setOption.mock.calls.find(
+      (call) => (call[0] as { series?: Array<{ type?: string }> }).series?.every((s) => s.type === 'bar'),
+    )?.[0] as { xAxis?: { data?: string[] } };
+    expect(flowWithAxis?.xAxis?.data).toEqual(['2024-06-01', '2024-06-02']);
+
     for (const totalOption of lineOptions) {
       expect(totalOption.legend?.show).toBe(true);
       expect(totalOption.series?.length).toBe(2);
@@ -116,6 +134,51 @@ describe('ShareholdersMarketCharts', () => {
     expect(mockChart.setOption).not.toHaveBeenCalled();
   });
 
+  it('recomputes line y-axis bounds after datazoom and syncs all charts', async () => {
+    const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+    fixture.componentRef.setInput('dataset', wideDatasetFixture());
+    fixture.componentRef.setInput('startDate', '2024-06-01');
+    fixture.componentRef.setInput('endDate', '2024-06-03');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const lineBefore = mockChart.setOption.mock.calls
+      .map((call) => call[0] as { yAxis?: Array<{ min?: number; max?: number }>; series?: Array<{ type?: string }> })
+      .filter((option) => option.series?.every((s) => s.type === 'line'))
+      .at(-1);
+    const minBefore = lineBefore?.yAxis?.[0]?.min;
+    const maxBefore = lineBefore?.yAxis?.[0]?.max;
+
+    const dataZoomHandler = mockChart.on.mock.calls.find(([event]) => event === 'datazoom')?.[1] as
+      | (() => void)
+      | undefined;
+    expect(dataZoomHandler).toBeDefined();
+
+    mockChart.getOption.mockReturnValue({
+      dataZoom: [{ startValue: '2024-06-03', endValue: '2024-06-03' }],
+    });
+    mockChart.setOption.mockClear();
+    dataZoomHandler!();
+    fixture.detectChanges();
+
+    const lineAfter = mockChart.setOption.mock.calls
+      .map((call) => call[0] as {
+        dataZoom?: Array<{ startValue?: string; endValue?: string }>;
+        yAxis?: Array<{ min?: number; max?: number }>;
+        series?: Array<{ type?: string }>;
+      })
+      .filter((option) => option.series?.every((s) => s.type === 'line'));
+    expect(lineAfter.length).toBeGreaterThanOrEqual(2);
+    for (const option of lineAfter) {
+      expect(option.dataZoom?.[0]?.startValue).toBe('2024-06-03');
+      expect(option.dataZoom?.[0]?.endValue).toBe('2024-06-03');
+    }
+    const narrowed = lineAfter.at(-1);
+    expect(narrowed?.yAxis?.[0]?.min).not.toBe(minBefore);
+    expect(narrowed?.yAxis?.[0]?.max).not.toBe(maxBefore);
+  });
+
   it('registers zrender click handlers and re-emits a picked date from pointer position', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', datasetFixture());
@@ -135,6 +198,20 @@ describe('ShareholdersMarketCharts', () => {
     expect(emitted).toEqual(['2024-06-02']);
   });
 });
+
+function wideDatasetFixture(): ParsedDataset {
+  return packDataset(
+    [
+      { id: 1, isin: 'A', name: 'A' },
+      { id: 2, isin: 'B', name: 'B' },
+    ],
+    ['2024-06-01', '2024-06-02', '2024-06-03'],
+    [
+      [100, 200, 5000],
+      [100, 200, 5000],
+    ],
+  );
+}
 
 function datasetFixture(): ParsedDataset {
   return packDataset(

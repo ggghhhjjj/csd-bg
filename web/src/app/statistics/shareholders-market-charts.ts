@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
@@ -25,10 +25,16 @@ export class ShareholdersMarketCharts {
 
   protected readonly i18n = inject(LocaleService);
 
+  protected readonly chartViewStart = signal('');
+  protected readonly chartViewEnd = signal('');
+
+  private applyingPresetRange = false;
+
   protected readonly aggregate = computed(() => {
+    const dataset = this.dataset();
     const from = this.startDate();
     const to = this.endDate();
-    if (!from || !to) {
+    if (dataset.dates.length === 0) {
       return {
         dates: [],
         losses: [],
@@ -38,8 +44,40 @@ export class ShareholdersMarketCharts {
         totalShareholdersChangedInPeriod: [],
       };
     }
-    return aggregateShareholdersDaily(this.dataset(), from, to);
+    const chartFrom = dataset.dates[0] ?? '';
+    const chartTo = dataset.dates[dataset.dates.length - 1] ?? '';
+    if (!chartFrom || !chartTo) {
+      return aggregateShareholdersDaily(dataset, '', '');
+    }
+    return aggregateShareholdersDaily(dataset, chartFrom, chartTo, {
+      periodFrom: from || chartFrom,
+      periodTo: to || chartTo,
+    });
   });
 
   protected readonly hasData = computed(() => hasShareholdersAggregateData(this.aggregate()));
+
+  constructor() {
+    effect(() => {
+      const from = this.startDate();
+      const to = this.endDate();
+      this.applyingPresetRange = true;
+      this.chartViewStart.set(from);
+      this.chartViewEnd.set(to);
+      queueMicrotask(() => {
+        this.applyingPresetRange = false;
+      });
+    });
+  }
+
+  protected onChartViewRangeChange(range: { from: string; to: string }): void {
+    if (this.applyingPresetRange) {
+      return;
+    }
+    if (range.from === this.chartViewStart() && range.to === this.chartViewEnd()) {
+      return;
+    }
+    this.chartViewStart.set(range.from);
+    this.chartViewEnd.set(range.to);
+  }
 }

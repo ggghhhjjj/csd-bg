@@ -38,6 +38,12 @@ export function issuersWithShareholderChangeInRange(
   return changed;
 }
 
+export type AggregateShareholdersDailyOptions = {
+  /** Issuer set for `totalShareholdersChangedInPeriod`; defaults to the chart from/to range. */
+  periodFrom?: string;
+  periodTo?: string;
+};
+
 /**
  * Day-over-day change uses the previous row in `dataset.dates` (prior report day),
  * not calendar days. The first global date has zero gains/losses.
@@ -46,6 +52,7 @@ export function aggregateShareholdersDaily(
   dataset: ParsedDataset,
   fromIso: string,
   toIso: string,
+  options?: AggregateShareholdersDailyOptions,
 ): ShareholdersDailyAggregate {
   const start = fromIso || dataset.dates[0] || '';
   const end = toIso || dataset.dates[dataset.dates.length - 1] || '';
@@ -64,7 +71,18 @@ export function aggregateShareholdersDaily(
   const toIndex = indexForDate(dataset.dates, end);
   const rangeStart = Math.min(fromIndex, toIndex);
   const rangeEnd = Math.max(fromIndex, toIndex);
-  const changedInPeriod = issuersWithShareholderChangeInRange(dataset, rangeStart, rangeEnd);
+
+  const periodStart = options?.periodFrom ?? start;
+  const periodEnd = options?.periodTo ?? end;
+  const periodFromIndex = indexForDate(dataset.dates, periodStart);
+  const periodToIndex = indexForDate(dataset.dates, periodEnd);
+  const periodRangeStart = Math.min(periodFromIndex, periodToIndex);
+  const periodRangeEnd = Math.max(periodFromIndex, periodToIndex);
+  const changedInPeriod = issuersWithShareholderChangeInRange(
+    dataset,
+    periodRangeStart,
+    periodRangeEnd,
+  );
 
   const dates: string[] = [];
   const losses: number[] = [];

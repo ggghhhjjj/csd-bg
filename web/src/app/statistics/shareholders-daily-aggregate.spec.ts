@@ -111,6 +111,34 @@ describe('aggregateShareholdersDaily', () => {
     expect(result.totalShareholdersChangedInPeriod).toEqual([90]);
   });
 
+  it('uses period bounds for changed-in-period while chart range spans all dates', () => {
+    const dataset = packDataset(
+      [
+        { id: 1, isin: 'A', name: 'Volatile A' },
+        { id: 2, isin: 'B', name: 'Stable B' },
+      ],
+      ['2024-06-01', '2024-06-02', '2024-06-03'],
+      [
+        [100, 110, 100],
+        [1000, 1000, 1000],
+      ],
+    );
+
+    const full = aggregateShareholdersDaily(dataset, '2024-06-01', '2024-06-03', {
+      periodFrom: '2024-06-02',
+      periodTo: '2024-06-02',
+    });
+
+    expect(full.dates).toEqual(['2024-06-01', '2024-06-02', '2024-06-03']);
+    expect(full.totalShareholdersChangedInPeriod).toEqual([100, 110, 100]);
+
+    const narrowPeriod = aggregateShareholdersDaily(dataset, '2024-06-01', '2024-06-03', {
+      periodFrom: '2024-06-01',
+      periodTo: '2024-06-01',
+    });
+    expect(narrowPeriod.totalShareholdersChangedInPeriod).toEqual([0, 0, 0]);
+  });
+
   it('returns empty series when the dataset has no dates', () => {
     const dataset = packDataset([{ id: 1, isin: 'A', name: 'A' }], [], []);
     expect(aggregateShareholdersDaily(dataset, '2024-06-01', '2024-06-01')).toEqual({

@@ -5,17 +5,26 @@
   <div class="shareholders-market-charts__panels" [class.shareholders-market-charts__panels--hidden]="!hasData()">
     <app-shareholders-flow-daily-chart
       [aggregate]="aggregate()"
+      [viewStart]="chartViewStart()"
+      [viewEnd]="chartViewEnd()"
       [selectedDate]="selectedDate()"
+      (viewRangeChange)="onChartViewRangeChange($event)"
       (dateSelected)="dateSelected.emit($event)"
     />
     <app-shareholders-total-daily-chart
       [aggregate]="aggregate()"
+      [viewStart]="chartViewStart()"
+      [viewEnd]="chartViewEnd()"
       [selectedDate]="selectedDate()"
+      (viewRangeChange)="onChartViewRangeChange($event)"
       (dateSelected)="dateSelected.emit($event)"
     />
     <app-shareholders-total-period-daily-chart
       [aggregate]="aggregate()"
+      [viewStart]="chartViewStart()"
+      [viewEnd]="chartViewEnd()"
       [selectedDate]="selectedDate()"
+      (viewRangeChange)="onChartViewRangeChange($event)"
       (dateSelected)="dateSelected.emit($event)"
     />
   </div>

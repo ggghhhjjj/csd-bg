@@ -12,9 +12,15 @@ import {
 import * as echarts from 'echarts';
 
 import {
+  bindChartSliderDataZoom,
+  chartSliderDataZoomOptions,
+  type ChartSliderDataZoomBinding,
+} from '../core/chart/chart-slider-data-zoom';
+import {
   finiteMinMaxInWindow,
   niceAxisBounds,
 } from '../core/chart/nice-axis-bounds';
+import { visibleIndexRange } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
   hasShareholdersAggregateData,
@@ -36,8 +42,11 @@ const COLOR_TOTAL_CHANGED = '#60a5fa';
 })
 export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   readonly aggregate = input.required<ShareholdersDailyAggregate>();
+  readonly viewStart = input.required<string>();
+  readonly viewEnd = input.required<string>();
   readonly selectedDate = input<string | null>(null);
   readonly dateSelected = output<string>();
+  readonly viewRangeChange = output<{ from: string; to: string }>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -46,10 +55,13 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private datePickBinding: ChartDatePickBinding | null = null;
+  private dataZoomBinding: ChartSliderDataZoomBinding | null = null;
 
   constructor() {
     effect(() => {
       this.aggregate();
+      this.viewStart();
+      this.viewEnd();
       this.selectedDate();
       this.i18n.locale();
       this.render();
@@ -64,6 +76,16 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
       () => this.aggregate().dates,
       (iso) => this.dateSelected.emit(iso),
     );
+    this.dataZoomBinding = bindChartSliderDataZoom(this.chart, {
+      getDates: () => this.aggregate().dates,
+      getFallbackRange: () => ({ from: this.viewStart(), to: this.viewEnd() }),
+      onRangeChange: (from, to) => {
+        if (from === this.viewStart() && to === this.viewEnd()) {
+          return;
+        }
+        this.viewRangeChange.emit({ from, to });
+      },
+    });
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -72,6 +94,8 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.dataZoomBinding?.dispose();
+    this.dataZoomBinding = null;
     this.datePickBinding?.dispose();
     this.datePickBinding = null;
     this.resizeObserver?.disconnect();
@@ -87,12 +111,14 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const viewStart = this.viewStart();
+    const viewEnd = this.viewEnd();
+    const { startIndex, endIndex } = visibleIndexRange(dates, viewStart, viewEnd);
     const allLabel = this.i18n.text('stats.shareholdersTotalDailyAll');
     const changedLabel = this.i18n.text('stats.shareholdersTotalDailyChanged');
-    const bottom = dates.length > 8 ? 96 : 72;
-    const windowEnd = dates.length - 1;
-    const totalExtent = finiteMinMaxInWindow(totalShareholders, 0, windowEnd);
-    const changedExtent = finiteMinMaxInWindow(totalShareholdersChanged, 0, windowEnd);
+    const bottom = dates.length > 8 ? 110 : 96;
+    const totalExtent = finiteMinMaxInWindow(totalShareholders, startIndex, endIndex);
+    const changedExtent = finiteMinMaxInWindow(totalShareholdersChanged, startIndex, endIndex);
     const totalBounds = totalExtent ? niceAxisBounds(totalExtent.min, totalExtent.max) : null;
     const changedBounds = changedExtent ? niceAxisBounds(changedExtent.min, changedExtent.max) : null;
     const markLine = selectedDateMarkLine(this.selectedDate(), dates);
@@ -101,7 +127,7 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
         animation: false,
         legend: {
           show: true,
-          bottom: 0,
+          bottom: 36,
           textStyle: { color: '#94a3b8', fontSize: 11 },
         },
         tooltip: {
@@ -111,6 +137,7 @@ export class ShareholdersTotalDailyChart implements AfterViewInit, OnDestroy {
           formatter: (params: unknown) => this.totalTooltipFormatter(params),
         },
         grid: { left: 56, right: 56, top: 16, bottom },
+        dataZoom: [chartSliderDataZoomOptions(viewStart, viewEnd)],
         xAxis: {
           type: 'category',
           data: dates,

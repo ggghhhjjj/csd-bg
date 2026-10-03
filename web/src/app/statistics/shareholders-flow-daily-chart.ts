@@ -11,6 +11,12 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts';
 
+import {
+  bindChartSliderDataZoom,
+  chartSliderDataZoomOptions,
+  type ChartSliderDataZoomBinding,
+} from '../core/chart/chart-slider-data-zoom';
+import { visibleIndexRange } from '../core/data/date-range';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
   hasShareholdersAggregateData,
@@ -33,8 +39,11 @@ const FLOW_STACK_ID = 'flow';
 })
 export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   readonly aggregate = input.required<ShareholdersDailyAggregate>();
+  readonly viewStart = input.required<string>();
+  readonly viewEnd = input.required<string>();
   readonly selectedDate = input<string | null>(null);
   readonly dateSelected = output<string>();
+  readonly viewRangeChange = output<{ from: string; to: string }>();
 
   private readonly chartHost = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
 
@@ -43,10 +52,13 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private datePickBinding: ChartDatePickBinding | null = null;
+  private dataZoomBinding: ChartSliderDataZoomBinding | null = null;
 
   constructor() {
     effect(() => {
       this.aggregate();
+      this.viewStart();
+      this.viewEnd();
       this.selectedDate();
       this.i18n.locale();
       this.render();
@@ -61,6 +73,16 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
       () => this.aggregate().dates,
       (iso) => this.dateSelected.emit(iso),
     );
+    this.dataZoomBinding = bindChartSliderDataZoom(this.chart, {
+      getDates: () => this.aggregate().dates,
+      getFallbackRange: () => ({ from: this.viewStart(), to: this.viewEnd() }),
+      onRangeChange: (from, to) => {
+        if (from === this.viewStart() && to === this.viewEnd()) {
+          return;
+        }
+        this.viewRangeChange.emit({ from, to });
+      },
+    });
     this.render();
     this.resizeObserver = new ResizeObserver(() => {
       this.chart?.resize();
@@ -69,6 +91,8 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.dataZoomBinding?.dispose();
+    this.dataZoomBinding = null;
     this.datePickBinding?.dispose();
     this.datePickBinding = null;
     this.resizeObserver?.disconnect();
@@ -84,16 +108,27 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const viewStart = this.viewStart();
+    const viewEnd = this.viewEnd();
+    const { startIndex, endIndex } = visibleIndexRange(dates, viewStart, viewEnd);
+    let yMax = 0;
+    for (let i = startIndex; i <= endIndex; i += 1) {
+      const stack = (gains[i] ?? 0) + (losses[i] ?? 0);
+      if (stack > yMax) {
+        yMax = stack;
+      }
+    }
+
     const incomingLabel = this.i18n.text('stats.shareholdersGainsDaily');
     const outgoingLabel = this.i18n.text('stats.shareholdersLossesDaily');
-    const bottom = dates.length > 8 ? 88 : 64;
+    const bottom = dates.length > 8 ? 110 : 96;
     const markLine = selectedDateMarkLine(this.selectedDate(), dates);
     this.chart.setOption(
       {
         animation: false,
         legend: {
           show: true,
-          bottom: 0,
+          bottom: 36,
           textStyle: { color: '#94a3b8', fontSize: 11 },
         },
         tooltip: {
@@ -103,6 +138,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
           formatter: (params: unknown) => this.flowTooltipFormatter(params, incomingLabel, outgoingLabel),
         },
         grid: { left: 56, right: 16, top: 16, bottom },
+        dataZoom: [chartSliderDataZoomOptions(viewStart, viewEnd)],
         xAxis: {
           type: 'category',
           data: dates,
@@ -111,6 +147,7 @@ export class ShareholdersFlowDailyChart implements AfterViewInit, OnDestroy {
         },
         yAxis: {
           type: 'value',
+          ...(yMax > 0 ? { min: 0, max: Math.ceil(yMax * 1.05) } : {}),
           axisLabel: { color: '#94a3b8', fontSize: 10 },
           splitLine: { lineStyle: { color: '#334155' } },
         },
