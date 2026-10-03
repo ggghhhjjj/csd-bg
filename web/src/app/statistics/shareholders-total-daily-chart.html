@@ -1,9 +1,0 @@
-<section class="shareholders-total-daily-chart">
-  @if (!hasData()) {
-    <p class="shareholders-total-daily-chart__empty">{{ i18n.text('stats.empty') }}</p>
-  }
-  <div class="shareholders-total-daily-chart__panel" [class.shareholders-total-daily-chart__panel--hidden]="!hasData()">
-    <h2 class="shareholders-total-daily-chart__title">{{ i18n.text('stats.shareholdersTotalDaily') }}</h2>
-    <div #chartHost class="shareholders-total-daily-chart__chart" role="img"></div>
-  </div>
-</section>

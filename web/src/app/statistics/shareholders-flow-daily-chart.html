@@ -1,9 +1,0 @@
-<section class="shareholders-flow-daily-chart">
-  @if (!hasData()) {
-    <p class="shareholders-flow-daily-chart__empty">{{ i18n.text('stats.empty') }}</p>
-  }
-  <div class="shareholders-flow-daily-chart__panel" [class.shareholders-flow-daily-chart__panel--hidden]="!hasData()">
-    <h2 class="shareholders-flow-daily-chart__title">{{ i18n.text('stats.shareholdersFlowDaily') }}</h2>
-    <div #chartHost class="shareholders-flow-daily-chart__chart" role="img"></div>
-  </div>
-</section>
