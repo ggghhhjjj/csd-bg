@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts';
 
+import { niceAxisBoundsForSeriesWindow } from '../core/chart/nice-axis-bounds';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import {
@@ -236,6 +237,12 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
     periodChangedLabel: string,
   ): void {
     const bottom = dates.length > 8 ? 96 : 72;
+    const windowEnd = dates.length - 1;
+    const yBounds = niceAxisBoundsForSeriesWindow(
+      [totalAll, totalChanged, totalChangedInPeriod],
+      0,
+      windowEnd,
+    );
     chart.setOption(
       {
         animation: false,
@@ -259,6 +266,7 @@ export class ShareholdersMarketCharts implements AfterViewInit, OnDestroy {
         },
         yAxis: {
           type: 'value',
+          ...(yBounds ? { min: yBounds.min, max: yBounds.max } : {}),
           axisLabel: { color: '#94a3b8', fontSize: 10 },
           splitLine: { lineStyle: { color: '#334155' } },
         },

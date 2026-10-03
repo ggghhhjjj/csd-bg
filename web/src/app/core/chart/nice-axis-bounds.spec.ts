@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { finiteMinMaxInWindow, niceAxisBounds } from './nice-axis-bounds';
+import {
+  finiteMinMaxInWindow,
+  niceAxisBounds,
+  niceAxisBoundsForSeriesWindow,
+} from './nice-axis-bounds';
 
 describe('niceAxisBounds', () => {
   it('rounds 6M-scale free float window to 50k steps', () => {
@@ -25,6 +29,23 @@ describe('niceAxisBounds', () => {
 
   it('returns null for non-finite input', () => {
     expect(niceAxisBounds(Number.NaN, 100)).toBeNull();
+  });
+});
+
+describe('niceAxisBoundsForSeriesWindow', () => {
+  it('uses the union extent across series', () => {
+    const bounds = niceAxisBoundsForSeriesWindow(
+      [
+        [1_600_000, 1_600_001],
+        [1_599_999, 1_600_002],
+      ],
+      0,
+      1,
+    );
+    expect(bounds).not.toBeNull();
+    expect(bounds!.min).toBeLessThanOrEqual(1_599_999);
+    expect(bounds!.max).toBeGreaterThanOrEqual(1_600_002);
+    expect(bounds!.max - bounds!.min).toBeLessThan(10);
   });
 });
 

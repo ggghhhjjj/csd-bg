@@ -55,11 +55,16 @@ describe('ShareholdersMarketCharts', () => {
       legend?: { show?: boolean };
       series?: Array<{ type?: string }>;
       tooltip?: { formatter?: unknown };
+      yAxis?: { min?: number; max?: number };
     };
     expect(totalOption.legend?.show).toBe(true);
     expect(totalOption.series?.length).toBe(3);
     expect(totalOption.series?.every((s) => s.type === 'line')).toBe(true);
     expect(typeof totalOption.tooltip?.formatter).toBe('function');
+    expect(totalOption.yAxis?.min).toBeDefined();
+    expect(totalOption.yAxis?.max).toBeDefined();
+    expect(totalOption.yAxis!.min!).toBeLessThan(totalOption.yAxis!.max!);
+    expect(totalOption.yAxis!.min!).toBeGreaterThan(0);
   });
 
   it('shows empty state when range has no shareholder totals', async () => {

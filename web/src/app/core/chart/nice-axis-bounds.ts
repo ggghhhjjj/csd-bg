@@ -93,3 +93,26 @@ export function finiteMinMaxInWindow(
   }
   return { min, max };
 }
+
+/** Union of finite min/max across multiple numeric series in the same index window. */
+export function niceAxisBoundsForSeriesWindow(
+  series: number[][],
+  startIndex: number,
+  endIndex: number,
+  options?: NiceAxisBoundsOptions,
+): NiceAxisBounds | null {
+  let dataMin = Infinity;
+  let dataMax = -Infinity;
+  for (const values of series) {
+    const extent = finiteMinMaxInWindow(values, startIndex, endIndex);
+    if (!extent) {
+      continue;
+    }
+    dataMin = Math.min(dataMin, extent.min);
+    dataMax = Math.max(dataMax, extent.max);
+  }
+  if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) {
+    return null;
+  }
+  return niceAxisBounds(dataMin, dataMax, options);
+}
