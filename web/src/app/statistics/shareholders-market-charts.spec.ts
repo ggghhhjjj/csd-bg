@@ -134,6 +134,36 @@ describe('ShareholdersMarketCharts', () => {
     expect(mockChart.setOption).not.toHaveBeenCalled();
   });
 
+  it('emits viewRangeSettled after scrolling stops', async () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = TestBed.createComponent(ShareholdersMarketCharts);
+      fixture.componentRef.setInput('dataset', wideDatasetFixture());
+      fixture.componentRef.setInput('startDate', '2024-06-01');
+      fixture.componentRef.setInput('endDate', '2024-06-03');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const settled: Array<{ from: string; to: string }> = [];
+      fixture.componentInstance.viewRangeSettled.subscribe((range) => settled.push(range));
+
+      type Host = ShareholdersMarketCharts & {
+        onChartViewRangeChange: (range: { from: string; to: string }) => void;
+      };
+      (fixture.componentInstance as Host).onChartViewRangeChange({
+        from: '2024-06-02',
+        to: '2024-06-03',
+      });
+      expect(settled).toEqual([]);
+
+      vi.advanceTimersByTime(350);
+      expect(settled).toEqual([{ from: '2024-06-02', to: '2024-06-03' }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('recomputes line y-axis bounds after datazoom and syncs all charts', async () => {
     const fixture = TestBed.createComponent(ShareholdersMarketCharts);
     fixture.componentRef.setInput('dataset', wideDatasetFixture());

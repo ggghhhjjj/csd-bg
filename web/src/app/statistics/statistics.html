@@ -8,6 +8,7 @@
       [endDate]="viewRange().to"
       [selectedDate]="selectedChartDate()"
       (dateSelected)="onChartDateSelected($event)"
+      (viewRangeSettled)="onChartViewRangeSettled($event)"
     />
   }
 </section>

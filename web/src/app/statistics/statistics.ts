@@ -26,6 +26,7 @@ export class Statistics {
 
   protected readonly preset = signal<RangePreset>(parseStatisticsRange(this.route.snapshot.queryParamMap));
   protected readonly chartDiffRange = signal<{ from: string; to: string } | null>(null);
+  protected readonly scrollDiffRange = signal<{ from: string; to: string } | null>(null);
   protected readonly dataset = computed(() => this.store.dataset());
 
   protected readonly viewRange = computed(() => {
@@ -37,14 +38,21 @@ export class Statistics {
     return { from: rangeStartIso(dataset.dates, this.preset()), to };
   });
 
-  protected readonly diffRankRange = computed(() => this.chartDiffRange() ?? this.viewRange());
+  protected readonly diffRankRange = computed(
+    () => this.chartDiffRange() ?? this.scrollDiffRange() ?? this.viewRange(),
+  );
 
   protected readonly selectedChartDate = computed(() => this.chartDiffRange()?.to ?? null);
 
   protected setPreset(preset: RangePreset): void {
     this.preset.set(preset);
     this.chartDiffRange.set(null);
+    this.scrollDiffRange.set(null);
     this.syncQueryParams();
+  }
+
+  protected onChartViewRangeSettled(range: { from: string; to: string }): void {
+    this.scrollDiffRange.set(range);
   }
 
   protected onChartDateSelected(iso: string): void {
