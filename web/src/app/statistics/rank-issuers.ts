@@ -1,5 +1,10 @@
 import { indexForDate } from '../core/data/date-range';
-import { firstLastInRange, formatDelta, type ParsedDataset } from '../core/data/vectors.types';
+import {
+  formatBasisForRangeChange,
+  formatDelta,
+  metricChangeAtRangeEndpoints,
+  type ParsedDataset,
+} from '../core/data/vectors.types';
 
 export type RankOrder = 'asc' | 'desc';
 
@@ -29,16 +34,17 @@ export function rankIssuersByShareholdersDiff(
   const toIndex = indexForDate(dataset.dates, end);
   const rows: RankedIssuer[] = [];
   for (let issuerIndex = 0; issuerIndex < dataset.issuers.length; issuerIndex += 1) {
-    const { first, last } = firstLastInRange(dataset, 'shareholders', issuerIndex, fromIndex, toIndex);
-    if (first === null || last === null) {
+    const change = metricChangeAtRangeEndpoints(dataset, 'shareholders', issuerIndex, fromIndex, toIndex);
+    if (!change) {
       continue;
     }
+    const { first, last } = formatBasisForRangeChange(change.start, change.end);
     const issuer = dataset.issuers[issuerIndex];
     rows.push({
       issuerIndex,
       isin: issuer.isin,
       name: issuer.name,
-      diff: last - first,
+      diff: change.diff,
       abs: formatDelta(first, last, false),
       percent: formatDelta(first, last, true),
     });

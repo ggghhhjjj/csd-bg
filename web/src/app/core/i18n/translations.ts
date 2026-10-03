@@ -63,6 +63,8 @@ const BG = {
   'intro.close': 'Затвори',
   'stats.shareholdersDiff': 'Промяна в акционерите',
   'stats.shareholdersDiffRange': '{from} → {to}',
+  'stats.shareholdersDiffNet':
+    'Нетна промяна по емитенти: {net} (сума от списъка; съвпада с общия пазарен брой)',
   'stats.sortDesc': 'Низходящо',
   'stats.sortAsc': 'Възходящо',
   'stats.showAll': 'Покажи всички',
@@ -146,6 +148,8 @@ export const TRANSLATIONS: Record<AppLocale, Record<TranslationKey, string>> = {
     'intro.close': 'Close',
     'stats.shareholdersDiff': 'Shareholders change',
     'stats.shareholdersDiffRange': '{from} → {to}',
+    'stats.shareholdersDiffNet':
+      'Net change across issuers: {net} (sum of the list; matches the market total change)',
     'stats.sortDesc': 'Descending',
     'stats.sortAsc': 'Ascending',
     'stats.showAll': 'Show all',

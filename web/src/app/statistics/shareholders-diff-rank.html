@@ -5,6 +5,9 @@
       @if (rangeLabel()) {
         <p class="shareholders-diff-rank__range">{{ rangeLabel() }}</p>
       }
+      @if (netChangeLabel()) {
+        <p class="shareholders-diff-rank__net">{{ netChangeLabel() }}</p>
+      }
     </div>
     <div class="shareholders-diff-rank__actions">
       <button class="shareholders-diff-rank__action" type="button" (click)="toggleOrder()">

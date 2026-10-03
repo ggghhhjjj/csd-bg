@@ -106,6 +106,50 @@ export function firstLastInRange(
   return { first, last };
 }
 
+/** Change from the range start report date to the range end report date (missing endpoint = listing / delisting). */
+export type RangeEndpointChange = {
+  start: number | null;
+  end: number | null;
+  diff: number;
+};
+
+export function metricChangeAtRangeEndpoints(
+  dataset: ParsedDataset,
+  metric: MetricId,
+  issuerIndex: number,
+  fromIndex: number,
+  toIndex: number,
+): RangeEndpointChange | null {
+  const startIndex = Math.min(fromIndex, toIndex);
+  const endIndex = Math.max(fromIndex, toIndex);
+  const start = metricAt(dataset, metric, issuerIndex, startIndex);
+  const end = metricAt(dataset, metric, issuerIndex, endIndex);
+  if (start === null && end === null) {
+    return null;
+  }
+  if (start === null) {
+    return { start: null, end, diff: end as number };
+  }
+  if (end === null) {
+    return { start, end: null, diff: -start };
+  }
+  return { start, end, diff: end - start };
+}
+
+/** Values passed to {@link formatDelta} for listing, delisting, and ordinary range moves. */
+export function formatBasisForRangeChange(start: number | null, end: number | null): { first: number; last: number } {
+  if (start === null && end !== null) {
+    return { first: 0, last: end };
+  }
+  if (start !== null && end === null) {
+    return { first: start, last: 0 };
+  }
+  if (start !== null && end !== null) {
+    return { first: start, last: end };
+  }
+  throw new Error('formatBasisForRangeChange requires at least one endpoint value');
+}
+
 export function formatDelta(
   first: number | null,
   last: number | null,

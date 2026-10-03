@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadRepoVectorsDataset } from '../core/data/vectors-repo-fixture';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import { limitRankedIssuers, rankIssuersByShareholdersDiff } from './rank-issuers';
 
@@ -48,6 +49,21 @@ describe('rankIssuersByShareholdersDiff', () => {
     expect(ranked).toHaveLength(7);
   });
 
+  it('counts new listings at the range end toward the diff', () => {
+    const dataset = listingFixture();
+    const ranked = rankIssuersByShareholdersDiff(dataset, '2024-06-23', '2024-06-24', 'desc');
+    expect(ranked.find((row) => row.name === 'NewCo')?.diff).toBe(194);
+    const net = ranked.reduce((sum, row) => sum + row.diff, 0);
+    expect(net).toBe(194);
+  });
+
+  it('reconciles with the market total for 2026-06-23 → 2026-06-24', () => {
+    const dataset = loadRepoVectorsDataset();
+    const ranked = rankIssuersByShareholdersDiff(dataset, '2026-06-23', '2026-06-24', 'desc');
+    const net = ranked.reduce((sum, row) => sum + row.diff, 0);
+    expect(net).toBe(194);
+  });
+
   it('formats absolute and percent deltas', () => {
     const ranked = rankIssuersByShareholdersDiff(rankingFixture(), DATES[0], DATES[2], 'desc');
     expect(ranked[0]).toMatchObject({ name: 'Delta', abs: '+20', percent: '+2000.00%' });
@@ -73,6 +89,27 @@ describe('limitRankedIssuers', () => {
     expect(limitRankedIssuers(ranked, false)).toHaveLength(3);
   });
 });
+
+function listingFixture(): ParsedDataset {
+  const issuers: VectorCatalogEntry[] = [
+    { id: 1, isin: 'OLD', name: 'Stable' },
+    { id: 2, isin: 'NEW', name: 'NewCo' },
+  ];
+  const dates = ['2024-06-23', '2024-06-24'];
+  const shareholders = new Int32Array([100, 100, 0, 194]);
+  const shareholdersValid = Uint8Array.from([1, 1, 0, 1]);
+  return {
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    dates,
+    issuers,
+    totalShares: new Int32Array(4),
+    freeFloat: new Int32Array(4),
+    shareholders,
+    totalSharesValid: new Uint8Array(4),
+    freeFloatValid: new Uint8Array(4),
+    shareholdersValid,
+  };
+}
 
 function rankingFixture(): ParsedDataset {
   const issuers: VectorCatalogEntry[] = [

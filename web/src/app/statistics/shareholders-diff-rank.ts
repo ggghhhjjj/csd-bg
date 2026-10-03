@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
+import { formatDelta } from '../core/data/vectors.types';
 import {
   limitRankedIssuers,
   rankIssuersByShareholdersDiff,
@@ -45,6 +46,16 @@ export class ShareholdersDiffRank {
       return '';
     }
     return this.i18n.text('stats.shareholdersDiffRange', { from, to });
+  });
+
+  /** Sum of all issuer deltas in the range; matches the market total change between the two dates. */
+  protected readonly netChangeLabel = computed(() => {
+    const rows = this.ranked();
+    if (rows.length === 0) {
+      return '';
+    }
+    const net = rows.reduce((sum, row) => sum + row.diff, 0);
+    return this.i18n.text('stats.shareholdersDiffNet', { net: formatDelta(0, net, false) });
   });
 
   protected readonly sortLabel = computed(() =>
