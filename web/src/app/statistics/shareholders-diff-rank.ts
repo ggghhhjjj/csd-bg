@@ -4,7 +4,9 @@ import { RouterLink } from '@angular/router';
 import type { ParsedDataset } from '../core/data/vectors.types';
 import { LocaleService } from '../core/i18n/locale.service';
 import { formatDelta } from '../core/data/vectors.types';
+import { DataExportMenu } from '../export/data-export-menu';
 import { HelpTrigger } from '../help/help-trigger';
+import { shareholdersDiffRankToTabular } from './shareholders-diff-rank-export';
 import {
   filterRankedIssuersByChange,
   limitRankedIssuers,
@@ -17,7 +19,7 @@ import { SHAREHOLDERS_DIFF_RANK_HELP } from './shareholders-diff-rank.help-id';
 
 @Component({
   selector: 'app-shareholders-diff-rank',
-  imports: [RouterLink, HelpTrigger],
+  imports: [RouterLink, HelpTrigger, DataExportMenu],
   templateUrl: './shareholders-diff-rank.html',
   styleUrl: './shareholders-diff-rank.css',
 })
@@ -54,6 +56,8 @@ export class ShareholdersDiffRank {
   );
 
   protected readonly canToggleLimit = computed(() => this.filteredRanked().length > TOP_RANK_COUNT);
+
+  protected readonly exportDisabled = computed(() => this.visibleRows().length === 0);
 
   protected readonly rangeLabel = computed(() => {
     const from = this.startDate();
@@ -111,6 +115,14 @@ export class ShareholdersDiffRank {
     const base = 'shareholders-diff-rank__action';
     return this.changeFilter() === 'all' ? base : `${base} shareholders-diff-rank__action--active`;
   }
+
+  protected readonly resolveRankExport = (): ReturnType<typeof shareholdersDiffRankToTabular> =>
+    shareholdersDiffRankToTabular(this.visibleRows(), {
+      issuer: this.i18n.text('stats.exportColumnIssuer'),
+      isin: this.i18n.text('stats.exportColumnIsin'),
+      changeAbs: this.i18n.text('stats.exportColumnChangeAbs'),
+      changePercent: this.i18n.text('stats.exportColumnChangePercent'),
+    });
 
   protected toggleOrder(): void {
     this.orderChange.emit(this.order() === 'desc' ? 'asc' : 'desc');

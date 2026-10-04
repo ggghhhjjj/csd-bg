@@ -24,6 +24,11 @@
           {{ limitLabel() }}
         </button>
       }
+      <app-data-export-menu
+        class="shareholders-diff-rank__export"
+        [disabled]="exportDisabled()"
+        [resolveData]="resolveRankExport"
+      />
     </div>
   </div>
   @if (visibleRows().length) {

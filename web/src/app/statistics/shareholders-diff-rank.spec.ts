@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HELP_MANIFEST_FIXTURE } from '../core/help/help-manifest.fixture';
 import { LOCALE_STORAGE_KEY } from '../core/i18n/locale.service';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
+import { TabularExportService } from '../core/export/tabular-export.service';
 import { ShareholdersDiffRank } from './shareholders-diff-rank';
 
 const DATES = ['2024-01-01', '2024-04-01', '2024-07-01'];
@@ -130,6 +131,37 @@ describe('ShareholdersDiffRank', () => {
     expect(fixture.nativeElement.querySelector('.shareholders-diff-rank__empty')?.textContent).toContain(
       'Няма данни за избрания период.',
     );
+  });
+
+  it('exports the currently visible ranked issuers', async () => {
+    const copyCsv = vi.spyOn(TabularExportService.prototype, 'copyCsv').mockResolvedValue();
+    const fixture = await createComponent();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('.data-export-menu__trigger')?.click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.data-export-menu__item')?.click();
+    await fixture.whenStable();
+
+    expect(copyCsv).toHaveBeenCalledWith({
+      headers: ['Емитент', 'ISIN', 'Промяна (абс.)', 'Промяна (%)'],
+      rows: [
+        ['Delta', 'BG1100000050', '+20', '+2000.00%'],
+        ['Zeta', 'BG1100000010', '+10', '+10.00%'],
+        ['Alpha', 'BG1100000020', '+5', '+50.00%'],
+        ['Beta', 'BG1100000030', '+5', '+25.00%'],
+        ['Twin', 'BG1100000001', '+3', '+30.00%'],
+      ],
+    });
+    copyCsv.mockRestore();
+  });
+
+  it('disables export when the visible list is empty', async () => {
+    const fixture = await createComponent();
+    fixture.componentRef.setInput('changeFilter', 'unchanged');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.data-export-menu__trigger')?.disabled).toBe(true);
   });
 
   it('links each row to the issuer detail page', async () => {
