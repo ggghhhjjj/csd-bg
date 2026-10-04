@@ -1,0 +1,54 @@
+<div class="data-export-menu" (click)="$event.stopPropagation()">
+  <button
+    class="data-export-menu__trigger"
+    type="button"
+    [disabled]="disabled()"
+    [attr.aria-label]="i18n.text('export.label')"
+    [attr.aria-expanded]="menuOpen()"
+    aria-haspopup="menu"
+    (click)="toggleMenu($event)"
+  >
+    @if (exportService.copied()) {
+      <svg class="data-export-menu__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M5 12l5 5L20 7"
+        />
+      </svg>
+    } @else {
+      <svg class="data-export-menu__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 3v12M8 11l4 4 4-4M5 21h14"
+        />
+      </svg>
+    }
+  </button>
+  @if (menuOpen()) {
+    <ul class="data-export-menu__menu" role="menu">
+      <li role="none">
+        <button class="data-export-menu__item" type="button" role="menuitem" (click)="exportCsv()">
+          {{ i18n.text('export.csv') }}
+        </button>
+      </li>
+      <li role="none">
+        <button class="data-export-menu__item" type="button" role="menuitem" (click)="exportMarkdown()">
+          {{ i18n.text('export.markdown') }}
+        </button>
+      </li>
+    </ul>
+  }
+  <span class="data-export-menu__live" aria-live="polite">
+    @if (exportService.copied()) {
+      {{ i18n.text('export.copied') }}
+    }
+  </span>
+</div>

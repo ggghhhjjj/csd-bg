@@ -1,0 +1,71 @@
+.data-export-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.data-export-menu__trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0.3rem;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.data-export-menu__trigger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.data-export-menu__icon {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
+.data-export-menu__menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  min-width: 10rem;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+}
+
+.data-export-menu__item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.data-export-menu__item:hover,
+.data-export-menu__item:focus-visible {
+  background: #334155;
+}
+
+.data-export-menu__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

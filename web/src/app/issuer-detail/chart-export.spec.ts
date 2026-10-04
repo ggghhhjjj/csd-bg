@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildExportRows,
-  escapeCsvField,
+  chartExportToTabular,
   formatExportValue,
   toCsv,
   toMarkdownTable,
-  type ChartExportRow,
 } from './chart-export';
-import { ChartExportService, type ChartExportRequest } from './chart-export.service';
+import type { ChartExportRequest } from './chart-export.types';
 import type { ParsedDataset } from '../core/data/vectors.types';
 
 function datasetFixture(): ParsedDataset {
@@ -77,64 +76,37 @@ describe('buildExportRows', () => {
   });
 });
 
-describe('escapeCsvField', () => {
-  it('quotes fields containing commas or quotes', () => {
-    expect(escapeCsvField('plain')).toBe('plain');
-    expect(escapeCsvField('a,b')).toBe('"a,b"');
-    expect(escapeCsvField('say "hi"')).toBe('"say ""hi"""');
+describe('chartExportToTabular', () => {
+  it('maps chart export rows to tabular headers and rows', () => {
+    expect(chartExportToTabular(exportRequest())).toEqual({
+      headers: ['Date', 'Total shares', 'Shareholders'],
+      rows: [
+        ['2024-01-02', formatExportValue(100), formatExportValue(10)],
+        ['2024-01-03', '—', formatExportValue(12)],
+        ['2024-01-04', formatExportValue(150), '—'],
+      ],
+    });
   });
 });
 
 describe('toCsv', () => {
   it('writes a header row with comma delimiter', () => {
-    const rows: ChartExportRow[] = [{ date: '2024-01-02', values: ['100', '10'] }];
-    expect(toCsv('Date', ['Total shares', 'Shareholders'], rows)).toBe(
+    expect(toCsv('Date', ['Total shares', 'Shareholders'], [{ date: '2024-01-02', values: ['100', '10'] }])).toBe(
       'Date,Total shares,Shareholders\n2024-01-02,100,10',
     );
-  });
-
-  it('escapes comma-containing header labels', () => {
-    const rows: ChartExportRow[] = [{ date: '2024-01-02', values: ['100'] }];
-    expect(toCsv('Date', ['Shares, total'], rows)).toBe('Date,"Shares, total"\n2024-01-02,100');
   });
 });
 
 describe('toMarkdownTable', () => {
   it('writes a pipe table with separator row', () => {
-    const rows: ChartExportRow[] = [{ date: '2024-01-02', values: ['100', '10'] }];
-    expect(toMarkdownTable('Date', ['Total shares', 'Shareholders'], rows)).toBe(
+    expect(
+      toMarkdownTable('Date', ['Total shares', 'Shareholders'], [{ date: '2024-01-02', values: ['100', '10'] }]),
+    ).toBe(
       [
         '| Date | Total shares | Shareholders |',
         '| --- | --- | --- |',
         '| 2024-01-02 | 100 | 10 |',
       ].join('\n'),
     );
-  });
-});
-
-describe('ChartExportService', () => {
-  it('formats CSV through the service using the current chart view request', () => {
-    const service = new ChartExportService();
-    const csv = service.formatCsv(exportRequest());
-    expect(csv).toContain('Date,Total shares,Shareholders');
-    expect(csv).toContain('2024-01-02');
-    expect(csv).not.toContain('2024-01-01');
-  });
-
-  it('formats markdown through the service', () => {
-    const service = new ChartExportService();
-    const markdown = service.formatMarkdown(exportRequest({ metrics: ['free_float'] }));
-    expect(markdown).toContain('| Date | Free float |');
-    expect(markdown).toContain('| 2024-01-02 | 50 |');
-  });
-
-  it('copies formatted text to the clipboard', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('navigator', { clipboard: { writeText } });
-    const service = new ChartExportService();
-    await service.copyCsv(exportRequest());
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(service.copied()).toBe(true);
-    vi.unstubAllGlobals();
   });
 });

@@ -2,7 +2,6 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  HostListener,
   OnDestroy,
   computed,
   effect,
@@ -28,7 +27,9 @@ import { LocaleService } from '../core/i18n/locale.service';
 import { AXIS_TOOLTIP_HIDE_MS, axisTooltipPosition, type AxisTooltipSize } from './axis-tooltip-position';
 import { axisIndexFromChartEvent } from './axis-tip-index';
 import { ComparePointerSession } from './compare-pointer-session';
-import { ChartExportService, type ChartExportRequest } from './chart-export.service';
+import { DataExportMenu } from '../export/data-export-menu';
+import { chartExportToTabular } from './chart-export';
+import type { ChartExportRequest } from './chart-export.types';
 import {
   chartViewQueryEquals,
   parseChartViewParams,
@@ -55,6 +56,7 @@ interface ComparePopup {
 
 @Component({
   selector: 'app-chart-panel',
+  imports: [DataExportMenu],
   templateUrl: './chart-panel.html',
   styleUrl: './chart-panel.css',
 })
@@ -67,7 +69,6 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly i18n = inject(LocaleService);
-  protected readonly exportService = inject(ChartExportService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('chartHost');
   private chart: echarts.ECharts | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -87,7 +88,6 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     shareholders: true,
   });
   protected readonly preset = signal<RangePreset | null>('m3');
-  protected readonly exportMenuOpen = signal(false);
   protected readonly compare = signal<ComparePopup | null>(null);
   protected readonly labels = computed<Record<MetricId, string>>(() => ({
     total_shares: this.i18n.text('metric.totalShares'),
@@ -188,33 +188,8 @@ export class ChartPanel implements AfterViewInit, OnDestroy {
     this.compare.set(null);
   }
 
-  protected toggleExportMenu(event: Event): void {
-    event.stopPropagation();
-    if (this.exportDisabled()) {
-      return;
-    }
-    this.exportMenuOpen.update((open) => !open);
-  }
-
-  protected async exportCsv(): Promise<void> {
-    this.exportMenuOpen.set(false);
-    await this.exportService.copyCsv(this.buildExportRequest());
-  }
-
-  protected async exportMarkdown(): Promise<void> {
-    this.exportMenuOpen.set(false);
-    await this.exportService.copyMarkdown(this.buildExportRequest());
-  }
-
-  @HostListener('document:click')
-  protected closeExportMenu(): void {
-    this.exportMenuOpen.set(false);
-  }
-
-  @HostListener('document:keydown.escape')
-  protected closeExportMenuOnEscape(): void {
-    this.exportMenuOpen.set(false);
-  }
+  protected readonly resolveChartExport = (): ReturnType<typeof chartExportToTabular> =>
+    chartExportToTabular(this.buildExportRequest());
 
   private buildExportRequest(): ChartExportRequest {
     return {

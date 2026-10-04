@@ -1,5 +1,10 @@
 import { indexForDate } from '../core/data/date-range';
+import { tabularToCsv, tabularToMarkdown } from '../core/export/tabular-export';
+import type { TabularExportData } from '../core/export/tabular-export.types';
 import { metricAt, type MetricId, type ParsedDataset } from '../core/data/vectors.types';
+import type { ChartExportRequest } from './chart-export.types';
+
+export type { ChartExportRequest } from './chart-export.types';
 
 export type ChartExportRow = {
   date: string;
@@ -37,30 +42,39 @@ export function buildExportRows(
   return rows;
 }
 
-export function escapeCsvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
+export function chartExportToTabular(request: ChartExportRequest): TabularExportData {
+  const exportRows = buildExportRows(
+    request.dataset,
+    request.issuerIndex,
+    request.viewStart,
+    request.viewEnd,
+    request.metrics,
+  );
+  const metricHeaders = request.metrics.map((metric) => request.metricLabels[metric]);
+  return {
+    headers: [request.dateLabel, ...metricHeaders],
+    rows: exportRows.map((row) => [row.date, ...row.values]),
+  };
 }
 
+/** @deprecated Prefer chartExportToTabular and tabularToCsv from core/export. */
 export function toCsv(dateHeader: string, metricHeaders: string[], rows: ChartExportRow[]): string {
-  const headerLine = [dateHeader, ...metricHeaders].map(escapeCsvField).join(',');
-  const dataLines = rows.map((row) => [row.date, ...row.values].map(escapeCsvField).join(','));
-  return [headerLine, ...dataLines].join('\n');
+  return tabularToCsv({
+    headers: [dateHeader, ...metricHeaders],
+    rows: rows.map((row) => [row.date, ...row.values]),
+  });
 }
 
+/** @deprecated Prefer chartExportToTabular and tabularToMarkdown from core/export. */
 export function toMarkdownTable(
   dateHeader: string,
   metricHeaders: string[],
   rows: ChartExportRow[],
 ): string {
-  const headers = [dateHeader, ...metricHeaders];
-  const separator = headers.map(() => '---');
-  const lines = [
-    `| ${headers.join(' | ')} |`,
-    `| ${separator.join(' | ')} |`,
-    ...rows.map((row) => `| ${[row.date, ...row.values].join(' | ')} |`),
-  ];
-  return lines.join('\n');
+  return tabularToMarkdown({
+    headers: [dateHeader, ...metricHeaders],
+    rows: rows.map((row) => [row.date, ...row.values]),
+  });
 }
+
+export { escapeCsvField } from '../core/export/tabular-export';
