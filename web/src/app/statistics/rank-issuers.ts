@@ -8,6 +8,8 @@ import {
 
 export type RankOrder = 'asc' | 'desc';
 
+export type ShareholdersDiffChangeFilter = 'all' | 'positive' | 'negative' | 'unchanged';
+
 export type RankedIssuer = {
   issuerIndex: number;
   isin: string;
@@ -61,6 +63,22 @@ export function rankIssuersByShareholdersDiff(
     return left.isin.localeCompare(right.isin);
   });
   return rows;
+}
+
+export function filterRankedIssuersByChange(
+  rows: RankedIssuer[],
+  filter: ShareholdersDiffChangeFilter,
+): RankedIssuer[] {
+  switch (filter) {
+    case 'positive':
+      return rows.filter((row) => row.diff > 0);
+    case 'negative':
+      return rows.filter((row) => row.diff < 0);
+    case 'unchanged':
+      return rows.filter((row) => row.diff === 0);
+    default:
+      return rows;
+  }
 }
 
 export function limitRankedIssuers(rows: RankedIssuer[], showAll: boolean): RankedIssuer[] {

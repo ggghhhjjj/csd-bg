@@ -6,10 +6,12 @@ import { LocaleService } from '../core/i18n/locale.service';
 import { formatDelta } from '../core/data/vectors.types';
 import { HelpTrigger } from '../help/help-trigger';
 import {
+  filterRankedIssuersByChange,
   limitRankedIssuers,
   rankIssuersByShareholdersDiff,
   TOP_RANK_COUNT,
   type RankOrder,
+  type ShareholdersDiffChangeFilter,
 } from './rank-issuers';
 import { SHAREHOLDERS_DIFF_RANK_HELP } from './shareholders-diff-rank.help-id';
 
@@ -25,9 +27,11 @@ export class ShareholdersDiffRank {
   readonly endDate = input.required<string>();
   readonly order = input.required<RankOrder>();
   readonly showAll = input.required<boolean>();
+  readonly changeFilter = input.required<ShareholdersDiffChangeFilter>();
 
   readonly orderChange = output<RankOrder>();
   readonly showAllChange = output<boolean>();
+  readonly changeFilterChange = output<ShareholdersDiffChangeFilter>();
 
   protected readonly i18n = inject(LocaleService);
   protected readonly helpTopic = SHAREHOLDERS_DIFF_RANK_HELP;
@@ -41,9 +45,15 @@ export class ShareholdersDiffRank {
     return rankIssuersByShareholdersDiff(this.dataset(), from, to, this.order());
   });
 
-  protected readonly visibleRows = computed(() => limitRankedIssuers(this.ranked(), this.showAll()));
+  protected readonly filteredRanked = computed(() =>
+    filterRankedIssuersByChange(this.ranked(), this.changeFilter()),
+  );
 
-  protected readonly canToggleLimit = computed(() => this.ranked().length > TOP_RANK_COUNT);
+  protected readonly visibleRows = computed(() =>
+    limitRankedIssuers(this.filteredRanked(), this.showAll()),
+  );
+
+  protected readonly canToggleLimit = computed(() => this.filteredRanked().length > TOP_RANK_COUNT);
 
   protected readonly rangeLabel = computed(() => {
     const from = this.startDate();
@@ -54,14 +64,26 @@ export class ShareholdersDiffRank {
     return this.i18n.text('stats.shareholdersDiffRange', { from, to });
   });
 
-  /** Sum of all issuer deltas in the range; matches the market total change between the two dates. */
   protected readonly netChangeLabel = computed(() => {
-    const rows = this.ranked();
-    if (rows.length === 0) {
+    const allRows = this.ranked();
+    if (allRows.length === 0) {
       return '';
     }
-    const net = rows.reduce((sum, row) => sum + row.diff, 0);
-    return this.i18n.text('stats.shareholdersDiffNet', { net: formatDelta(0, net, false) });
+    const marketNet = allRows.reduce((sum, row) => sum + row.diff, 0);
+    const marketNetText = formatDelta(0, marketNet, false);
+    const filter = this.changeFilter();
+    if (filter === 'all') {
+      return this.i18n.text('stats.shareholdersDiffNet', { net: marketNetText });
+    }
+    const filteredRows = this.filteredRanked();
+    if (filteredRows.length === 0) {
+      return this.i18n.text('stats.shareholdersDiffNetMarketOnly', { marketNet: marketNetText });
+    }
+    const filteredNet = filteredRows.reduce((sum, row) => sum + row.diff, 0);
+    return this.i18n.text('stats.shareholdersDiffNetFiltered', {
+      filteredNet: formatDelta(0, filteredNet, false),
+      marketNet: marketNetText,
+    });
   });
 
   protected readonly sortLabel = computed(() =>
@@ -72,12 +94,40 @@ export class ShareholdersDiffRank {
     this.showAll() ? this.i18n.text('stats.showTop5') : this.i18n.text('stats.showAll'),
   );
 
+  protected readonly filterLabel = computed(() => {
+    switch (this.changeFilter()) {
+      case 'positive':
+        return this.i18n.text('stats.changeFilterPositive');
+      case 'negative':
+        return this.i18n.text('stats.changeFilterNegative');
+      case 'unchanged':
+        return this.i18n.text('stats.changeFilterUnchanged');
+      default:
+        return this.i18n.text('stats.changeFilterAll');
+    }
+  });
+
+  protected filterActionClass(): string {
+    const base = 'shareholders-diff-rank__action';
+    return this.changeFilter() === 'all' ? base : `${base} shareholders-diff-rank__action--active`;
+  }
+
   protected toggleOrder(): void {
     this.orderChange.emit(this.order() === 'desc' ? 'asc' : 'desc');
   }
 
   protected toggleLimit(): void {
     this.showAllChange.emit(!this.showAll());
+  }
+
+  protected cycleChangeFilter(): void {
+    const next: Record<ShareholdersDiffChangeFilter, ShareholdersDiffChangeFilter> = {
+      all: 'positive',
+      positive: 'negative',
+      negative: 'unchanged',
+      unchanged: 'all',
+    };
+    this.changeFilterChange.emit(next[this.changeFilter()]);
   }
 
   protected deltaClass(diff: number): string {

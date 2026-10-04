@@ -7,8 +7,10 @@
       [endDate]="diffRankRange().to"
       [order]="rankOrder()"
       [showAll]="showAllRank()"
+      [changeFilter]="rankChangeFilter()"
       (orderChange)="onRankOrderChange($event)"
       (showAllChange)="onShowAllRankChange($event)"
+      (changeFilterChange)="onRankChangeFilterChange($event)"
     />
     <app-shareholders-market-charts
       [dataset]="data"

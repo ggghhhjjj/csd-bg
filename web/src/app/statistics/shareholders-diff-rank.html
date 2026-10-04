@@ -16,6 +16,9 @@
       <button class="shareholders-diff-rank__action" type="button" (click)="toggleOrder()">
         {{ sortLabel() }}
       </button>
+      <button [class]="filterActionClass()" type="button" (click)="cycleChangeFilter()">
+        {{ filterLabel() }}
+      </button>
       @if (canToggleLimit()) {
         <button class="shareholders-diff-rank__action" type="button" (click)="toggleLimit()">
           {{ limitLabel() }}

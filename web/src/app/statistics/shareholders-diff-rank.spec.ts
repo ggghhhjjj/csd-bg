@@ -65,6 +65,49 @@ describe('ShareholdersDiffRank', () => {
     expect(rowNames(fixture.nativeElement)).toEqual(['Gamma', 'Twin', 'Twin', 'Alpha', 'Beta']);
   });
 
+  it('cycles the change filter through positive, negative, and unchanged', async () => {
+    const fixture = await createComponent();
+    fixture.detectChanges();
+
+    expect(rowNames(fixture.nativeElement)).toHaveLength(5);
+    clickAction(fixture.nativeElement, 'Всички промени');
+    fixture.detectChanges();
+    expect(fixture.componentRef.instance['changeFilter']()).toBe('positive');
+    expect(rowNames(fixture.nativeElement)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin']);
+
+    clickAction(fixture.nativeElement, 'Само увеличения');
+    fixture.detectChanges();
+    expect(fixture.componentRef.instance['changeFilter']()).toBe('negative');
+    expect(rowNames(fixture.nativeElement)).toEqual(['Gamma']);
+
+    clickAction(fixture.nativeElement, 'Само намаления');
+    fixture.detectChanges();
+    expect(fixture.componentRef.instance['changeFilter']()).toBe('unchanged');
+    expect(rowNames(fixture.nativeElement)).toEqual([]);
+  });
+
+  it('shows filtered sum and market net when decreases only is active', async () => {
+    const fixture = await createComponent();
+    fixture.componentRef.setInput('changeFilter', 'negative');
+    fixture.detectChanges();
+
+    const net = fixture.nativeElement.querySelector('.shareholders-diff-rank__net')?.textContent ?? '';
+    expect(net).toContain('-8');
+    expect(net).toContain('+38');
+    expect(net).toContain('пазар');
+  });
+
+  it('limits top 5 within the active change filter', async () => {
+    const fixture = await createComponent();
+    fixture.componentRef.setInput('changeFilter', 'positive');
+    fixture.detectChanges();
+
+    expect(rowNames(fixture.nativeElement)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin']);
+    clickAction(fixture.nativeElement, 'Покажи всички');
+    fixture.detectChanges();
+    expect(rowNames(fixture.nativeElement)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin', 'Twin']);
+  });
+
   it('toggles between top 5 and all ranked issuers', async () => {
     const fixture = await createComponent();
     fixture.detectChanges();
@@ -111,9 +154,13 @@ async function createComponent(dataset: ParsedDataset = rankingFixture()) {
   fixture.componentRef.setInput('endDate', DATES[2]);
   fixture.componentRef.setInput('order', 'desc');
   fixture.componentRef.setInput('showAll', false);
+  fixture.componentRef.setInput('changeFilter', 'all');
   fixture.componentInstance.orderChange.subscribe((order) => fixture.componentRef.setInput('order', order));
   fixture.componentInstance.showAllChange.subscribe((showAll) =>
     fixture.componentRef.setInput('showAll', showAll),
+  );
+  fixture.componentInstance.changeFilterChange.subscribe((changeFilter) =>
+    fixture.componentRef.setInput('changeFilter', changeFilter),
   );
   return fixture;
 }

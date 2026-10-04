@@ -7,7 +7,7 @@ import { RangePresets } from './range-presets';
 import { ShareholdersDiffRank } from './shareholders-diff-rank';
 import { ShareholdersMarketCharts } from './shareholders-market-charts';
 import { priorReportDayRange } from './prior-report-day-range';
-import type { RankOrder } from './rank-issuers';
+import type { RankOrder, ShareholdersDiffChangeFilter } from './rank-issuers';
 import {
   parseStatisticsViewParams,
   serializeStatisticsViewParams,
@@ -38,6 +38,7 @@ export class Statistics {
   protected readonly scrollDiffRange = signal<StatisticsCustomRange | null>(null);
   protected readonly rankOrder = signal<RankOrder>(this.initialView.order);
   protected readonly showAllRank = signal(this.initialView.showAll);
+  protected readonly rankChangeFilter = signal(this.initialView.changeFilter);
   protected readonly dataset = computed(() => this.store.dataset());
 
   protected readonly viewRange = computed(() => {
@@ -157,6 +158,11 @@ export class Statistics {
     this.syncQueryParams();
   }
 
+  protected onRankChangeFilterChange(filter: ShareholdersDiffChangeFilter): void {
+    this.rankChangeFilter.set(filter);
+    this.syncQueryParams();
+  }
+
   private scheduleQueryParamSync(): void {
     if (this.queryParamSyncTimer !== null) {
       clearTimeout(this.queryParamSyncTimer);
@@ -184,6 +190,7 @@ export class Statistics {
       scrollDiffRange: this.scrollDiffRange(),
       order: this.rankOrder(),
       showAll: this.showAllRank(),
+      changeFilter: this.rankChangeFilter(),
       dates: dataset?.dates ?? [],
     });
     if (statisticsViewQueryEquals(this.route.snapshot.queryParamMap, query)) {

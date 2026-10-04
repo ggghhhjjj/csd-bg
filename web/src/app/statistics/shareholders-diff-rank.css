@@ -58,6 +58,11 @@
   cursor: pointer;
 }
 
+.shareholders-diff-rank__action--active {
+  border-color: #475569;
+  background: #334155;
+}
+
 .shareholders-diff-rank__items {
   list-style: none;
   margin: 0;

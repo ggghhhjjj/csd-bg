@@ -1,6 +1,6 @@
 import type { RangePreset } from '../core/data/date-range';
 import { DEFAULT_RANGE_PRESET, type QueryParamReader } from '../issuer-detail/chart-view-params';
-import type { RankOrder } from './rank-issuers';
+import type { RankOrder, ShareholdersDiffChangeFilter } from './rank-issuers';
 
 const RANGE_PRESETS = new Set<RangePreset>([
   'd5',
@@ -27,6 +27,7 @@ export type StatisticsViewQuery = {
   range: string | null;
   order: string | null;
   all: string | null;
+  chg: string | null;
 };
 
 export type StatisticsViewState = {
@@ -34,6 +35,7 @@ export type StatisticsViewState = {
   customRange: StatisticsCustomRange | null;
   order: RankOrder;
   showAll: boolean;
+  changeFilter: ShareholdersDiffChangeFilter;
 };
 
 export type StatisticsSerializeInput = {
@@ -42,6 +44,7 @@ export type StatisticsSerializeInput = {
   scrollDiffRange: StatisticsCustomRange | null;
   order: RankOrder;
   showAll: boolean;
+  changeFilter: ShareholdersDiffChangeFilter;
   dates: string[];
 };
 
@@ -54,6 +57,7 @@ export function parseStatisticsViewParams(params: QueryParamReader): StatisticsV
     customRange,
     order: parseOrder(params.get('order')),
     showAll: params.get('all') === '1',
+    changeFilter: parseChangeFilter(params.get('chg')),
   };
 }
 
@@ -73,6 +77,7 @@ export function serializeStatisticsViewParams(input: StatisticsSerializeInput): 
     range,
     order: input.order === 'desc' ? null : 'asc',
     all: input.showAll ? '1' : null,
+    chg: serializeChangeFilter(input.changeFilter),
   };
 }
 
@@ -83,6 +88,7 @@ export function serializeStatisticsRange(preset: RangePreset): StatisticsViewQue
     scrollDiffRange: null,
     order: 'desc',
     showAll: false,
+    changeFilter: 'all',
     dates: [],
   });
 }
@@ -91,7 +97,8 @@ export function statisticsViewQueryEquals(params: QueryParamReader, query: Stati
   return (
     (params.get('range') ?? null) === (query.range ?? null) &&
     (params.get('order') ?? null) === (query.order ?? null) &&
-    (params.get('all') ?? null) === (query.all ?? null)
+    (params.get('all') ?? null) === (query.all ?? null) &&
+    (params.get('chg') ?? null) === (query.chg ?? null)
   );
 }
 
@@ -127,4 +134,30 @@ function parseCustomRangeFromRange(value: string | null): StatisticsCustomRange 
 
 function parseOrder(value: string | null): RankOrder {
   return value === 'asc' ? 'asc' : 'desc';
+}
+
+function parseChangeFilter(value: string | null): ShareholdersDiffChangeFilter {
+  switch (value) {
+    case 'pos':
+      return 'positive';
+    case 'neg':
+      return 'negative';
+    case 'zero':
+      return 'unchanged';
+    default:
+      return 'all';
+  }
+}
+
+function serializeChangeFilter(filter: ShareholdersDiffChangeFilter): string | null {
+  switch (filter) {
+    case 'positive':
+      return 'pos';
+    case 'negative':
+      return 'neg';
+    case 'unchanged':
+      return 'zero';
+    default:
+      return null;
+  }
 }

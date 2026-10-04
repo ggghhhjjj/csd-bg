@@ -18,12 +18,14 @@ describe('parseStatisticsViewParams', () => {
       customRange: null,
       order: 'desc',
       showAll: false,
+      changeFilter: 'all',
     });
     expect(parseStatisticsViewParams(convertToParamMap({ range: 'decade' }))).toEqual({
       preset: DEFAULT_RANGE_PRESET,
       customRange: null,
       order: 'desc',
       showAll: false,
+      changeFilter: 'all',
     });
   });
 
@@ -33,6 +35,7 @@ describe('parseStatisticsViewParams', () => {
       customRange: null,
       order: 'desc',
       showAll: false,
+      changeFilter: 'all',
     });
   });
 
@@ -42,6 +45,7 @@ describe('parseStatisticsViewParams', () => {
       customRange: { from: '2024-01-01', to: '2024-06-01' },
       order: 'desc',
       showAll: false,
+      changeFilter: 'all',
     });
   });
 
@@ -51,7 +55,15 @@ describe('parseStatisticsViewParams', () => {
       customRange: null,
       order: 'asc',
       showAll: true,
+      changeFilter: 'all',
     });
+  });
+
+  it('parses change filter chg query values', () => {
+    expect(parseStatisticsViewParams(convertToParamMap({ chg: 'pos' })).changeFilter).toBe('positive');
+    expect(parseStatisticsViewParams(convertToParamMap({ chg: 'neg' })).changeFilter).toBe('negative');
+    expect(parseStatisticsViewParams(convertToParamMap({ chg: 'zero' })).changeFilter).toBe('unchanged');
+    expect(parseStatisticsViewParams(convertToParamMap({ chg: 'unknown' })).changeFilter).toBe('all');
   });
 });
 
@@ -75,9 +87,10 @@ describe('serializeStatisticsViewParams', () => {
         scrollDiffRange: null,
         order: 'desc',
         showAll: false,
+        changeFilter: 'all',
         dates: [],
       }),
-    ).toEqual({ range: null, order: null, all: null });
+    ).toEqual({ range: null, order: null, all: null, chg: null });
     expect(
       serializeStatisticsViewParams({
         preset: 'max',
@@ -85,9 +98,10 @@ describe('serializeStatisticsViewParams', () => {
         scrollDiffRange: null,
         order: 'desc',
         showAll: false,
+        changeFilter: 'all',
         dates: [],
       }),
-    ).toEqual({ range: 'max', order: null, all: null });
+    ).toEqual({ range: 'max', order: null, all: null, chg: null });
   });
 
   it('serializes custom scroll or pick range as ISO dates', () => {
@@ -98,9 +112,10 @@ describe('serializeStatisticsViewParams', () => {
         scrollDiffRange: null,
         order: 'desc',
         showAll: false,
+        changeFilter: 'all',
         dates: [],
       }),
-    ).toEqual({ range: '2024-01-01,2024-01-02', order: null, all: null });
+    ).toEqual({ range: '2024-01-01,2024-01-02', order: null, all: null, chg: null });
     expect(
       serializeStatisticsViewParams({
         preset: 'm6',
@@ -108,42 +123,64 @@ describe('serializeStatisticsViewParams', () => {
         scrollDiffRange: { from: '2024-04-01', to: '2024-07-01' },
         order: 'asc',
         showAll: true,
+        changeFilter: 'negative',
         dates: [],
       }),
-    ).toEqual({ range: '2024-04-01,2024-07-01', order: 'asc', all: '1' });
+    ).toEqual({ range: '2024-04-01,2024-07-01', order: 'asc', all: '1', chg: 'neg' });
   });
 });
 
 describe('serializeStatisticsRange', () => {
   it('omits the default preset from the query', () => {
-    expect(serializeStatisticsRange(DEFAULT_RANGE_PRESET)).toEqual({ range: null, order: null, all: null });
-    expect(serializeStatisticsRange('max')).toEqual({ range: 'max', order: null, all: null });
+    expect(serializeStatisticsRange(DEFAULT_RANGE_PRESET)).toEqual({
+      range: null,
+      order: null,
+      all: null,
+      chg: null,
+    });
+    expect(serializeStatisticsRange('max')).toEqual({ range: 'max', order: null, all: null, chg: null });
   });
 });
 
 describe('statisticsViewQueryEquals', () => {
-  it('compares range, order, and all', () => {
-    const query = { range: '2024-01-01,2024-01-02', order: 'asc', all: '1' };
+  it('compares range, order, all, and chg', () => {
+    const query = { range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'pos' };
     expect(
       statisticsViewQueryEquals(
-        convertToParamMap({ range: '2024-01-01,2024-01-02', order: 'asc', all: '1' }),
+        convertToParamMap({ range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'pos' }),
         query,
       ),
     ).toBe(true);
     expect(statisticsViewQueryEquals(convertToParamMap({ range: 'y1' }), query)).toBe(false);
+    expect(
+      statisticsViewQueryEquals(
+        convertToParamMap({ range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'neg' }),
+        query,
+      ),
+    ).toBe(false);
   });
 });
 
 describe('statisticsRangeQueryEquals', () => {
   it('treats a missing range as null', () => {
-    expect(statisticsRangeQueryEquals(convertToParamMap({}), { range: null, order: null, all: null })).toBe(
-      true,
-    );
     expect(
-      statisticsRangeQueryEquals(convertToParamMap({ range: 'y1' }), { range: 'y1', order: null, all: null }),
+      statisticsRangeQueryEquals(convertToParamMap({}), { range: null, order: null, all: null, chg: null }),
     ).toBe(true);
     expect(
-      statisticsRangeQueryEquals(convertToParamMap({ range: 'y1' }), { range: null, order: null, all: null }),
+      statisticsRangeQueryEquals(convertToParamMap({ range: 'y1' }), {
+        range: 'y1',
+        order: null,
+        all: null,
+        chg: null,
+      }),
+    ).toBe(true);
+    expect(
+      statisticsRangeQueryEquals(convertToParamMap({ range: 'y1' }), {
+        range: null,
+        order: null,
+        all: null,
+        chg: null,
+      }),
     ).toBe(false);
   });
 });

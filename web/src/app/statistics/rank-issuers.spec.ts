@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { loadRepoVectorsDataset } from '../core/data/vectors-repo-fixture';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
-import { limitRankedIssuers, rankIssuersByShareholdersDiff } from './rank-issuers';
+import {
+  filterRankedIssuersByChange,
+  limitRankedIssuers,
+  rankIssuersByShareholdersDiff,
+} from './rank-issuers';
 
 const DATES = ['2024-01-01', '2024-04-01', '2024-07-01'];
 
@@ -71,6 +75,27 @@ describe('rankIssuersByShareholdersDiff', () => {
   });
 });
 
+describe('filterRankedIssuersByChange', () => {
+  it('returns all rows when filter is all', () => {
+    const ranked = rankIssuersByShareholdersDiff(rankingFixture(), DATES[0], DATES[2], 'desc');
+    expect(filterRankedIssuersByChange(ranked, 'all')).toEqual(ranked);
+  });
+
+  it('keeps only positive, negative, or zero diffs', () => {
+    const ranked = rankIssuersByShareholdersDiff(rankingFixtureWithFlat(), DATES[0], DATES[2], 'desc');
+    expect(filterRankedIssuersByChange(ranked, 'positive').map((row) => row.name)).toEqual([
+      'Delta',
+      'Zeta',
+      'Alpha',
+      'Beta',
+      'Twin',
+      'Twin',
+    ]);
+    expect(filterRankedIssuersByChange(ranked, 'negative').map((row) => row.name)).toEqual(['Gamma']);
+    expect(filterRankedIssuersByChange(ranked, 'unchanged').map((row) => row.name)).toEqual(['Flat']);
+  });
+});
+
 describe('limitRankedIssuers', () => {
   it('keeps the top 5 unless show-all is on', () => {
     const ranked = rankIssuersByShareholdersDiff(rankingFixture(), DATES[0], DATES[2], 'desc');
@@ -111,6 +136,32 @@ function listingFixture(): ParsedDataset {
   };
 }
 
+function rankingFixtureWithFlat(): ParsedDataset {
+  const issuers: VectorCatalogEntry[] = [
+    { id: 1, isin: 'BG1100000010', name: 'Zeta' },
+    { id: 2, isin: 'BG1100000020', name: 'Alpha' },
+    { id: 3, isin: 'BG1100000030', name: 'Beta' },
+    { id: 4, isin: 'BG1100000040', name: 'Gamma' },
+    { id: 5, isin: 'BG1100000050', name: 'Delta' },
+    { id: 6, isin: 'BG1100000060', name: 'Empty' },
+    { id: 7, isin: 'BG1100000002', name: 'Twin' },
+    { id: 8, isin: 'BG1100000001', name: 'Twin' },
+    { id: 9, isin: 'BG1100000090', name: 'Flat' },
+  ];
+  const series: Array<Array<number | null>> = [
+    [100, 105, 110],
+    [10, 12, 15],
+    [20, 22, 25],
+    [50, 46, 42],
+    [1, 10, 21],
+    [null, null, null],
+    [10, 11, 13],
+    [10, 12, 13],
+    [31, 31, 31],
+  ];
+  return packSeries(issuers, series);
+}
+
 function rankingFixture(): ParsedDataset {
   const issuers: VectorCatalogEntry[] = [
     { id: 1, isin: 'BG1100000010', name: 'Zeta' },
@@ -132,6 +183,10 @@ function rankingFixture(): ParsedDataset {
     [10, 11, 13],
     [10, 12, 13],
   ];
+  return packSeries(issuers, series);
+}
+
+function packSeries(issuers: VectorCatalogEntry[], series: Array<Array<number | null>>): ParsedDataset {
   const cellCount = issuers.length * DATES.length;
   const shareholders = new Int32Array(cellCount);
   const shareholdersValid = new Uint8Array(cellCount);
