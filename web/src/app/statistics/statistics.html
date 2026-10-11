@@ -8,9 +8,19 @@
       [order]="rankOrder()"
       [showAll]="showAllRank()"
       [changeFilter]="rankChangeFilter()"
+      [listExpanded]="rankListExpanded()"
       (orderChange)="onRankOrderChange($event)"
       (showAllChange)="onShowAllRankChange($event)"
       (changeFilterChange)="onRankChangeFilterChange($event)"
+      (listExpandedChange)="onRankListExpandedChange($event)"
+    />
+    <app-shareholders-diff-rank-chart
+      [dataset]="data"
+      [startDate]="diffRankRange().from"
+      [endDate]="diffRankRange().to"
+      [order]="rankOrder()"
+      [showAll]="showAllRank()"
+      [changeFilter]="rankChangeFilter()"
     />
     <app-shareholders-market-charts
       [dataset]="data"

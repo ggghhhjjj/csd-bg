@@ -9,9 +9,9 @@ import { HelpTrigger } from '../help/help-trigger';
 import { shareholdersDiffRankToTabular } from './shareholders-diff-rank-export';
 import {
   filterRankedIssuersByChange,
-  limitRankedIssuers,
   rankIssuersByShareholdersDiff,
   TOP_RANK_COUNT,
+  visibleShareholdersDiffRankRows,
   type RankOrder,
   type ShareholdersDiffChangeFilter,
 } from './rank-issuers';
@@ -30,10 +30,12 @@ export class ShareholdersDiffRank {
   readonly order = input.required<RankOrder>();
   readonly showAll = input.required<boolean>();
   readonly changeFilter = input.required<ShareholdersDiffChangeFilter>();
+  readonly listExpanded = input.required<boolean>();
 
   readonly orderChange = output<RankOrder>();
   readonly showAllChange = output<boolean>();
   readonly changeFilterChange = output<ShareholdersDiffChangeFilter>();
+  readonly listExpandedChange = output<boolean>();
 
   protected readonly i18n = inject(LocaleService);
   protected readonly helpTopic = SHAREHOLDERS_DIFF_RANK_HELP;
@@ -51,9 +53,21 @@ export class ShareholdersDiffRank {
     filterRankedIssuersByChange(this.ranked(), this.changeFilter()),
   );
 
-  protected readonly visibleRows = computed(() =>
-    limitRankedIssuers(this.filteredRanked(), this.showAll()),
-  );
+  protected readonly visibleRows = computed(() => {
+    const from = this.startDate();
+    const to = this.endDate();
+    if (!from || !to) {
+      return [];
+    }
+    return visibleShareholdersDiffRankRows(
+      this.dataset(),
+      from,
+      to,
+      this.order(),
+      this.changeFilter(),
+      this.showAll(),
+    );
+  });
 
   protected readonly canToggleLimit = computed(() => this.filteredRanked().length > TOP_RANK_COUNT);
 
@@ -98,6 +112,18 @@ export class ShareholdersDiffRank {
     this.showAll() ? this.i18n.text('stats.showTop5') : this.i18n.text('stats.showAll'),
   );
 
+  protected readonly listToggleLabel = computed(() =>
+    this.listExpanded()
+      ? this.i18n.text('stats.shareholdersDiffListCollapse')
+      : this.i18n.text('stats.shareholdersDiffListExpand'),
+  );
+
+  protected readonly listCountLabel = computed(() =>
+    this.i18n.text('stats.shareholdersDiffListCount', {
+      count: String(this.visibleRows().length),
+    }),
+  );
+
   protected readonly filterLabel = computed(() => {
     switch (this.changeFilter()) {
       case 'positive':
@@ -123,6 +149,10 @@ export class ShareholdersDiffRank {
       changeAbs: this.i18n.text('stats.exportColumnChangeAbs'),
       changePercent: this.i18n.text('stats.exportColumnChangePercent'),
     });
+
+  protected toggleListExpanded(): void {
+    this.listExpandedChange.emit(!this.listExpanded());
+  }
 
   protected toggleOrder(): void {
     this.orderChange.emit(this.order() === 'desc' ? 'asc' : 'desc');

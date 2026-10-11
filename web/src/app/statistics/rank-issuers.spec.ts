@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { loadRepoVectorsDataset } from '../core/data/vectors-repo-fixture';
 import type { ParsedDataset, VectorCatalogEntry } from '../core/data/vectors.types';
 import {
+  chartReferenceLevelsForRows,
+  chartRowsForShareholdersDiffRank,
   filterRankedIssuersByChange,
   limitRankedIssuers,
+  mean,
+  median,
   rankIssuersByShareholdersDiff,
+  visibleShareholdersDiffRankRows,
 } from './rank-issuers';
 
 const DATES = ['2024-01-01', '2024-04-01', '2024-07-01'];
@@ -93,6 +98,127 @@ describe('filterRankedIssuersByChange', () => {
     ]);
     expect(filterRankedIssuersByChange(ranked, 'negative').map((row) => row.name)).toEqual(['Gamma']);
     expect(filterRankedIssuersByChange(ranked, 'unchanged').map((row) => row.name)).toEqual(['Flat']);
+  });
+});
+
+describe('mean and median', () => {
+  it('returns null for empty input', () => {
+    expect(mean([])).toBeNull();
+    expect(median([])).toBeNull();
+  });
+
+  it('computes mean and median', () => {
+    expect(mean([10, 20, 30])).toBe(20);
+    expect(median([10, 20, 30])).toBe(20);
+    expect(median([10, 20, 30, 40])).toBe(25);
+  });
+});
+
+describe('chartRowsForShareholdersDiffRank', () => {
+  it('keeps only positive diffs when order is descending', () => {
+    const rows = chartRowsForShareholdersDiffRank(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'desc',
+      'all',
+      true,
+    );
+    expect(rows.every((row) => row.diff > 0)).toBe(true);
+    expect(rows.map((row) => row.name)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin', 'Twin']);
+  });
+
+  it('keeps only negative diffs when order is ascending', () => {
+    const rows = chartRowsForShareholdersDiffRank(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'asc',
+      'all',
+      true,
+    );
+    expect(rows.every((row) => row.diff < 0)).toBe(true);
+    expect(rows.map((row) => row.name)).toEqual(['Gamma']);
+  });
+
+  it('limits to top 5 unless show-all is on', () => {
+    const limited = chartRowsForShareholdersDiffRank(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'desc',
+      'all',
+      false,
+    );
+    expect(limited).toHaveLength(5);
+    expect(limited.every((row) => row.diff > 0)).toBe(true);
+  });
+
+  it('computes reference levels from displayed chart rows only', () => {
+    const topGains = chartRowsForShareholdersDiffRank(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'desc',
+      'all',
+      false,
+    );
+    expect(chartReferenceLevelsForRows(topGains)).toEqual({
+      mean: expect.closeTo(8.6, 5),
+      median: 5,
+      min: 3,
+      max: 20,
+    });
+
+    const allLosses = chartRowsForShareholdersDiffRank(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'asc',
+      'all',
+      true,
+    );
+    expect(chartReferenceLevelsForRows(allLosses)).toEqual({
+      mean: -8,
+      median: -8,
+      min: -8,
+      max: -8,
+    });
+  });
+});
+
+describe('visibleShareholdersDiffRankRows', () => {
+  it('matches filter and sort order from the diff-rank list', () => {
+    const rows = visibleShareholdersDiffRankRows(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'desc',
+      'all',
+      true,
+    );
+    expect(rows.map((row) => row.name)).toEqual([
+      'Delta',
+      'Zeta',
+      'Alpha',
+      'Beta',
+      'Twin',
+      'Twin',
+      'Gamma',
+    ]);
+  });
+
+  it('limits to top 5 unless show-all is on', () => {
+    const limited = visibleShareholdersDiffRankRows(
+      rankingFixture(),
+      DATES[0],
+      DATES[2],
+      'desc',
+      'all',
+      false,
+    );
+    expect(limited).toHaveLength(5);
+    expect(limited.map((row) => row.name)).toEqual(['Delta', 'Zeta', 'Alpha', 'Beta', 'Twin']);
   });
 });
 

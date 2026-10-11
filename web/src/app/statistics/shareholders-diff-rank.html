@@ -32,19 +32,33 @@
     </div>
   </div>
   @if (visibleRows().length) {
-    <ul class="shareholders-diff-rank__items">
-      @for (row of visibleRows(); track row.isin) {
-        <li class="shareholders-diff-rank__item">
-          <a class="shareholders-diff-rank__link" [routerLink]="['/issuer', row.isin]">
-            <span class="shareholders-diff-rank__identity">
-              <span class="shareholders-diff-rank__name">{{ row.name }}</span>
-              <span class="shareholders-diff-rank__isin">{{ row.isin }}</span>
-            </span>
-            <span [class]="deltaClass(row.diff)">{{ row.abs }} ({{ row.percent }})</span>
-          </a>
-        </li>
-      }
-    </ul>
+    <div class="shareholders-diff-rank__list-bar">
+      <button
+        class="shareholders-diff-rank__list-toggle"
+        type="button"
+        (click)="toggleListExpanded()"
+        [attr.aria-expanded]="listExpanded()"
+        [attr.aria-controls]="'shareholders-diff-rank-items'"
+      >
+        {{ listToggleLabel() }}
+        <span class="shareholders-diff-rank__list-count">{{ listCountLabel() }}</span>
+      </button>
+    </div>
+    @if (listExpanded()) {
+      <ul class="shareholders-diff-rank__items" id="shareholders-diff-rank-items">
+        @for (row of visibleRows(); track row.isin) {
+          <li class="shareholders-diff-rank__item">
+            <a class="shareholders-diff-rank__link" [routerLink]="['/issuer', row.isin]">
+              <span class="shareholders-diff-rank__identity">
+                <span class="shareholders-diff-rank__name">{{ row.name }}</span>
+                <span class="shareholders-diff-rank__isin">{{ row.isin }}</span>
+              </span>
+              <span [class]="deltaClass(row.diff)">{{ row.abs }} ({{ row.percent }})</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
   } @else {
     <p class="shareholders-diff-rank__empty">{{ i18n.text('stats.empty') }}</p>
   }

@@ -87,3 +87,97 @@ export function limitRankedIssuers(rows: RankedIssuer[], showAll: boolean): Rank
   }
   return rows.slice(0, TOP_RANK_COUNT);
 }
+
+export function mean(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+export function median(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[mid] ?? null;
+  }
+  const lower = sorted[mid - 1];
+  const upper = sorted[mid];
+  if (lower === undefined || upper === undefined) {
+    return null;
+  }
+  return (lower + upper) / 2;
+}
+
+/** Same rows as the diff-rank list (`visibleRows`). */
+export function visibleShareholdersDiffRankRows(
+  dataset: ParsedDataset,
+  from: string,
+  to: string,
+  order: RankOrder,
+  changeFilter: ShareholdersDiffChangeFilter,
+  showAll: boolean,
+): RankedIssuer[] {
+  const ranked = rankIssuersByShareholdersDiff(dataset, from, to, order);
+  const filtered = filterRankedIssuersByChange(ranked, changeFilter);
+  return limitRankedIssuers(filtered, showAll);
+}
+
+/** Chart-only: descending → gains only; ascending → losses only (after change filter). */
+export function filterRankedIssuersByChartSortSign(
+  rows: RankedIssuer[],
+  order: RankOrder,
+): RankedIssuer[] {
+  if (order === 'desc') {
+    return rows.filter((row) => row.diff > 0);
+  }
+  return rows.filter((row) => row.diff < 0);
+}
+
+export function chartSignedShareholdersDiffRankRows(
+  dataset: ParsedDataset,
+  from: string,
+  to: string,
+  order: RankOrder,
+  changeFilter: ShareholdersDiffChangeFilter,
+): RankedIssuer[] {
+  const ranked = rankIssuersByShareholdersDiff(dataset, from, to, order);
+  const filtered = filterRankedIssuersByChange(ranked, changeFilter);
+  return filterRankedIssuersByChartSortSign(filtered, order);
+}
+
+export function chartRowsForShareholdersDiffRank(
+  dataset: ParsedDataset,
+  from: string,
+  to: string,
+  order: RankOrder,
+  changeFilter: ShareholdersDiffChangeFilter,
+  showAll: boolean,
+): RankedIssuer[] {
+  return limitRankedIssuers(
+    chartSignedShareholdersDiffRankRows(dataset, from, to, order, changeFilter),
+    showAll,
+  );
+}
+
+/** Mean/median/min/max from the same rows drawn on the chart (sign-filtered, then top 5 / show all). */
+export function chartReferenceLevelsForRows(rows: RankedIssuer[]): {
+  mean: number | null;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+} {
+  const diffs = rows.map((row) => row.diff);
+  if (diffs.length === 0) {
+    return { mean: null, median: null, min: null, max: null };
+  }
+  return {
+    mean: mean(diffs),
+    median: median(diffs),
+    min: Math.min(...diffs),
+    max: Math.max(...diffs),
+  };
+}

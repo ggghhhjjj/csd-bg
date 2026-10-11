@@ -164,6 +164,26 @@ describe('ShareholdersDiffRank', () => {
     expect(fixture.nativeElement.querySelector('.data-export-menu__trigger')?.disabled).toBe(true);
   });
 
+  it('collapses and expands the issuer list', async () => {
+    const fixture = await createComponent();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.shareholders-diff-rank__items')).toBeTruthy();
+    (fixture.nativeElement.querySelector('.shareholders-diff-rank__list-toggle') as HTMLButtonElement)?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.shareholders-diff-rank__items')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.shareholders-diff-rank__list-toggle')?.getAttribute('aria-expanded'),
+    ).toBe('false');
+
+    (fixture.nativeElement.querySelector('.shareholders-diff-rank__list-toggle') as HTMLButtonElement)?.click();
+    fixture.detectChanges();
+    expect(rowNames(fixture.nativeElement)).toHaveLength(5);
+    expect(
+      fixture.nativeElement.querySelector('.shareholders-diff-rank__list-toggle')?.getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
   it('links each row to the issuer detail page', async () => {
     const fixture = await createComponent();
     fixture.detectChanges();
@@ -187,12 +207,16 @@ async function createComponent(dataset: ParsedDataset = rankingFixture()) {
   fixture.componentRef.setInput('order', 'desc');
   fixture.componentRef.setInput('showAll', false);
   fixture.componentRef.setInput('changeFilter', 'all');
+  fixture.componentRef.setInput('listExpanded', true);
   fixture.componentInstance.orderChange.subscribe((order) => fixture.componentRef.setInput('order', order));
   fixture.componentInstance.showAllChange.subscribe((showAll) =>
     fixture.componentRef.setInput('showAll', showAll),
   );
   fixture.componentInstance.changeFilterChange.subscribe((changeFilter) =>
     fixture.componentRef.setInput('changeFilter', changeFilter),
+  );
+  fixture.componentInstance.listExpandedChange.subscribe((listExpanded) =>
+    fixture.componentRef.setInput('listExpanded', listExpanded),
   );
   return fixture;
 }

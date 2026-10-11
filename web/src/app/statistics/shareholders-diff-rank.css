@@ -63,6 +63,31 @@
   background: #334155;
 }
 
+.shareholders-diff-rank__list-bar {
+  display: flex;
+  align-items: center;
+}
+
+.shareholders-diff-rank__list-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shareholders-diff-rank__list-count {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .shareholders-diff-rank__items {
   list-style: none;
   margin: 0;

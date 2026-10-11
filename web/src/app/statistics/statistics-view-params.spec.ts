@@ -19,6 +19,7 @@ describe('parseStatisticsViewParams', () => {
       order: 'desc',
       showAll: false,
       changeFilter: 'all',
+      rankListExpanded: true,
     });
     expect(parseStatisticsViewParams(convertToParamMap({ range: 'decade' }))).toEqual({
       preset: DEFAULT_RANGE_PRESET,
@@ -26,6 +27,7 @@ describe('parseStatisticsViewParams', () => {
       order: 'desc',
       showAll: false,
       changeFilter: 'all',
+      rankListExpanded: true,
     });
   });
 
@@ -36,6 +38,7 @@ describe('parseStatisticsViewParams', () => {
       order: 'desc',
       showAll: false,
       changeFilter: 'all',
+      rankListExpanded: true,
     });
   });
 
@@ -46,6 +49,7 @@ describe('parseStatisticsViewParams', () => {
       order: 'desc',
       showAll: false,
       changeFilter: 'all',
+      rankListExpanded: true,
     });
   });
 
@@ -56,7 +60,12 @@ describe('parseStatisticsViewParams', () => {
       order: 'asc',
       showAll: true,
       changeFilter: 'all',
+      rankListExpanded: true,
     });
+  });
+
+  it('parses collapsed diff-rank list from list=0', () => {
+    expect(parseStatisticsViewParams(convertToParamMap({ list: '0' })).rankListExpanded).toBe(false);
   });
 
   it('parses change filter chg query values', () => {
@@ -88,9 +97,10 @@ describe('serializeStatisticsViewParams', () => {
         order: 'desc',
         showAll: false,
         changeFilter: 'all',
+        rankListExpanded: true,
         dates: [],
       }),
-    ).toEqual({ range: null, order: null, all: null, chg: null });
+    ).toEqual({ range: null, order: null, all: null, chg: null, list: null });
     expect(
       serializeStatisticsViewParams({
         preset: 'max',
@@ -99,9 +109,10 @@ describe('serializeStatisticsViewParams', () => {
         order: 'desc',
         showAll: false,
         changeFilter: 'all',
+        rankListExpanded: true,
         dates: [],
       }),
-    ).toEqual({ range: 'max', order: null, all: null, chg: null });
+    ).toEqual({ range: 'max', order: null, all: null, chg: null, list: null });
   });
 
   it('serializes custom scroll or pick range as ISO dates', () => {
@@ -113,9 +124,10 @@ describe('serializeStatisticsViewParams', () => {
         order: 'desc',
         showAll: false,
         changeFilter: 'all',
+        rankListExpanded: true,
         dates: [],
       }),
-    ).toEqual({ range: '2024-01-01,2024-01-02', order: null, all: null, chg: null });
+    ).toEqual({ range: '2024-01-01,2024-01-02', order: null, all: null, chg: null, list: null });
     expect(
       serializeStatisticsViewParams({
         preset: 'm6',
@@ -124,9 +136,10 @@ describe('serializeStatisticsViewParams', () => {
         order: 'asc',
         showAll: true,
         changeFilter: 'negative',
+        rankListExpanded: false,
         dates: [],
       }),
-    ).toEqual({ range: '2024-04-01,2024-07-01', order: 'asc', all: '1', chg: 'neg' });
+    ).toEqual({ range: '2024-04-01,2024-07-01', order: 'asc', all: '1', chg: 'neg', list: '0' });
   });
 });
 
@@ -137,14 +150,21 @@ describe('serializeStatisticsRange', () => {
       order: null,
       all: null,
       chg: null,
+      list: null,
     });
-    expect(serializeStatisticsRange('max')).toEqual({ range: 'max', order: null, all: null, chg: null });
+    expect(serializeStatisticsRange('max')).toEqual({
+      range: 'max',
+      order: null,
+      all: null,
+      chg: null,
+      list: null,
+    });
   });
 });
 
 describe('statisticsViewQueryEquals', () => {
   it('compares range, order, all, and chg', () => {
-    const query = { range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'pos' };
+    const query = { range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'pos', list: null };
     expect(
       statisticsViewQueryEquals(
         convertToParamMap({ range: '2024-01-01,2024-01-02', order: 'asc', all: '1', chg: 'pos' }),
@@ -164,7 +184,13 @@ describe('statisticsViewQueryEquals', () => {
 describe('statisticsRangeQueryEquals', () => {
   it('treats a missing range as null', () => {
     expect(
-      statisticsRangeQueryEquals(convertToParamMap({}), { range: null, order: null, all: null, chg: null }),
+      statisticsRangeQueryEquals(convertToParamMap({}), {
+        range: null,
+        order: null,
+        all: null,
+        chg: null,
+        list: null,
+      }),
     ).toBe(true);
     expect(
       statisticsRangeQueryEquals(convertToParamMap({ range: 'y1' }), {
@@ -172,6 +198,7 @@ describe('statisticsRangeQueryEquals', () => {
         order: null,
         all: null,
         chg: null,
+        list: null,
       }),
     ).toBe(true);
     expect(
@@ -180,6 +207,7 @@ describe('statisticsRangeQueryEquals', () => {
         order: null,
         all: null,
         chg: null,
+        list: null,
       }),
     ).toBe(false);
   });

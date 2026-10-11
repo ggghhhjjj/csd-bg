@@ -5,6 +5,7 @@ import { indexForDate, rangeStartIso, type RangePreset } from '../core/data/date
 import { VectorsStore } from '../core/data/vectors.store';
 import { RangePresets } from './range-presets';
 import { ShareholdersDiffRank } from './shareholders-diff-rank';
+import { ShareholdersDiffRankChart } from './shareholders-diff-rank-chart';
 import { ShareholdersMarketCharts } from './shareholders-market-charts';
 import { priorReportDayRange } from './prior-report-day-range';
 import type { RankOrder, ShareholdersDiffChangeFilter } from './rank-issuers';
@@ -17,7 +18,7 @@ import {
 
 @Component({
   selector: 'app-statistics',
-  imports: [RangePresets, ShareholdersDiffRank, ShareholdersMarketCharts],
+  imports: [RangePresets, ShareholdersDiffRank, ShareholdersDiffRankChart, ShareholdersMarketCharts],
   templateUrl: './statistics.html',
   styleUrl: './statistics.css',
 })
@@ -39,6 +40,7 @@ export class Statistics {
   protected readonly rankOrder = signal<RankOrder>(this.initialView.order);
   protected readonly showAllRank = signal(this.initialView.showAll);
   protected readonly rankChangeFilter = signal(this.initialView.changeFilter);
+  protected readonly rankListExpanded = signal(this.initialView.rankListExpanded);
   protected readonly dataset = computed(() => this.store.dataset());
 
   protected readonly viewRange = computed(() => {
@@ -163,6 +165,11 @@ export class Statistics {
     this.syncQueryParams();
   }
 
+  protected onRankListExpandedChange(expanded: boolean): void {
+    this.rankListExpanded.set(expanded);
+    this.syncQueryParams();
+  }
+
   private scheduleQueryParamSync(): void {
     if (this.queryParamSyncTimer !== null) {
       clearTimeout(this.queryParamSyncTimer);
@@ -191,6 +198,7 @@ export class Statistics {
       order: this.rankOrder(),
       showAll: this.showAllRank(),
       changeFilter: this.rankChangeFilter(),
+      rankListExpanded: this.rankListExpanded(),
       dates: dataset?.dates ?? [],
     });
     if (statisticsViewQueryEquals(this.route.snapshot.queryParamMap, query)) {

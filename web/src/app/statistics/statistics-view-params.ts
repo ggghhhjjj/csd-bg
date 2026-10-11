@@ -28,6 +28,8 @@ export type StatisticsViewQuery = {
   order: string | null;
   all: string | null;
   chg: string | null;
+  /** `0` when the diff-rank issuer list is collapsed; omitted when expanded (default). */
+  list: string | null;
 };
 
 export type StatisticsViewState = {
@@ -36,6 +38,7 @@ export type StatisticsViewState = {
   order: RankOrder;
   showAll: boolean;
   changeFilter: ShareholdersDiffChangeFilter;
+  rankListExpanded: boolean;
 };
 
 export type StatisticsSerializeInput = {
@@ -45,6 +48,7 @@ export type StatisticsSerializeInput = {
   order: RankOrder;
   showAll: boolean;
   changeFilter: ShareholdersDiffChangeFilter;
+  rankListExpanded: boolean;
   dates: string[];
 };
 
@@ -58,6 +62,7 @@ export function parseStatisticsViewParams(params: QueryParamReader): StatisticsV
     order: parseOrder(params.get('order')),
     showAll: params.get('all') === '1',
     changeFilter: parseChangeFilter(params.get('chg')),
+    rankListExpanded: params.get('list') !== '0',
   };
 }
 
@@ -78,6 +83,7 @@ export function serializeStatisticsViewParams(input: StatisticsSerializeInput): 
     order: input.order === 'desc' ? null : 'asc',
     all: input.showAll ? '1' : null,
     chg: serializeChangeFilter(input.changeFilter),
+    list: input.rankListExpanded ? null : '0',
   };
 }
 
@@ -89,6 +95,7 @@ export function serializeStatisticsRange(preset: RangePreset): StatisticsViewQue
     order: 'desc',
     showAll: false,
     changeFilter: 'all',
+    rankListExpanded: true,
     dates: [],
   });
 }
@@ -98,7 +105,8 @@ export function statisticsViewQueryEquals(params: QueryParamReader, query: Stati
     (params.get('range') ?? null) === (query.range ?? null) &&
     (params.get('order') ?? null) === (query.order ?? null) &&
     (params.get('all') ?? null) === (query.all ?? null) &&
-    (params.get('chg') ?? null) === (query.chg ?? null)
+    (params.get('chg') ?? null) === (query.chg ?? null) &&
+    (params.get('list') ?? null) === (query.list ?? null)
   );
 }
 

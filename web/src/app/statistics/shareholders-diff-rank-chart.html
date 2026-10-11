@@ -1,0 +1,40 @@
+<section class="shareholders-diff-rank-chart">
+  <div class="shareholders-diff-rank-chart__title-row">
+    <h2 class="shareholders-diff-rank-chart__title">{{ i18n.text('stats.shareholdersDiffChart') }}</h2>
+    <app-help-trigger [topicId]="helpTopic" />
+  </div>
+  @if (hasRows()) {
+    <div class="shareholders-diff-rank-chart__levels">
+      @if (meanLevelText()) {
+        <span class="shareholders-diff-rank-chart__level shareholders-diff-rank-chart__level--mean">{{
+          meanLevelText()
+        }}</span>
+      }
+      @if (medianLevelText()) {
+        <span class="shareholders-diff-rank-chart__level shareholders-diff-rank-chart__level--median">{{
+          medianLevelText()
+        }}</span>
+      }
+      @if (minLevelText()) {
+        <span class="shareholders-diff-rank-chart__level shareholders-diff-rank-chart__level--min">{{
+          minLevelText()
+        }}</span>
+      }
+      @if (maxLevelText()) {
+        <span class="shareholders-diff-rank-chart__level shareholders-diff-rank-chart__level--max">{{
+          maxLevelText()
+        }}</span>
+      }
+    </div>
+  }
+  @if (!hasRows()) {
+    <p class="shareholders-diff-rank-chart__empty">{{ i18n.text('stats.empty') }}</p>
+  }
+  <div
+    #chartHost
+    class="shareholders-diff-rank-chart__chart"
+    role="img"
+    [hidden]="!hasRows()"
+    [style.height.px]="chartHeightPx()"
+  ></div>
+</section>
