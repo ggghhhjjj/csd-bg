@@ -241,8 +241,10 @@ describe('Header', () => {
     );
   });
 
-  it('shows a compact cache date under the title', async () => {
-    await configureHeader({ cachedOn: signal('2026-08-19') });
+  it('shows the latest market report date under the title', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 19));
+    await configureHeader({ dates: ['2026-01-01', '2026-08-19'] });
 
     const fixture = TestBed.createComponent(Header);
     fixture.detectChanges();
@@ -253,11 +255,26 @@ describe('Header', () => {
     expect(subtitle).toBeTruthy();
     expect(subtitle?.textContent?.trim()).toBe(label);
     expect(label).not.toMatch(/2026/);
-    expect(subtitle?.getAttribute('aria-label')).toBe(i18n.text('header.cachedOn', { date: label }));
+    expect(subtitle?.getAttribute('aria-label')).toBe(i18n.text('header.dataThrough', { date: label }));
+    expect(subtitle?.classList.contains('header__cached-on--stale')).toBe(false);
+    vi.useRealTimers();
   });
 
-  it('shows the application version next to the cache date', async () => {
-    await configureHeader({ cachedOn: signal('2026-08-19'), appVersion: signal(42) });
+  it('highlights stale market data when today is two or more days after the latest report', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 11));
+    await configureHeader({ dates: ['2026-10-09'] });
+
+    const fixture = TestBed.createComponent(Header);
+    fixture.detectChanges();
+
+    const subtitle = fixture.nativeElement.querySelector('.header__cached-on') as HTMLElement | null;
+    expect(subtitle?.classList.contains('header__cached-on--stale')).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('shows the application version next to the market data date', async () => {
+    await configureHeader({ dates: ['2026-08-19'], appVersion: signal(42) });
 
     const fixture = TestBed.createComponent(Header);
     fixture.detectChanges();
@@ -278,8 +295,8 @@ describe('Header', () => {
     expect(fixture.nativeElement.querySelector('.header__app-version')).toBeNull();
   });
 
-  it('hides the cache date when VectorsStore has not loaded', async () => {
-    await configureHeader({ cachedOn: signal(null) });
+  it('hides the market data date when VectorsStore has not loaded', async () => {
+    await configureHeader({ dates: [] });
 
     const fixture = TestBed.createComponent(Header);
     fixture.detectChanges();
@@ -342,7 +359,7 @@ async function configureHeader(
     reloadApp?: () => void;
     fetchPhase?: ReturnType<typeof signal<string>>;
     countdownSec?: ReturnType<typeof signal<number | null>>;
-    cachedOn?: ReturnType<typeof signal<string | null>>;
+    dates?: string[];
     appVersion?: ReturnType<typeof signal<number | null>>;
     openFromMenu?: (locale: string) => void;
   } = {},
@@ -363,8 +380,7 @@ async function configureHeader(
           reloadApp: store.reloadApp ?? vi.fn(),
           fetchPhase: store.fetchPhase ?? signal('idle'),
           countdownSec: store.countdownSec ?? signal<number | null>(null),
-          cachedOn: store.cachedOn ?? signal(null),
-          dataset: signal({ issuers }),
+          dataset: signal({ issuers, dates: store.dates ?? [] }),
           issuerIndexByIsin: (isin: string) => issuers.findIndex((issuer) => issuer.isin === isin),
         },
       },

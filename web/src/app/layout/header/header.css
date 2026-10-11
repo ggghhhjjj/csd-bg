@@ -68,6 +68,10 @@
   margin: 0;
 }
 
+.header__cached-on--stale {
+  color: #ef4444;
+}
+
 .header__meta-separator {
   user-select: none;
 }

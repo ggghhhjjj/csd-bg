@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 import { AppConfigService } from '../../core/app/app-config.service';
+import { isMarketDataStale, latestMarketDataIso } from '../../core/data/market-data-date';
 import { VectorsStore } from '../../core/data/vectors.store';
 import { IntroService } from '../../core/intro/intro.service';
 import type { AppLocale } from '../../core/i18n/locale-url';
@@ -35,20 +36,36 @@ export class Header {
   protected readonly menuOpen = signal(false);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly cachedOnLabel = computed(() => {
-    const iso = this.store.cachedOn();
+  protected readonly marketDataLabel = computed(() => {
+    const dates = this.store.dataset()?.dates;
+    if (!dates) {
+      return null;
+    }
+    const iso = latestMarketDataIso(dates);
     if (!iso) {
       return null;
     }
     return formatCachedOnLabel(iso, this.i18n.locale());
   });
 
-  protected readonly cachedOnAria = computed(() => {
-    const label = this.cachedOnLabel();
+  protected readonly marketDataStale = computed(() => {
+    const dates = this.store.dataset()?.dates;
+    if (!dates) {
+      return false;
+    }
+    const iso = latestMarketDataIso(dates);
+    if (!iso) {
+      return false;
+    }
+    return isMarketDataStale(iso);
+  });
+
+  protected readonly marketDataAria = computed(() => {
+    const label = this.marketDataLabel();
     if (!label) {
       return null;
     }
-    return this.i18n.text('header.cachedOn', { date: label });
+    return this.i18n.text('header.dataThrough', { date: label });
   });
 
   protected readonly appVersionLabel = computed(() => {
@@ -68,7 +85,7 @@ export class Header {
   });
 
   protected readonly metaVisible = computed(
-    () => this.cachedOnLabel() !== null || this.appVersionLabel() !== null || this.fetchIndicatorVisible(),
+    () => this.marketDataLabel() !== null || this.appVersionLabel() !== null || this.fetchIndicatorVisible(),
   );
 
   protected readonly fetchIndicatorVisible = computed(() => this.store.fetchPhase() !== 'idle');

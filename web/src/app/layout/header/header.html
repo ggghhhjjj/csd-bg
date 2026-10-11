@@ -37,11 +37,17 @@
     <h1 class="header__title">{{ i18n.text('header.title') }}</h1>
     @if (metaVisible()) {
       <div class="header__meta">
-        @if (cachedOnLabel()) {
-          <p class="header__meta-text header__cached-on" [attr.aria-label]="cachedOnAria()">{{ cachedOnLabel() }}</p>
+        @if (marketDataLabel()) {
+          <p
+            class="header__meta-text header__cached-on"
+            [class.header__cached-on--stale]="marketDataStale()"
+            [attr.aria-label]="marketDataAria()"
+          >
+            {{ marketDataLabel() }}
+          </p>
         }
         @if (appVersionLabel()) {
-          @if (cachedOnLabel()) {
+          @if (marketDataLabel()) {
             <span class="header__meta-text header__meta-separator" aria-hidden="true">·</span>
           }
           <span class="header__meta-text header__app-version" [attr.aria-label]="appVersionAria()">{{
